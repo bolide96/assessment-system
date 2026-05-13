@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>干部考核系统</title>
+<title>期末成绩</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -104,6 +104,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
 .unit-tag{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:500;margin-left:5px}
 .tag-BB{background:#e8f0fe;color:#1a4fa0}.tag-四方{background:#e8f7ee;color:#1a6a3a}
 .tag-财务{background:#fef3e8;color:#9a5200}.tag-总管{background:#f3eefe;color:#5a3aa0}
+.tag-TB钱包{background:#fde8f0;color:#a0164f}
 .shift-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px}
 .dot-早{background:#e8a020}.dot-中{background:#1a8a6a}.dot-晚{background:#5a3aa0}.dot-总管{background:#888}
 .score-bar-bg{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:3px}
@@ -239,7 +240,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
 <div id="login-wrap" class="login-wrap">
   <div class="login-card">
     <div class="login-head">
-      <h1>干部考核系统</h1>
+      <h1>期末成绩</h1>
       <p>内部专用 · 请登入</p>
     </div>
     <div class="login-body">
@@ -254,7 +255,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
 <!-- APP -->
 <div id="app-wrap" style="display:none">
   <nav class="topnav">
-    <div class="topnav-brand">干部考核系统</div>
+    <div class="topnav-brand">期末成绩</div>
     <div class="topnav-tabs">
       <button class="topnav-tab active" onclick="switchPage('query',this)">查询后台</button>
       <button class="topnav-tab editor-tab hidden" onclick="switchPage('edit',this)">编辑后台</button>
@@ -262,6 +263,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <button class="topnav-tab admin-only hidden" onclick="switchPage('settings',this)">规则设置</button>
       <button class="topnav-tab admin-only hidden" onclick="switchPage('periods',this)">期间管理</button>
       <button class="topnav-tab admin-only hidden" onclick="switchPage('users',this)">用户管理</button>
+      <button class="topnav-tab admin-only hidden" onclick="switchPage('logs',this)">操作记录</button>
       <button class="topnav-tab" onclick="switchPage('account',this)">我的帐号</button>
     </div>
     <div class="nav-right">
@@ -286,6 +288,9 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     <div id="scope-banner" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:4px;padding:6px 12px;margin-bottom:10px;font-size:12px;color:var(--amber)"></div>
     <div class="sec-hd">
       <div><h1 id="query-title">考核查询</h1><p id="query-sub">载入中…</p></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-add" style="background:var(--surface2);color:var(--ink2);border:1px solid var(--border);font-size:12px" onclick="exportToExcel()">📤 导出 Excel</button>
+      </div>
       <div class="hd-stats">
         <div class="stat-pill"><div class="n" id="stat-avg">—</div><div class="l">平均分</div></div>
         <div class="stat-pill"><div class="n" id="stat-pass">—</div><div class="l">达标率</div></div>
@@ -304,6 +309,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <button class="filter-btn" onclick="setFilter('unit','四方',this)">四方</button>
       <button class="filter-btn" onclick="setFilter('unit','财务',this)">财务</button>
       <button class="filter-btn" onclick="setFilter('unit','总管',this)">总管</button>
+      <button class="filter-btn" onclick="setFilter('unit','TB钱包',this)">TB钱包</button>
       <div class="search-wrap"><span class="search-icon">🔍</span><input id="search" placeholder="搜索姓名…" oninput="renderQuery()"></div>
     </div>
     <div class="sort-row">
@@ -325,6 +331,12 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
         <tbody id="tbody"><tr><td colspan="5" class="loading-state">选择期间载入中…</td></tr></tbody>
       </table>
       <div id="no-results" class="no-results" style="display:none">没有符合条件的人员</div>
+    </div>
+    <div id="score-chart-panel" style="margin-top:18px;background:var(--surface);border-radius:8px;border:1px solid var(--border);padding:16px 20px;display:none">
+      <div style="font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:14px">分数分布</div>
+      <div id="score-chart-bars" style="display:flex;align-items:flex-end;gap:6px;height:80px"></div>
+      <div id="score-chart-labels" style="display:flex;gap:6px;margin-top:4px"></div>
+      <div id="score-chart-stats" style="display:flex;gap:20px;margin-top:12px;font-size:12px;color:var(--ink3)"></div>
     </div>
   </div>
 
@@ -375,6 +387,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
         <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','四方',this)">四方</button>
         <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','财务',this)">财务</button>
         <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','总管',this)">总管</button>
+        <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','TB钱包',this)">TB钱包</button>
       </div>
     </div>
     <div class="tbl-wrap" style="overflow-x:auto">
@@ -390,13 +403,17 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
 
   <!-- SETTINGS -->
   <div id="page-settings" class="page">
-    <div class="page-hd"><h1>规则设置</h1><p id="settings-period-label">当前期间规则</p></div>
+    <div class="page-hd">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
+        <div><h1>规则设置</h1><p id="settings-period-label">当前期间规则</p></div>
+        <button class="btn-add" style="background:var(--surface2);color:var(--ink2);border:1px solid var(--border);margin-top:4px" onclick="inheritFromPrevPeriod()">↩ 承继上期规则</button>
+      </div>
+    </div>
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="switchPane('deduct')">扣分项目</button>
       <button class="nav-tab" onclick="switchPane('bonus')">加分项目</button>
       <button class="nav-tab" onclick="switchPane('base')">基础分设定</button>
       <button class="nav-tab" onclick="switchPane('preview')">规则预览</button>
-      <button class="nav-tab" onclick="switchPane('ip')">IP 限制</button>
     </div>
     <div id="pane-deduct" class="pane active">
       <div id="inherit-banner-deduct"></div>
@@ -430,22 +447,6 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn-primary" onclick="saveBaseConfig()">保存至云端</button></div>
     </div>
     <div id="pane-preview" class="pane"><div id="preview-content"></div></div>
-    <div id="pane-ip" class="pane">
-      <div class="preview-card">
-        <h3>全站 IP 白名单</h3>
-        <p style="font-size:13px;color:var(--ink3);margin-bottom:14px">启用后，仅允许列表内的 IP 登入。留空则不限制任何 IP。</p>
-        <div id="site-ip-list" style="margin-bottom:14px"></div>
-        <div style="display:flex;gap:8px;align-items:flex-end">
-          <div class="form-row" style="flex:1;margin:0"><label>IP 地址</label><input id="site-ip-input" placeholder="例：123.456.0.1"></div>
-          <div class="form-row" style="flex:1;margin:0"><label>备注</label><input id="site-ip-label" placeholder="例：办公室"></div>
-          <button class="btn-primary" style="height:34px;flex-shrink:0" onclick="addSiteIp()">新增</button>
-        </div>
-        <div style="margin-top:12px;padding:7px 12px;background:var(--blue-bg);border-radius:4px;font-size:12px;color:var(--blue)">
-          目前 IP：<strong id="site-current-ip">检测中…</strong>
-          <button class="btn-icon" style="margin-left:8px;font-size:11px" onclick="addCurrentIpToSite()">＋ 加入白名单</button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- PERIODS -->
@@ -466,6 +467,33 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     </div>
     <table class="users-table"><thead><tr><th>帐号</th><th>名称</th><th>权限</th><th>编辑/检视班别</th><th>状态</th><th>操作</th></tr></thead>
     <tbody id="users-tbody"></tbody></table>
+    <div class="account-card" style="margin-top:24px">
+      <h3>全站 IP 白名单</h3>
+      <p style="font-size:13px;color:var(--ink3);margin-bottom:14px">设定后仅允许名单内的 IP 登入，留空则不限制。</p>
+      <div id="site-ip-list" style="margin-bottom:14px"></div>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div class="form-row" style="flex:1;margin:0"><label>IP 地址</label><input id="site-ip-input" placeholder="例：123.456.0.1"></div>
+        <div class="form-row" style="flex:1;margin:0"><label>备注</label><input id="site-ip-label" placeholder="例：办公室"></div>
+        <button class="btn-primary" style="height:34px;flex-shrink:0" onclick="addSiteIp()">新增</button>
+      </div>
+      <div style="margin-top:12px;padding:7px 12px;background:var(--blue-bg);border-radius:4px;font-size:12px;color:var(--blue)">
+        目前 IP：<strong id="site-current-ip">检测中…</strong>
+        <button class="btn-icon" style="margin-left:8px;font-size:11px" onclick="addCurrentIpToSite()">＋ 加入白名单</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGS -->
+  <div id="page-logs" class="page">
+    <div class="page-hd"><h1>操作记录</h1><p>分数变动历史</p></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+      <select id="log-period-filter" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-family:var(--ff)" onchange="loadAuditLogs()">
+        <option value="">全部期间</option>
+      </select>
+      <button class="btn-add" style="background:var(--surface2);color:var(--ink2);border:1px solid var(--border);font-size:12px" onclick="loadAuditLogs()">🔄 刷新</button>
+      <span id="log-count" style="font-size:12px;color:var(--ink3)"></span>
+    </div>
+    <div id="logs-list"></div>
   </div>
 
   <!-- ACCOUNT -->
@@ -497,6 +525,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
           <option value="all">全体人员</option>
           <option value="BB">BB 单位</option><option value="四方">四方 单位</option>
           <option value="财务">财务 单位</option><option value="总管">总管 单位</option>
+          <option value="TB钱包">TB钱包 单位</option>
           <option value="早">早班</option><option value="中">中班</option><option value="晚">晚班</option>
         </select>
       </div>
@@ -518,7 +547,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <div class="form-grid">
         <div class="form-row" style="margin:0"><label>姓名</label><input id="sm-name" placeholder="例：BB-林依樺"></div>
         <div class="form-row" style="margin:0"><label>单位</label>
-          <select id="sm-unit"><option value="BB">BB</option><option value="四方">四方</option><option value="财务">财务</option><option value="总管">总管</option></select>
+          <select id="sm-unit"><option value="BB">BB</option><option value="四方">四方</option><option value="财务">财务</option><option value="总管">总管</option><option value="TB钱包">TB钱包</option></select>
         </div>
       </div>
       <div class="form-grid" style="margin-top:10px">
@@ -617,6 +646,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     <div class="modal-body">
       <input type="hidden" id="mm-staff-id">
       <input type="hidden" id="mm-month-key">
+      <input type="hidden" id="mm-month-label">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:10px 14px;background:var(--surface2);border-radius:6px">
         <span style="font-size:12px;color:var(--ink3)">当月累计分值</span>
         <span id="mm-current" style="font-family:var(--ffs);font-size:22px;font-weight:700">0</span>
@@ -799,6 +829,11 @@ async function selectPeriod(id){
   openIdx=null;
   await Promise.all([loadStaffScores(),loadRules(),loadBaseConfig()]);
   renderQuery();
+  if(document.getElementById('page-settings').classList.contains('active')){
+    renderList('deduct');renderList('bonus');
+  }
+  if(document.getElementById('page-edit').classList.contains('active'))renderEditPage();
+  if(document.getElementById('page-staff').classList.contains('active'))renderStaffTable();
 }
 
 /* ── STAFF SCORES ── */
@@ -825,7 +860,7 @@ async function loadStaffScores(){
     const _vs=fp?.edit_scope||null;
     if(currentProfile)currentProfile.edit_scope=_vs;
     const _scopeOk=_vs&&_vs!=='all'&&_vs!=='none';
-    toast(`[调试] profile=${fp?'有':'无'} | scope=${_vs||'null'} | ${_scopeOk?'已限制':'未限制'}`,!_scopeOk);
+
     if(_scopeOk){
       staffScores=staffScores.filter(d=>d.shift===_vs);
     }
@@ -868,12 +903,15 @@ function switchPage(id,el){
   if(el)el.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  if(id==='settings'){renderList('deduct');renderList('bonus')}
-  if(id==='users')loadUsers();
-  if(id==='account'){}
+  const hidePeriodBar=['users','logs','account'];
+  document.querySelector('.period-bar').style.display=hidePeriodBar.includes(id)?'none':'';
+  if(id==='query')loadStaffScores().then(()=>renderQuery());
+  if(id==='edit')loadStaffScores().then(()=>renderEditPage());
+  if(id==='settings'){loadRules().then(()=>{renderList('deduct');renderList('bonus')})}
+  if(id==='users'){loadUsers();loadSiteIps();detectSiteIp();}
+  if(id==='logs')loadAuditLogs();
   if(id==='staff')renderStaffTable();
   if(id==='periods')renderPeriodsPage();
-  if(id==='edit')renderEditPage();
 }
 
 let editFShift='全部',editFUnit='全部',editSortKey='score2';
@@ -899,7 +937,7 @@ function renderEditPage(){
   document.getElementById('edit-title').textContent=`编辑后台 · ${p?.name||''}`;
 
   const shifts=['全部','早','中','晚'];
-  const units=['全部','BB','四方','财务','总管'];
+  const units=['全部','BB','四方','财务','总管','TB钱包'];
   const fEl=document.getElementById('edit-filters');
   if(!fEl.dataset.init){
     fEl.dataset.init='1';
@@ -993,9 +1031,16 @@ function rankBadge(r){
   return`<span class="rank-badge ${c}">${n}</span>`;
 }
 
+function isScorePublished(){
+  const p=periods.find(x=>x.id===currentPeriodId);
+  if(!p||!p.publish_from||!p.publish_to)return false;
+  const today=new Date().toISOString().slice(0,10);
+  return today>=p.publish_from&&today<=p.publish_to;
+}
 function renderQuery(){
   const q=(document.getElementById('search')?.value||'').trim().toLowerCase();
   const isAdmin=currentProfile?.role==='admin';
+  const scoreVisible=isAdmin||isScorePublished();
   const scopeShift=(!isAdmin&&currentProfile?.edit_scope&&currentProfile.edit_scope!=='none'&&currentProfile.edit_scope!=='all')?currentProfile.edit_scope:null;
   const banner=document.getElementById('scope-banner');
   if(banner){if(scopeShift){banner.style.display='';banner.textContent=`⚠ 目前检视范围限制：仅${scopeShift}班（如需调整请联系管理员）`;}else{banner.style.display='none';}}
@@ -1021,19 +1066,28 @@ function renderQuery(){
     document.getElementById('stat-pass').textContent=Math.round(pass/list.length*100)+'%';
     document.getElementById('stat-top').textContent=top;
   }
+  renderScoreChart(list);
   const tb=document.getElementById('tbody');
-  if(!list.length){tb.innerHTML='';document.getElementById('no-results').style.display='';return}
+  if(!list.length){tb.innerHTML='';document.getElementById('no-results').style.display='';renderScoreChart([]);return}
   document.getElementById('no-results').style.display='none';
   const maxS=Math.max(...list.map(d=>d.score2||0),1);
   tb.innerHTML=list.map((d,i)=>{
-    const cls=scoreClass(d.score||0);const bc=barColor(d.score||0);
-    const pct=Math.round((d.score2||0)/maxS*100);
     const shortName=d.name.includes('-')?d.name.split('-').slice(1).join('-'):d.name;
     const uTag=`<span class="unit-tag tag-${d.unit}">${d.unit}</span>`;
-    const mgr=d.mgr_bonus>0?`+${d.mgr_bonus}`:d.mgr_bonus<0?`${d.mgr_bonus}`:'—';
-    const mgrC=d.mgr_bonus>0?'var(--green)':d.mgr_bonus<0?'var(--red)':'var(--ink3)';
     const js=d.jinsun>0?`<span style="color:var(--red)">¥${d.jinsun.toLocaleString()}</span>`:`<span style="color:var(--ink3)">—</span>`;
     const dEncoded=encodeURIComponent(JSON.stringify(d));
+    if(!scoreVisible){
+      return`<tr onclick="toggleDetail(${i},'${dEncoded}')" id="qrow-${i}">
+        <td><span style="font-weight:500">${shortName}</span>${uTag}</td>
+        <td class="c"><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
+        <td><span style="color:var(--ink3);font-size:13px">未结算</span></td>
+        <td class="c"><span style="color:var(--ink3)">—</span></td>
+        <td><span style="color:var(--ink3)">—</span></td>
+      </tr>
+      <tr id="qdrawer-${i}" style="display:none"><td colspan="5" style="padding:0"><div class="drawer open" id="qdetail-${i}"></div></td></tr>`;
+    }
+    const cls=scoreClass(d.score||0);const bc=barColor(d.score||0);
+    const pct=Math.round((d.score2||0)/maxS*100);
     return`<tr onclick="toggleDetail(${i},'${dEncoded}')" id="qrow-${i}">
       <td><span style="font-weight:500">${shortName}</span>${uTag}</td>
       <td class="c"><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
@@ -1057,28 +1111,37 @@ function toggleDetail(i,enc){
   openIdx=i;row.classList.add('selected');dr.style.display='';
   const p=periods.find(x=>x.id===currentPeriodId);
   const isFirstHalf=p?.half==='上半年';
-  const months=isFirstHalf
-    ?[['1月',d.jan],['2月',d.feb],['3月',d.mar],['4月',d.apr],['5月',d.may],['6月',d.jun]]
-    :[['7月',d.jul],['8月',d.aug],['9月',d.sep],['10月',d.oct],['11月',d.nov],['12月',d.dec]];
-  const mb=months.map(([m,v])=>`<div class="month-block"><div class="ml">${m}</div><div class="mv ${(v||0)>0?'pos':(v||0)<0?'neg':'zero'}">${(v||0)>0?'+'+(v||0):(v||0)===0?'—':(v||0)}</div></div>`).join('');
+  const mc=getMonthConfig();
+  const monthFull=mc.keys.map((k,idx)=>[mc.labels[idx],d[k]||0,k]);
+  const detail=d.month_detail||{};
+  const mb=monthFull.map(([m,v,k])=>{
+    const entries=detail[k]||[];
+    const itemsHtml=entries.length
+      ?`<div style="margin-top:5px;border-top:1px solid var(--border);padding-top:5px;text-align:left">${entries.map(e=>`<div style="font-size:10px;color:${e.pts>=0?'var(--green)':'var(--red)'};line-height:1.5"><span style="font-weight:600">${e.pts>=0?'+':''}${e.pts}</span> ${e.item}${e.note?`<span style="color:var(--ink3)">・${e.note}</span>`:''}</div>`).join('')}</div>`
+      :'';
+    return`<div class="month-block" style="height:auto;align-items:flex-start;padding:8px 10px"><div class="ml">${m}</div><div class="mv ${v>0?'pos':v<0?'neg':'zero'}">${v>0?'+'+v:v===0?'—':v}</div>${itemsHtml}</div>`;
+  }).join('');
   const bonusCls=(d.mgr_bonus||0)>0?'bonus-pos':(d.mgr_bonus||0)<0?'bonus-neg':'bonus-zero';
   const jb=d.jinsun>0?`<div class="jinsun-warn">⚠ 金损金额：¥${d.jinsun.toLocaleString()}</div>`:'';
+  const scoreVisible=currentProfile?.role==='admin'||isScorePublished();
+  const scorePanel=scoreVisible?`
+    <div>
+      <div class="drawer-section"><h4>分数构成</h4>
+        <div class="score-items">
+          <div class="score-item"><span>起始分</span><span>${d.base||80}</span></div>
+          <div class="score-item"><span>半年度无失误奖励</span><span style="color:${(d.perfect||0)>0?'var(--green)':'var(--ink3)'}">${(d.perfect||0)>0?'+'+(d.perfect||0):'×'}</span></div>
+          <div class="score-item"><span>半年度出勤正常</span><span style="color:${(d.attendance||0)>0?'var(--green)':'var(--ink3)'}">${(d.attendance||0)>0?'+'+(d.attendance||0):'×'}</span></div>
+          <div class="score-item" style="border-top:1px solid var(--border);margin-top:2px"><span style="font-weight:500">总分</span><span style="font-size:15px;font-family:var(--ffs);font-weight:600">${calcScore(d).score}</span></div>
+        </div>
+      </div>
+    </div>`:`<div><div class="drawer-section"><p style="color:var(--ink3);font-size:13px;padding:8px 0">成绩尚未公布</p></div></div>`;
   document.getElementById(`qdetail-${i}`).innerHTML=`
     <div class="drawer-grid">
-      <div><div class="drawer-section"><h4>月度扣分明细</h4>
+      <div><div class="drawer-section"><h4>月度加扣分明细</h4>
         <div class="score-breakdown">${mb}</div>
         ${jb}
       </div></div>
-      <div>
-        <div class="drawer-section"><h4>分数构成</h4>
-          <div class="score-items">
-            <div class="score-item"><span>起始分</span><span>${d.base||80}</span></div>
-            <div class="score-item"><span>半年度无失误奖励</span><span style="color:${(d.perfect||0)>0?'var(--green)':'var(--ink3)'}">${(d.perfect||0)>0?'+'+(d.perfect||0):'×'}</span></div>
-            <div class="score-item"><span>半年度出勤正常</span><span style="color:${(d.attendance||0)>0?'var(--green)':'var(--ink3)'}">${(d.attendance||0)>0?'+'+(d.attendance||0):'×'}</span></div>
-            <div class="score-item" style="border-top:1px solid var(--border);margin-top:2px"><span style="font-weight:500">总分</span><span style="font-size:15px;font-family:var(--ffs);font-weight:600">${calcScore(d).score}</span></div>
-          </div>
-        </div>
-      </div>
+      ${scorePanel}
     </div>`;
 }
 
@@ -1131,6 +1194,7 @@ function openMonthModal(staffScoreId,monthKey,monthLabel){
   document.getElementById('mm-title').textContent=`${shortName} · ${monthLabel}`;
   document.getElementById('mm-staff-id').value=staffScoreId;
   document.getElementById('mm-month-key').value=monthKey;
+  document.getElementById('mm-month-label').value=monthLabel;
   document.getElementById('mm-note-prompt').style.display='none';
   document.getElementById('mm-custom-item').value='';
   document.getElementById('mm-custom-pts').value='';
@@ -1170,7 +1234,7 @@ function mmRenderEntries(){
     mmEntries.map((e,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border);font-size:13px;background:#fff">
       <span style="color:${e.pts>=0?'var(--green)':'var(--red)'};font-weight:700;font-family:var(--ffs);width:42px;flex-shrink:0">${e.pts>=0?'+'+e.pts:e.pts}</span>
       <span style="flex:1">${e.item}</span>
-      <span style="color:var(--ink3);font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.note||''}">${e.note||'<span style="opacity:.45">无备注</span>'}</span>
+      <input value="${(e.note||'').replace(/"/g,'&quot;')}" placeholder="备注（可留空）" oninput="mmEntries[${i}].note=this.value" style="font-size:12px;color:var(--ink3);border:1px solid var(--border);border-radius:3px;padding:2px 6px;width:130px;font-family:var(--ff);background:var(--surface2)">
       <button onclick="mmRemoveEntry(${i})" style="color:var(--red);background:none;border:none;cursor:pointer;padding:2px 6px;font-size:16px;line-height:1;flex-shrink:0">×</button>
     </div>`).join('')
   }</div>`;
@@ -1224,7 +1288,13 @@ async function saveMonthScore(){
   const {score,score2}=calcScore({...d,[key]:val});
   const {error}=await sb.from('staff_scores').update({[key]:val,month_detail:detail,score,score2}).eq('id',id);
   if(error){toast('保存失败：'+error.message,true);return}
+  const monthLabel=document.getElementById('mm-month-label').value||key;
+  const oldVal=d[key]||0;
+  const oldEntries=(d.month_detail||{})[key]||[];
+  const oldDesc=oldEntries.length?oldEntries.map(e=>`${e.item}(${e.pts>0?'+':''}${e.pts})`).join('、'):`${oldVal}分`;
+  const newDesc=mmEntries.length?mmEntries.map(e=>`${e.item}(${e.pts>0?'+':''}${e.pts})${e.note?'['+e.note+']':''}`).join('、'):`${val}分`;
   d[key]=val;d.month_detail=detail;d.score=score;d.score2=score2;
+  logAudit(d.name,`${monthLabel}月度`,oldDesc,newDesc);
   closeModal('month-modal');
   renderStaffTable();renderQuery();
   if(document.getElementById('page-edit').classList.contains('active'))renderEditPage();
@@ -1237,6 +1307,7 @@ async function togglePerfect(staffScoreId,current){
   const {score,score2}=calcScore({...d,perfect:newVal});
   const {error}=await sb.from('staff_scores').update({perfect:newVal,score,score2}).eq('id',staffScoreId);
   if(error){toast('保存失败',true);return}
+  logAudit(d.name,'无失误奖励',current>0?`+${current}分`:'无',newVal>0?`+${newVal}分`:'取消');
   d.perfect=newVal;d.score=score;d.score2=score2;
   renderStaffTable();renderQuery();toast(newVal>0?'已给予无失误奖励':'已取消无失误奖励');
 }
@@ -1247,6 +1318,7 @@ async function toggleAttend(staffScoreId,current){
   const {score,score2}=calcScore({...d,attendance:newVal});
   const {error}=await sb.from('staff_scores').update({attendance:newVal,score,score2}).eq('id',staffScoreId);
   if(error){toast('保存失败',true);return}
+  logAudit(d.name,'出勤奖励',current>0?`+${current}分`:'无',newVal>0?`+${newVal}分`:'取消');
   d.attendance=newVal;d.score=score;d.score2=score2;
   renderStaffTable();renderQuery();toast(newVal>0?'已给予出勤奖励':'已取消出勤奖励');
 }
@@ -1269,6 +1341,10 @@ async function saveMgrBonus(){
   const score2=calcScore(d).score+mgr_bonus;
   const {error}=await sb.from('staff_scores').update({mgr_bonus,mgr_note,score2}).eq('id',id);
   if(error){toast('保存失败：'+error.message,true);return}
+  const oldMgr=d.mgr_bonus||0;
+  const mgrOldDesc=oldMgr===0?'无':`${oldMgr>0?'+':''}${oldMgr}分${d.mgr_note?'('+d.mgr_note+')':''}`;
+  const mgrNewDesc=mgr_bonus===0?'取消':`${mgr_bonus>0?'+':''}${mgr_bonus}分${mgr_note?'('+mgr_note+')':''}`;
+  logAudit(d.name,'干部加减分',mgrOldDesc,mgrNewDesc);
   d.mgr_bonus=mgr_bonus;d.mgr_note=mgr_note;d.score2=score2;
   closeModal('mgr-modal');
   renderEditPage();
@@ -1379,7 +1455,7 @@ async function importExcel(input){
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
       if(!rows.length){toast('档案没有资料',true);return}
-      const UNIT_VALS=['BB','四方','财务','总管'];
+      const UNIT_VALS=['BB','四方','财务','总管','TB钱包'];
       const SHIFT_VALS=['早','中','晚','总管'];
       let ok=0,fail=[];
       for(const row of rows){
@@ -1407,11 +1483,11 @@ async function importExcel(input){
 
 /* ── RULES ── */
 function switchPane(id){
-  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['deduct','bonus','base','preview','ip'][i]===id));
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['deduct','bonus','base','preview'][i]===id));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane-'+id).classList.add('active');
+  if(id==='deduct'||id==='bonus')loadRules().then(()=>renderList(id));
   if(id==='preview')renderPreview();
-  if(id==='ip'){loadSiteIps();detectSiteIp();}
 }
 
 function renderList(type){
@@ -1563,16 +1639,32 @@ function renderPeriodsPage(){
   if(!el)return;
   const statusMap={active:'进行中',closed:'已结束',draft:'草稿'};
   el.innerHTML=periods.map(p=>`
-    <div class="period-card">
+    <div class="period-card" style="grid-template-columns:1fr auto;align-items:start">
       <div>
         <div class="period-card-name">${p.name} <span class="period-status status-${p.status}">${statusMap[p.status]}</span></div>
         <div class="period-card-meta">${p.year}年 · ${p.half}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--ink3);white-space:nowrap">成绩公布日期：</span>
+          <input type="date" value="${p.publish_from||''}" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-family:var(--ff)" onchange="savePublishDate(${p.id},'publish_from',this.value)">
+          <span style="font-size:12px;color:var(--ink3)">至</span>
+          <input type="date" value="${p.publish_to||''}" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-family:var(--ff)" onchange="savePublishDate(${p.id},'publish_to',this.value)">
+          <span style="font-size:11px;color:var(--ink3)">${p.publish_from&&p.publish_to?'区间内可查看成绩':'（未设定则成绩不公开）'}</span>
+        </div>
       </div>
       <div class="period-actions">
         <button class="btn-icon" onclick="inheritRules(${p.id})" title="继承此期规则至下期">↓继承</button>
         <button class="btn-icon" onclick="togglePeriodStatus(${p.id},'${p.status}')" title="切换状态">${p.status==='active'?'⏸封存':'▶启用'}</button>
+        ${p.status==='draft'?`<button class="btn-icon del" onclick="deletePeriod(${p.id})" title="删除草稿">🗑删除</button>`:''}
       </div>
     </div>`).join('');
+}
+async function savePublishDate(id,field,val){
+  const {error}=await sbAdmin.from('periods').update({[field]:val||null}).eq('id',id);
+  if(error){toast('保存失败：'+error.message,true);return;}
+  const p=periods.find(x=>x.id===id);
+  if(p)p[field]=val||null;
+  toast('公布日期已更新');
+  renderPeriodsPage();
 }
 
 function openNewPeriodModal(){document.getElementById('period-modal').classList.add('open')}
@@ -1596,6 +1688,13 @@ async function togglePeriodStatus(id,current){
   await loadPeriods();
   toast('期间状态已更新');
 }
+async function deletePeriod(id){
+  if(!confirm('确认删除此草稿期间？此操作无法还原。'))return;
+  await sbAdmin.from('period_rules').delete().eq('period_id',id);
+  await sbAdmin.from('periods').delete().eq('id',id);
+  await loadPeriods();
+  toast('草稿已删除');
+}
 
 async function inheritRules(fromPeriodId){
   const fromP=periods.find(p=>p.id===fromPeriodId);
@@ -1614,6 +1713,31 @@ async function inheritRules(fromPeriodId){
     await sb.from('period_base_config').upsert({...srcBase,period_id:toPeriod.id},{onConflict:'period_id'});
   }
   toast(`规则已继承至「${toPeriod.name}」`);
+}
+async function inheritFromPrevPeriod(){
+  const idx=periods.findIndex(p=>p.id===currentPeriodId);
+  if(idx<=0){toast('已是第一个期间，没有上期可承继',true);return}
+  const fromP=periods[idx-1];
+  const toP=periods[idx];
+  if(!confirm(`确认从「${fromP.name}」承继规则到「${toP.name}」？\n（会覆盖目前期间的现有规则）`))return;
+  const {data:srcRules}=await sbAdmin.from('period_rules').select('*').eq('period_id',fromP.id);
+  const {data:srcBase}=await sbAdmin.from('period_base_config').select('*').eq('period_id',fromP.id).single();
+  if(srcRules?.length){
+    await sbAdmin.from('period_rules').delete().eq('period_id',toP.id);
+    const newRules=srcRules.map(r=>({...r,id:Date.now()+Math.random(),period_id:toP.id}));
+    await sbAdmin.from('period_rules').insert(newRules);
+  }
+  if(srcBase){
+    await sbAdmin.from('period_base_config').upsert({...srcBase,period_id:toP.id},{onConflict:'period_id'});
+  }
+  await loadRules();
+  renderList('deduct');
+  renderList('bonus');
+  const activeTab=[...document.querySelectorAll('.nav-tab')].find(t=>t.classList.contains('active'));
+  const activeIdx=[...document.querySelectorAll('.nav-tab')].indexOf(activeTab);
+  const paneId=['deduct','bonus','base','preview','ip'][activeIdx]||'deduct';
+  switchPane(paneId);
+  toast(`✓ 已从「${fromP.name}」承继规则`);
 }
 
 /* ── USERS ── */
@@ -1645,8 +1769,9 @@ async function loadUsers(){
       <td>${scopeSel}</td>
       <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${u.is_active?'var(--green)':'var(--border)'};margin-right:5px"></span>${u.is_active?'启用':'停用'}</td>
       <td style="display:flex;gap:4px">
-        <button class="btn-icon" onclick="toggleUserActive('${u.id}',${u.is_active})">${u.is_active?'⏸':'▶'}</button>
-        <button class="btn-icon" onclick="changeUserRole('${u.id}','${u.role}')">🔑</button>
+        <button class="btn-icon" onclick="toggleUserActive('${u.id}',${u.is_active})" title="${u.is_active?'停用':'启用'}">${u.is_active?'⏸':'▶'}</button>
+        <button class="btn-icon" onclick="changeUserRole('${u.id}','${u.role}')" title="切换权限">🔑</button>
+        <button class="btn-icon" onclick="sendPasswordReset('${u.email}')" title="发送密码重置信">✉</button>
       </td>
     </tr>`;
   }).join('');
@@ -1749,6 +1874,105 @@ async function changePassword(){
   if(error){toast('修改失败：'+error.message,true);return}
   document.getElementById('new-pw').value='';document.getElementById('confirm-pw').value='';
   toast('密码已更新！');
+}
+
+/* ── 导出 Excel ── */
+function exportToExcel(){
+  const p=periods.find(x=>x.id===currentPeriodId);
+  const rows=staffScores.map((d,i)=>({
+    '姓名':d.name,'单位':d.unit,'班次':d.shift,
+    '总分':d.score2,'原始分':d.score,'起始分':d.base||80,
+    '无失误奖励':d.perfect||0,'出勤奖励':d.attendance||0,
+    '干部加减分':d.mgr_bonus||0,'金损金额':d.jinsun||0,
+    '班内排名':d.rank2||'—','备注':d.comment||''
+  }));
+  if(!rows.length){toast('目前没有资料可导出',true);return}
+  const ws=XLSX.utils.json_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'成绩');
+  XLSX.writeFile(wb,`${p?p.name:'考核'}_成绩_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')}.xlsx`);
+  toast('Excel 已导出');
+}
+
+/* ── 分数分布图 ── */
+function renderScoreChart(data){
+  const panel=document.getElementById('score-chart-panel');
+  if(!data||!data.length){panel.style.display='none';return}
+  panel.style.display='';
+  const buckets=[{label:'<60',min:0,max:60},{label:'60-69',min:60,max:70},{label:'70-79',min:70,max:80},
+    {label:'80-89',min:80,max:90},{label:'90-99',min:90,max:100},{label:'100+',min:100,max:999}];
+  const counts=buckets.map(b=>data.filter(d=>(d.score2||0)>=b.min&&(d.score2||0)<b.max).length);
+  const maxC=Math.max(...counts,1);
+  const colors=['#e74c3c','#e67e22','#f1c40f','#2ecc71','#27ae60','#1abc9c'];
+  document.getElementById('score-chart-bars').innerHTML=counts.map((c,i)=>`
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div style="font-size:10px;color:var(--ink3)">${c||''}</div>
+      <div style="width:100%;background:${colors[i]};border-radius:3px 3px 0 0;height:${Math.max(c/maxC*70,c>0?4:0)}px;transition:height .3s"></div>
+    </div>`).join('');
+  document.getElementById('score-chart-labels').innerHTML=counts.map((_,i)=>`
+    <div style="flex:1;text-align:center;font-size:10px;color:var(--ink3)">${buckets[i].label}</div>`).join('');
+  const scores=data.map(d=>d.score2||0);
+  const avg=(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1);
+  const max=Math.max(...scores);const min=Math.min(...scores);
+  document.getElementById('score-chart-stats').innerHTML=
+    `<span>平均：<b>${avg}</b></span><span>最高：<b>${max}</b></span><span>最低：<b>${min}</b></span><span>人数：<b>${data.length}</b></span>`;
+}
+
+/* ── 密码重置 ── */
+async function sendPasswordReset(email){
+  if(!confirm(`确认发送密码重置邮件至 ${email}？`))return;
+  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.href});
+  if(error){toast('发送失败：'+error.message,true);return}
+  toast(`✓ 重置邮件已发送至 ${email}`);
+}
+
+/* ── 操作记录 ── */
+let auditSession=[];
+function logAudit(staffName,fieldName,oldVal,newVal){
+  const p=periods.find(x=>x.id===currentPeriodId);
+  const entry={
+    ts:new Date().toLocaleString('zh-TW'),
+    operator:currentProfile?.name||'管理员',
+    staffName,fieldName,
+    oldVal:String(oldVal),newVal:String(newVal),
+    periodName:p?.name||''
+  };
+  auditSession.unshift(entry);
+  sbAdmin.from('audit_logs').insert({
+    operator:entry.operator,staff_name:staffName,
+    field_name:fieldName,old_val:entry.oldVal,new_val:entry.newVal,
+    period_name:entry.periodName
+  }).then(()=>{}).catch(()=>{});
+}
+async function loadAuditLogs(){
+  const filterPeriod=document.getElementById('log-period-filter')?.value||'';
+  // 刷新期间下拉
+  const sel=document.getElementById('log-period-filter');
+  if(sel&&sel.options.length<=1){
+    periods.forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=p.name;sel.appendChild(o);});
+  }
+  let q=sbAdmin.from('audit_logs').select('*').order('created_at',{ascending:false}).limit(200);
+  if(filterPeriod)q=q.eq('period_name',filterPeriod);
+  const {data,error}=await q;
+  const el=document.getElementById('logs-list');
+  const count=document.getElementById('log-count');
+  if(error||!data){
+    // 若 table 不存在，显示 session 内记录
+    const rows=auditSession.filter(r=>!filterPeriod||r.periodName===filterPeriod);
+    count.textContent=`本次会话共 ${rows.length} 笔`;
+    el.innerHTML=rows.length
+      ?`<table class="users-table"><thead><tr><th>时间</th><th>操作人</th><th>人员</th><th>项目</th><th>改前</th><th>改后</th><th>期间</th></tr></thead><tbody>${
+        rows.map(r=>`<tr><td style="font-size:11px">${r.ts}</td><td>${r.operator}</td><td>${r.staffName}</td><td>${r.fieldName}</td><td style="color:var(--red)">${r.oldVal}</td><td style="color:var(--green)">${r.newVal}</td><td>${r.periodName}</td></tr>`).join('')
+      }</tbody></table>`
+      :'<div style="color:var(--ink3);padding:20px;text-align:center">本次会话暂无操作记录</div>';
+    return;
+  }
+  count.textContent=`共 ${data.length} 笔`;
+  el.innerHTML=data.length
+    ?`<table class="users-table"><thead><tr><th>时间</th><th>操作人</th><th>人员</th><th>项目</th><th>改前</th><th>改后</th><th>期间</th></tr></thead><tbody>${
+      data.map(r=>`<tr><td style="font-size:11px">${new Date(r.created_at).toLocaleString('zh-TW')}</td><td>${r.operator||''}</td><td>${r.staff_name||''}</td><td>${r.field_name||''}</td><td style="color:var(--red)">${r.old_val||''}</td><td style="color:var(--green)">${r.new_val||''}</td><td>${r.period_name||''}</td></tr>`).join('')
+    }</tbody></table>`
+    :'<div style="color:var(--ink3);padding:20px;text-align:center">尚无操作记录</div>';
 }
 
 function closeModal(id){document.getElementById(id).classList.remove('open')}
