@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>干部考核系统</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a1a2e;--ink2:#44445a;--ink3:#8888aa;
+  --bg:#f6f5f0;--surface:#fff;--surface2:#f0eff8;
+  --red:#c0392b;--red-bg:#fdf0ee;--red-bd:#f5c6c0;
+  --green:#1a7a4a;--green-bg:#edf7f2;--green-bd:#a8dfc2;
+  --amber:#9a6400;--amber-bg:#fef8e7;--amber-bd:#f0d990;
+  --blue:#1a4fa0;--blue-bg:#eef3fc;--blue-bd:#b0c8f0;
+  --border:#e2e0d8;--r:6px;
+  --ff:'Noto Sans SC',system-ui,sans-serif;--ffs:'Noto Serif SC',serif;
+}
+body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;min-height:100vh}
+
+/* Login */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;width:100%;max-width:380px;overflow:hidden;margin:16px}
+.login-head{background:var(--ink);padding:28px 28px 24px;text-align:center}
+.login-head h1{font-family:var(--ffs);font-size:20px;color:#fff;font-weight:700;letter-spacing:1px}
+.login-head p{font-size:12px;color:rgba(255,255,255,.4);margin-top:5px}
+.login-body{padding:24px 28px 28px}
+.login-err{background:var(--red-bg);border:1px solid var(--red-bd);color:var(--red);padding:8px 12px;border-radius:4px;font-size:12px;margin-bottom:14px;display:none}
+.btn-login{width:100%;padding:10px;background:var(--ink);color:#fff;border:none;border-radius:4px;font-size:14px;cursor:pointer;font-family:var(--ff);font-weight:500;transition:background .15s;margin-top:4px}
+.btn-login:hover{background:var(--red)}
+
+/* Topnav */
+.topnav{background:var(--ink);display:flex;align-items:center;padding:0 20px;height:50px;gap:0;position:sticky;top:0;z-index:50}
+.topnav-brand{font-family:var(--ffs);font-size:15px;color:#fff;font-weight:700;letter-spacing:1px;margin-right:24px;white-space:nowrap}
+.topnav-tabs{display:flex;height:100%}
+.topnav-tab{height:100%;padding:0 14px;display:flex;align-items:center;font-size:13px;color:rgba(255,255,255,.5);cursor:pointer;border-bottom:2px solid transparent;border-top:none;border-left:none;border-right:none;background:none;font-family:var(--ff);white-space:nowrap;transition:all .15s}
+.topnav-tab.active{color:#fff;border-bottom-color:var(--red)}
+.topnav-tab:hover:not(.active){color:rgba(255,255,255,.8)}
+.topnav-tab.hidden{display:none}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:#888}
+.conn-dot.ok{background:#3ecf8e}.conn-dot.err{background:#e24b4a}
+.user-badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,.7);display:flex;align-items:center;gap:6px}
+.role-tag{font-size:10px;padding:1px 6px;border-radius:3px;font-weight:500}
+.role-admin{background:#fef3c7;color:#92400e}.role-viewer{background:#e8f0fe;color:#1a4fa0}
+.btn-sm{background:none;border:1px solid rgba(255,255,255,.2);border-radius:4px;padding:4px 10px;color:rgba(255,255,255,.6);font-size:12px;cursor:pointer;font-family:var(--ff);transition:all .15s}
+.btn-sm:hover{border-color:rgba(255,255,255,.5);color:#fff}
+
+/* Period bar */
+.period-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.period-label{font-size:11px;color:var(--ink3);letter-spacing:.5px;white-space:nowrap}
+.period-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.period-tab{padding:4px 14px;border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--ink2);cursor:pointer;transition:all .15s;background:var(--surface);font-family:var(--ff);white-space:nowrap}
+.period-tab.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.period-tab.closed{opacity:.6}
+.period-status{font-size:10px;padding:1px 6px;border-radius:3px;margin-left:3px}
+.status-active{background:var(--green-bg);color:var(--green)}
+.status-closed{background:var(--surface2);color:var(--ink3)}
+.status-draft{background:var(--amber-bg);color:var(--amber)}
+.btn-new-period{padding:4px 12px;border:1px dashed var(--border);border-radius:20px;font-size:12px;color:var(--ink3);cursor:pointer;background:none;font-family:var(--ff);transition:all .15s}
+.btn-new-period:hover{border-color:var(--ink2);color:var(--ink)}
+
+/* Pages */
+.page{display:none;max-width:1040px;margin:0 auto;padding:20px 16px 60px}
+.page.active{display:block}
+
+/* Section header */
+.sec-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid var(--ink)}
+.sec-hd h1{font-family:var(--ffs);font-size:19px;font-weight:700;letter-spacing:1px}
+.sec-hd p{font-size:12px;color:var(--ink3);margin-top:3px}
+.hd-stats{display:flex;gap:10px}
+.stat-pill{background:var(--surface);border:1px solid var(--border);padding:5px 12px;border-radius:20px;text-align:center}
+.stat-pill .n{font-family:var(--ffs);font-size:15px;font-weight:700;color:var(--ink);line-height:1.2}
+.stat-pill .l{font-size:10px;color:var(--ink3);letter-spacing:.5px}
+
+/* Filters */
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center}
+.filter-btn{padding:5px 14px;border:1px solid var(--border);border-radius:20px;background:var(--surface);font-size:12px;color:var(--ink2);cursor:pointer;transition:all .15s;font-family:var(--ff);white-space:nowrap}
+.filter-btn.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.search-wrap{position:relative;margin-left:auto}
+.search-wrap input{border:1px solid var(--border);padding:6px 12px 6px 30px;border-radius:20px;font-size:13px;background:var(--surface);color:var(--ink);outline:none;font-family:var(--ff);width:180px}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px}
+.sort-row{display:flex;gap:6px;margin-bottom:10px;align-items:center}
+.sort-label{font-size:11px;color:var(--ink3);letter-spacing:.5px}
+.sort-btn{padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:var(--surface);font-size:11px;color:var(--ink2);cursor:pointer;font-family:var(--ff)}
+.sort-btn.active{background:var(--surface2);border-color:var(--ink3);color:var(--ink)}
+.result-count{font-size:12px;color:var(--ink3);margin-left:auto}
+
+/* Table */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.tbl thead tr{background:var(--ink)}
+.tbl thead th{padding:9px 12px;color:rgba(255,255,255,.85);font-weight:500;text-align:left;font-size:11px;letter-spacing:.5px;white-space:nowrap}
+.tbl thead th.c{text-align:center}
+.tbl tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
+.tbl tbody tr:last-child{border-bottom:none}
+.tbl tbody tr:hover{background:var(--surface2)}
+.tbl tbody tr.selected{background:#eeedf8}
+.tbl td{padding:8px 12px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis}
+.tbl td.c{text-align:center}
+.unit-tag{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:500;margin-left:5px}
+.tag-BB{background:#e8f0fe;color:#1a4fa0}.tag-四方{background:#e8f7ee;color:#1a6a3a}
+.tag-财务{background:#fef3e8;color:#9a5200}.tag-总管{background:#f3eefe;color:#5a3aa0}
+.shift-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px}
+.dot-早{background:#e8a020}.dot-中{background:#1a8a6a}.dot-晚{background:#5a3aa0}.dot-总管{background:#888}
+.score-bar-bg{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:3px}
+.score-bar-fill{height:100%;border-radius:3px}
+.score-num{font-family:var(--ffs);font-weight:600;font-size:14px}
+.score-num.high{color:var(--green)}.score-num.mid{color:var(--amber)}.score-num.low{color:var(--red)}
+.rank-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:600;font-family:var(--ffs)}
+.rank-1{background:#fef3c7;color:#92400e}.rank-2{background:#f1f5f9;color:#475569}.rank-3{background:#fdf4e7;color:#7c5021}.rank-other{background:var(--surface2);color:var(--ink3);font-size:10px}
+
+/* Drawer */
+.drawer{display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-top:1px;padding:18px}
+.drawer.open{display:block}
+.drawer-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.drawer-section h4{font-size:11px;color:var(--ink3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.score-breakdown{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:10px}
+.month-block{background:var(--surface2);border-radius:4px;padding:5px;text-align:center}
+.month-block .ml{font-size:10px;color:var(--ink3);margin-bottom:2px}
+.month-block .mv{font-size:12px;font-weight:600;font-family:var(--ffs)}
+.mv.neg{color:var(--red)}.mv.pos{color:var(--green)}.mv.zero{color:var(--ink3)}
+.score-items{display:flex;flex-direction:column;gap:4px}
+.score-item{display:flex;justify-content:space-between;font-size:12px;padding:4px 8px;background:var(--surface2);border-radius:4px}
+.jinsun-warn{background:var(--red-bg);border:1px solid var(--red-bd);padding:5px 10px;border-radius:4px;font-size:12px;color:var(--red);margin-top:6px}
+.comment-box{background:var(--surface2);border-left:3px solid var(--ink);padding:8px 12px;border-radius:0 4px 4px 0;font-size:13px;line-height:1.8;color:var(--ink2);margin-top:8px}
+.mgr-bonus{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:3px;font-size:12px;font-weight:500;margin-top:5px}
+.bonus-pos{background:var(--green-bg);color:var(--green)}.bonus-neg{background:var(--red-bg);color:var(--red)}.bonus-zero{background:var(--surface2);color:var(--ink3)}
+.no-results{text-align:center;padding:40px;color:var(--ink3);font-size:13px}
+.loading-state{text-align:center;padding:32px;color:var(--ink3);font-size:13px}
+
+/* Settings tabs */
+.page-hd{margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid var(--ink)}
+.page-hd h1{font-family:var(--ffs);font-size:18px;font-weight:700;letter-spacing:1px}
+.page-hd p{font-size:12px;color:var(--ink3);margin-top:2px}
+.nav-tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--border)}
+.nav-tab{padding:8px 18px;font-size:13px;color:var(--ink3);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;font-family:var(--ff)}
+.nav-tab.active{color:var(--red);border-bottom-color:var(--red);font-weight:500}
+.pane{display:none}.pane.active{display:block}
+.rules-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.rules-header h2{font-size:14px;font-weight:500;color:var(--ink2)}
+.btn-add{display:flex;align-items:center;gap:5px;padding:6px 14px;background:var(--ink);color:#fff;border:none;border-radius:var(--r);font-size:12px;cursor:pointer;font-family:var(--ff);transition:background .15s}
+.btn-add:hover{background:var(--red)}
+.rules-list{display:flex;flex-direction:column;gap:7px;margin-bottom:16px}
+.rule-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r)}
+.rule-card.disabled{opacity:.55}
+.rule-row{display:grid;grid-template-columns:24px 1fr auto auto auto auto;align-items:center;gap:8px;padding:9px 12px}
+.drag-handle{color:var(--ink3);cursor:grab;font-size:15px;display:flex;align-items:center}
+.rule-name{font-size:13px;font-weight:500;color:var(--ink)}
+.rule-meta{font-size:11px;color:var(--ink3);margin-top:2px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.type-badge{display:inline-block;padding:1px 7px;border-radius:3px;font-size:10px;font-weight:500}
+.type-deduct{background:var(--red-bg);color:var(--red)}.type-bonus{background:var(--green-bg);color:var(--green)}
+.pts-badge{font-family:var(--ffs);font-size:14px;font-weight:700;min-width:48px;text-align:center}
+.pts-badge.neg{color:var(--red)}.pts-badge.pos{color:var(--green)}
+.rule-toggle{position:relative;width:34px;height:18px;flex-shrink:0}
+.rule-toggle input{opacity:0;width:0;height:0;position:absolute}
+.toggle-track{position:absolute;inset:0;border-radius:9px;background:var(--border);cursor:pointer;transition:background .2s}
+.rule-toggle input:checked+.toggle-track{background:var(--green)}
+.toggle-thumb{position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;top:2px;left:2px;transition:transform .2s;pointer-events:none}
+.rule-toggle input:checked~.toggle-thumb{transform:translateX(16px)}
+.btn-icon{width:28px;height:28px;border:1px solid var(--border);border-radius:4px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:13px;transition:all .15s}
+.btn-icon:hover{border-color:var(--ink2);color:var(--ink)}
+.btn-icon.del:hover{border-color:var(--red);color:var(--red)}
+.empty-rules{text-align:center;padding:28px;color:var(--ink3);font-size:13px;border:1px dashed var(--border);border-radius:var(--r)}
+.preview-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;margin-bottom:14px}
+.preview-card h3{font-size:13px;font-weight:500;color:var(--ink2);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.form-row{margin-bottom:12px}
+.form-row label{display:block;font-size:11px;color:var(--ink3);letter-spacing:.5px;margin-bottom:4px;text-transform:uppercase}
+.form-row input,.form-row select,.form-row textarea{width:100%;border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-family:var(--ff);font-size:13px;color:var(--ink);background:var(--surface);outline:none;transition:border .15s}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--ink2)}
+.form-row textarea{resize:vertical;min-height:56px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn-primary{padding:8px 22px;border:1px solid var(--ink);border-radius:4px;background:var(--ink);color:#fff;font-size:13px;cursor:pointer;font-family:var(--ff);transition:all .15s}
+.btn-primary:hover{background:var(--red);border-color:var(--red)}
+
+/* Staff list */
+.staff-tools{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.staff-tools .result-count{font-size:12px;color:var(--ink3)}
+.import-area{background:var(--surface);border:2px dashed var(--border);border-radius:var(--r);padding:24px;text-align:center;margin-bottom:14px;transition:border .15s}
+.import-area:hover{border-color:var(--ink3)}
+.import-area p{font-size:13px;color:var(--ink3);margin-bottom:8px}
+.import-area input[type=file]{display:none}
+.import-label{display:inline-block;padding:6px 16px;border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:12px;color:var(--ink2);transition:all .15s}
+.import-label:hover{border-color:var(--ink);color:var(--ink)}
+
+/* Period management */
+.period-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;margin-bottom:8px}
+.period-card-name{font-family:var(--ffs);font-size:15px;font-weight:600;color:var(--ink)}
+.period-card-meta{font-size:12px;color:var(--ink3);margin-top:3px}
+.period-actions{display:flex;gap:6px}
+
+/* Account */
+.account-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;max-width:480px;margin-bottom:14px}
+.account-card h3{font-size:14px;font-weight:500;font-family:var(--ffs);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.ip-item{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--surface2);border-radius:4px;margin-bottom:5px;font-size:13px}
+.ip-addr{font-family:monospace;color:var(--blue)}
+
+/* Users table */
+.users-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.users-table th{padding:9px 12px;background:var(--ink);color:rgba(255,255,255,.8);font-weight:500;font-size:11px;letter-spacing:.5px;text-align:left}
+.users-table td{padding:9px 12px;border-bottom:1px solid var(--border)}
+.users-table tr:last-child td{border-bottom:none}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(10,10,20,.45);z-index:100;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:500px;overflow:hidden;margin:16px;max-height:90vh;display:flex;flex-direction:column}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);background:var(--ink);flex-shrink:0}
+.modal-head h3{font-size:14px;color:#fff;font-weight:500;font-family:var(--ffs)}
+.modal-head button{background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:20px;line-height:1;padding:0}
+.modal-body{padding:18px;overflow-y:auto}
+.modal-foot{padding:10px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+.btn-cancel{padding:7px 16px;border:1px solid var(--border);border-radius:4px;background:none;font-size:13px;cursor:pointer;font-family:var(--ff);color:var(--ink2)}
+.btn-modal-save{padding:7px 16px;border:1px solid var(--ink);border-radius:4px;background:var(--ink);color:#fff;font-size:13px;cursor:pointer;font-family:var(--ff)}
+.btn-modal-save:hover{background:var(--red);border-color:var(--red)}
+
+/* inherit banner */
+.inherit-banner{background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:4px;padding:8px 12px;font-size:12px;color:var(--amber);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+
+/* Preview items */
+.preview-item{display:flex;justify-content:space-between;font-size:12px;padding:3px 8px;border-radius:3px;margin-bottom:3px}
+.preview-item.base{background:var(--blue-bg);color:var(--blue)}
+.preview-item.bonus{background:var(--green-bg);color:var(--green)}
+.preview-item.deduct{background:var(--red-bg);color:var(--red)}
+.preview-total{display:flex;justify-content:space-between;font-size:13px;font-weight:500;padding:5px 8px;margin-top:4px;border-top:1px solid var(--border)}
+
+/* Toast */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--ink);color:#fff;padding:10px 16px;font-size:13px;border-radius:var(--r);opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:200;font-family:var(--ff)}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.err{background:var(--red)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-wrap" class="login-wrap">
+  <div class="login-card">
+    <div class="login-head">
+      <h1>干部考核系统</h1>
+      <p>内部专用 · 请登入</p>
+    </div>
+    <div class="login-body">
+      <div class="login-err" id="login-err"></div>
+      <div class="form-row"><label>帐号</label><input id="login-email" placeholder="例：DU00@sys.com" autocomplete="username"></div>
+      <div class="form-row"><label>密码</label><input id="login-pw" type="password" placeholder="请输入密码" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn-login" id="login-btn" onclick="doLogin()">登入</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-wrap" style="display:none">
+  <nav class="topnav">
+    <div class="topnav-brand">干部考核系统</div>
+    <div class="topnav-tabs">
+      <button class="topnav-tab active" onclick="switchPage('query',this)">查询后台</button>
+      <button class="topnav-tab editor-tab hidden" onclick="switchPage('edit',this)">编辑后台</button>
+      <button class="topnav-tab admin-only hidden" onclick="switchPage('staff',this)">人员管理</button>
+      <button class="topnav-tab admin-only hidden" onclick="switchPage('settings',this)">规则设置</button>
+      <button class="topnav-tab admin-only hidden" onclick="switchPage('periods',this)">期间管理</button>
+      <button class="topnav-tab admin-only hidden" onclick="switchPage('users',this)">用户管理</button>
+      <button class="topnav-tab" onclick="switchPage('account',this)">我的帐号</button>
+    </div>
+    <div class="nav-right">
+      <div class="conn-dot" id="conn-dot"></div>
+      <div class="user-badge">
+        <span id="nav-user">—</span>
+        <span class="role-tag" id="nav-role">—</span>
+      </div>
+      <button class="btn-sm" onclick="doLogout()">登出</button>
+    </div>
+  </nav>
+
+  <!-- Period bar -->
+  <div class="period-bar">
+    <span class="period-label">考核期间</span>
+    <div class="period-tabs" id="period-tabs"></div>
+    <button class="btn-new-period admin-only hidden" onclick="openNewPeriodModal()">＋ 新增期间</button>
+  </div>
+
+  <!-- QUERY -->
+  <div id="page-query" class="page active">
+    <div id="scope-banner" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:4px;padding:6px 12px;margin-bottom:10px;font-size:12px;color:var(--amber)"></div>
+    <div class="sec-hd">
+      <div><h1 id="query-title">考核查询</h1><p id="query-sub">载入中…</p></div>
+      <div class="hd-stats">
+        <div class="stat-pill"><div class="n" id="stat-avg">—</div><div class="l">平均分</div></div>
+        <div class="stat-pill"><div class="n" id="stat-pass">—</div><div class="l">达标率</div></div>
+        <div class="stat-pill"><div class="n" id="stat-top">—</div><div class="l">满分人数</div></div>
+      </div>
+    </div>
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('shift','全部',this)">全部班次</button>
+      <button class="filter-btn" onclick="setFilter('shift','早',this)">早班</button>
+      <button class="filter-btn" onclick="setFilter('shift','中',this)">中班</button>
+      <button class="filter-btn" onclick="setFilter('shift','晚',this)">晚班</button>
+      <button class="filter-btn" onclick="setFilter('shift','总管',this)">总管</button>
+      <span style="color:var(--border);margin:0 4px">|</span>
+      <button class="filter-btn active" onclick="setFilter('unit','全部',this)">全部单位</button>
+      <button class="filter-btn" onclick="setFilter('unit','BB',this)">BB</button>
+      <button class="filter-btn" onclick="setFilter('unit','四方',this)">四方</button>
+      <button class="filter-btn" onclick="setFilter('unit','财务',this)">财务</button>
+      <button class="filter-btn" onclick="setFilter('unit','总管',this)">总管</button>
+      <div class="search-wrap"><span class="search-icon">🔍</span><input id="search" placeholder="搜索姓名…" oninput="renderQuery()"></div>
+    </div>
+    <div class="sort-row">
+      <span class="sort-label">排序</span>
+      <button class="sort-btn active" onclick="setSort('score',this)">总分↓</button>
+      <button class="sort-btn" onclick="setSort('jinsun',this)">金损↓</button>
+      <button class="sort-btn" onclick="setSort('name',this)">姓名</button>
+      <span class="result-count" id="count-label"></span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr>
+          <th style="width:190px">姓名 / 单位</th>
+          <th class="c" style="width:65px">班次</th>
+          <th style="width:150px">总分</th>
+          <th class="c" style="width:65px">班内排名</th>
+          <th>金损金额</th>
+        </tr></thead>
+        <tbody id="tbody"><tr><td colspan="5" class="loading-state">选择期间载入中…</td></tr></tbody>
+      </table>
+      <div id="no-results" class="no-results" style="display:none">没有符合条件的人员</div>
+    </div>
+  </div>
+
+  <!-- EDIT -->
+  <div id="page-edit" class="page">
+    <div class="sec-hd">
+      <div><h1 id="edit-title">编辑后台</h1><p id="edit-sub">依权限显示可编辑名单</p></div>
+      <div class="hd-stats">
+        <div class="stat-pill"><div class="n" id="edit-count">—</div><div class="l">负责人数</div></div>
+      </div>
+    </div>
+    <div class="filters" id="edit-filters" style="margin-bottom:8px"></div>
+    <div class="sort-row">
+      <span class="sort-label">排序</span>
+      <button class="sort-btn active" onclick="setEditSort('score2',this)">含干部分↓</button>
+      <button class="sort-btn" onclick="setEditSort('score',this)">基础分↓</button>
+      <button class="sort-btn" onclick="setEditSort('jinsun',this)">金损↓</button>
+      <button class="sort-btn" onclick="setEditSort('name',this)">姓名</button>
+    </div>
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table class="tbl" style="table-layout:auto;min-width:800px">
+        <thead id="edit-thead"><tr><th colspan="12" class="loading-state">载入中…</th></tr></thead>
+        <tbody id="edit-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- STAFF -->
+  <div id="page-staff" class="page">
+    <div class="page-hd"><h1>人员管理</h1><p id="staff-period-label">当前期间人员</p></div>
+    <div class="staff-tools">
+      <button class="btn-add" onclick="openAddStaffModal()">＋ 新增人员</button>
+      <label class="import-label" for="excel-upload">📥 汇入 Excel</label>
+      <input type="file" id="excel-upload" accept=".xlsx,.xls,.csv" onchange="importExcel(this)">
+      <button class="btn-add" style="background:var(--surface2);color:var(--ink2);border:1px solid var(--border)" onclick="copyFromLastPeriod()">↩ 沿用上期人员</button>
+      <span class="result-count" id="staff-count"></span>
+    </div>
+    <div class="filters" id="staff-filters" style="margin-bottom:8px">
+      <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+        <button class="filter-btn sf-shift active" onclick="setStaffFilter('shift','全部',this)">全部班次</button>
+        <button class="filter-btn sf-shift" onclick="setStaffFilter('shift','早',this)">早</button>
+        <button class="filter-btn sf-shift" onclick="setStaffFilter('shift','中',this)">中</button>
+        <button class="filter-btn sf-shift" onclick="setStaffFilter('shift','晚',this)">晚</button>
+        <button class="filter-btn sf-shift" onclick="setStaffFilter('shift','总管',this)">总管</button>
+        <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
+        <button class="filter-btn sf-unit active" onclick="setStaffFilter('unit','全部',this)">全部单位</button>
+        <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','BB',this)">BB</button>
+        <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','四方',this)">四方</button>
+        <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','财务',this)">财务</button>
+        <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','总管',this)">总管</button>
+      </div>
+    </div>
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table class="tbl" style="table-layout:auto;min-width:800px">
+        <thead id="staff-thead"><tr>
+          <th>人员</th><th style="width:60px">班别</th><th style="width:60px">起始分</th>
+          <th style="width:70px">操作</th>
+        </tr></thead>
+        <tbody id="staff-tbody"><tr><td colspan="4" class="loading-state">载入中…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="page-settings" class="page">
+    <div class="page-hd"><h1>规则设置</h1><p id="settings-period-label">当前期间规则</p></div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="switchPane('deduct')">扣分项目</button>
+      <button class="nav-tab" onclick="switchPane('bonus')">加分项目</button>
+      <button class="nav-tab" onclick="switchPane('base')">基础分设定</button>
+      <button class="nav-tab" onclick="switchPane('preview')">规则预览</button>
+      <button class="nav-tab" onclick="switchPane('ip')">IP 限制</button>
+    </div>
+    <div id="pane-deduct" class="pane active">
+      <div id="inherit-banner-deduct"></div>
+      <div class="rules-header"><h2>扣分项目 <span id="deduct-count" style="color:var(--ink3);font-weight:400;font-size:12px"></span></h2><button class="btn-add" onclick="openRuleModal('deduct')">＋ 新增扣分项</button></div>
+      <div id="deduct-list" class="rules-list"></div>
+      <div id="deduct-empty" class="empty-rules" style="display:none">暂无扣分项目</div>
+    </div>
+    <div id="pane-bonus" class="pane">
+      <div id="inherit-banner-bonus"></div>
+      <div class="rules-header"><h2>加分项目 <span id="bonus-count" style="color:var(--ink3);font-weight:400;font-size:12px"></span></h2><button class="btn-add" onclick="openRuleModal('bonus')">＋ 新增加分项</button></div>
+      <div id="bonus-list" class="rules-list"></div>
+      <div id="bonus-empty" class="empty-rules" style="display:none">暂无加分项目</div>
+    </div>
+    <div id="pane-base" class="pane">
+      <div class="preview-card"><h3>基础分设定</h3>
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="form-row" style="margin:0"><label>每人起始分</label><input type="number" id="base-score" value="80"></div>
+          <div class="form-row" style="margin:0"><label>满分上限</label><input type="number" id="max-score" value="120"></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row" style="margin:0"><label>无失误奖励</label><input type="number" id="perfect-bonus" value="10"></div>
+          <div class="form-row" style="margin:0"><label>出勤正常奖励</label><input type="number" id="attend-bonus" value="10"></div>
+        </div>
+      </div>
+      <div class="preview-card"><h3>及格线</h3>
+        <div class="form-grid">
+          <div class="form-row" style="margin:0"><label>居家资格最低分</label><input type="number" id="pass-score" value="60"></div>
+          <div class="form-row" style="margin:0"><label>排名不列入分数线</label><input type="number" id="rank-cutoff" value="0"></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn-primary" onclick="saveBaseConfig()">保存至云端</button></div>
+    </div>
+    <div id="pane-preview" class="pane"><div id="preview-content"></div></div>
+    <div id="pane-ip" class="pane">
+      <div class="preview-card">
+        <h3>全站 IP 白名单</h3>
+        <p style="font-size:13px;color:var(--ink3);margin-bottom:14px">启用后，仅允许列表内的 IP 登入。留空则不限制任何 IP。</p>
+        <div id="site-ip-list" style="margin-bottom:14px"></div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <div class="form-row" style="flex:1;margin:0"><label>IP 地址</label><input id="site-ip-input" placeholder="例：123.456.0.1"></div>
+          <div class="form-row" style="flex:1;margin:0"><label>备注</label><input id="site-ip-label" placeholder="例：办公室"></div>
+          <button class="btn-primary" style="height:34px;flex-shrink:0" onclick="addSiteIp()">新增</button>
+        </div>
+        <div style="margin-top:12px;padding:7px 12px;background:var(--blue-bg);border-radius:4px;font-size:12px;color:var(--blue)">
+          目前 IP：<strong id="site-current-ip">检测中…</strong>
+          <button class="btn-icon" style="margin-left:8px;font-size:11px" onclick="addCurrentIpToSite()">＋ 加入白名单</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PERIODS -->
+  <div id="page-periods" class="page">
+    <div class="page-hd"><h1>期间管理</h1><p>管理所有考核期间</p></div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      <button class="btn-add" onclick="openNewPeriodModal()">＋ 新增期间</button>
+    </div>
+    <div id="periods-list"></div>
+  </div>
+
+  <!-- USERS -->
+  <div id="page-users" class="page">
+    <div class="page-hd"><h1>用户管理</h1><p>帐号权限管理</p></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+      <span id="users-count" style="font-size:13px;color:var(--ink3)"></span>
+      <button class="btn-add" onclick="document.getElementById('adduser-modal').classList.add('open')">＋ 新增帐号</button>
+    </div>
+    <table class="users-table"><thead><tr><th>帐号</th><th>名称</th><th>权限</th><th>编辑/检视班别</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody id="users-tbody"></tbody></table>
+  </div>
+
+  <!-- ACCOUNT -->
+  <div id="page-account" class="page">
+    <div class="page-hd"><h1>我的帐号</h1><p>修改密码</p></div>
+    <div class="account-card">
+      <h3>修改密码</h3>
+      <div class="form-row"><label>新密码</label><input type="password" id="new-pw" placeholder="至少6位"></div>
+      <div class="form-row"><label>确认新密码</label><input type="password" id="confirm-pw" placeholder="再次输入"></div>
+      <button class="btn-primary" onclick="changePassword()">更新密码</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modals -->
+<!-- Rule modal -->
+<div class="modal-bg" id="rule-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="rule-modal-title">新增项目</h3><button onclick="closeModal('rule-modal')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="rm-mode"><input type="hidden" id="rm-edit-id">
+      <div class="form-row"><label>项目名称</label><input id="rm-name" placeholder="例：操作失误"></div>
+      <div class="form-grid">
+        <div class="form-row" style="margin:0"><label>分值</label><input id="rm-pts" type="number"></div>
+        <div class="form-row" style="margin:0"><label>上限次数（留空不限）</label><input id="rm-max" type="number" placeholder="不限"></div>
+      </div>
+      <div class="form-row" style="margin-top:10px"><label>适用范围</label>
+        <select id="rm-scope">
+          <option value="all">全体人员</option>
+          <option value="BB">BB 单位</option><option value="四方">四方 单位</option>
+          <option value="财务">财务 单位</option><option value="总管">总管 单位</option>
+          <option value="早">早班</option><option value="中">中班</option><option value="晚">晚班</option>
+        </select>
+      </div>
+      <div class="form-row"><label>备注说明</label><textarea id="rm-note" placeholder="触发条件、认定标准…"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('rule-modal')">取消</button>
+      <button class="btn-modal-save" onclick="saveRule()">保存至云端</button>
+    </div>
+  </div>
+</div>
+
+<!-- Staff modal -->
+<div class="modal-bg" id="staff-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="staff-modal-title">新增人员</h3><button onclick="closeModal('staff-modal')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="sm-edit-id">
+      <div class="form-grid">
+        <div class="form-row" style="margin:0"><label>姓名</label><input id="sm-name" placeholder="例：BB-林依樺"></div>
+        <div class="form-row" style="margin:0"><label>单位</label>
+          <select id="sm-unit"><option value="BB">BB</option><option value="四方">四方</option><option value="财务">财务</option><option value="总管">总管</option></select>
+        </div>
+      </div>
+      <div class="form-grid" style="margin-top:10px">
+        <div class="form-row" style="margin:0"><label>班次</label>
+          <select id="sm-shift"><option value="早">早班</option><option value="中">中班</option><option value="晚">晚班</option><option value="总管">总管</option></select>
+        </div>
+        <div class="form-row" style="margin:0"><label>起始分</label><input id="sm-base" type="number" value="80"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('staff-modal')">取消</button>
+      <button class="btn-modal-save" onclick="saveStaff()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mgr bonus modal -->
+<div class="modal-bg" id="mgr-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head"><h3 id="mgr-title">干部加减分</h3><button onclick="closeModal('mgr-modal')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="mgr-staff-id">
+      <div class="form-row"><label>加減分值</label><input id="mgr-pts" type="number" placeholder="正數為加分，負數為扣分" style="width:100%"></div>
+      <div class="form-row"><label>備註說明</label><textarea id="mgr-note" placeholder="填寫原因或說明…" style="min-height:80px"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('mgr-modal')">取消</button>
+      <button class="btn-modal-save" onclick="saveMgrBonus()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Comment modal -->
+<div class="modal-bg" id="comment-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head"><h3 id="cm-title">综合评语</h3><button onclick="closeModal('comment-modal')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="cm-staff-id">
+      <div class="form-row"><label>综合评语</label><textarea id="cm-comment" placeholder="干部综合评述…" style="min-height:100px"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('comment-modal')">取消</button>
+      <button class="btn-modal-save" onclick="saveComment()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Period modal -->
+<div class="modal-bg" id="period-modal">
+  <div class="modal">
+    <div class="modal-head"><h3>新增考核期间</h3><button onclick="closeModal('period-modal')">×</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-row" style="margin:0"><label>年度</label><input id="pm-year" type="number" placeholder="例：2026"></div>
+        <div class="form-row" style="margin:0"><label>期间</label>
+          <select id="pm-half"><option value="上半年">上半年</option><option value="下半年">下半年</option></select>
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:12px"><label>状态</label>
+        <select id="pm-status"><option value="draft">草稿</option><option value="active">进行中</option></select>
+      </div>
+      <div style="margin-top:12px;padding:8px 12px;background:var(--amber-bg);border-radius:4px;font-size:12px;color:var(--amber)">
+        建立后可选择「继承上期规则」自动复制加扣分设定。
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('period-modal')">取消</button>
+      <button class="btn-modal-save" onclick="createPeriod()">建立期间</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add user modal -->
+<div class="modal-bg" id="adduser-modal">
+  <div class="modal">
+    <div class="modal-head"><h3>新增帐号</h3><button onclick="closeModal('adduser-modal')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row"><label>帐号（Email 格式）</label><input id="au-email" placeholder="例：DU01@sys.com"></div>
+      <div class="form-row"><label>名称</label><input id="au-name"></div>
+      <div class="form-row"><label>临时密码</label><input id="au-pw" type="password" placeholder="至少6位"></div>
+      <div class="form-row"><label>权限</label>
+        <select id="au-role"><option value="viewer">检视（viewer）</option><option value="admin">编辑（admin）</option></select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('adduser-modal')">取消</button>
+      <button class="btn-modal-save" onclick="createUser()">建立帐号</button>
+    </div>
+  </div>
+</div>
+
+<!-- Month modal -->
+<div class="modal-bg" id="month-modal">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-head"><h3 id="mm-title">加扣分记录</h3><button onclick="closeModal('month-modal')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="mm-staff-id">
+      <input type="hidden" id="mm-month-key">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:10px 14px;background:var(--surface2);border-radius:6px">
+        <span style="font-size:12px;color:var(--ink3)">当月累计分值</span>
+        <span id="mm-current" style="font-family:var(--ffs);font-size:22px;font-weight:700">0</span>
+      </div>
+      <!-- Entry list -->
+      <div id="mm-entries" style="margin-bottom:10px;max-height:180px;overflow-y:auto"></div>
+      <!-- Inline remark prompt (appears after clicking a rule) -->
+      <div id="mm-note-prompt" style="display:none;margin-bottom:10px;padding:10px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
+        <div id="mm-note-label" style="font-size:12px;color:var(--ink3);margin-bottom:6px;font-weight:500"></div>
+        <div style="display:flex;gap:6px">
+          <input id="mm-note-input" placeholder="备注（可留空）" style="flex:1" onkeydown="if(event.key==='Enter')confirmRuleEntry()">
+          <button onclick="confirmRuleEntry()" style="padding:0 12px;background:var(--blue);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px">确认</button>
+          <button onclick="cancelRuleEntry()" style="padding:0 8px;background:none;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:13px">取消</button>
+        </div>
+      </div>
+      <!-- Custom entry row -->
+      <div style="display:flex;gap:6px;align-items:flex-end;margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:6px">
+        <div style="flex:2">
+          <div style="font-size:11px;color:var(--ink3);margin-bottom:3px">自定义项目</div>
+          <input id="mm-custom-item" placeholder="项目名称" style="width:100%;box-sizing:border-box">
+        </div>
+        <div style="width:62px">
+          <div style="font-size:11px;color:var(--ink3);margin-bottom:3px">分值</div>
+          <input id="mm-custom-pts" type="number" placeholder="±0" style="width:100%;box-sizing:border-box">
+        </div>
+        <div style="flex:2">
+          <div style="font-size:11px;color:var(--ink3);margin-bottom:3px">备注</div>
+          <input id="mm-custom-note" placeholder="可留空" style="width:100%;box-sizing:border-box">
+        </div>
+        <button onclick="addCustomEntry()" style="height:34px;padding:0 10px;background:var(--blue);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;white-space:nowrap;flex-shrink:0">+ 新增</button>
+      </div>
+      <div id="mm-deduct-section"></div>
+      <div id="mm-bonus-section"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('month-modal')">取消</button>
+      <button class="btn-modal-save" onclick="saveMonthScore()">保存</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://qbanwcdutejyjddolhrm.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFiYW53Y2R1dGVqeWpkZG9saHJtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODIxMzgzMSwiZXhwIjoyMDkzNzg5ODMxfQ.pMdIxnODu_CUOf_fuYxXhg34szZNzRS8C-09LX4m2K4';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+// 独立管理客户端：不持久化用户 session，始终用 service_role key 读取 profiles
+const sbAdmin=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+
+let currentUser=null,currentProfile=null;
+let periods=[],currentPeriodId=null;
+let staffScores=[],rules={deduct:[],bonus:[]};
+let baseConfig={base_score:80,max_score:120,perfect_bonus:10,attend_bonus:10,pass_score:60,rank_cutoff:0};
+let fShift='全部',fUnit='全部',sortKey='score',openIdx=null;
+
+/* ── AUTH ── */
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pw=document.getElementById('login-pw').value;
+  const errEl=document.getElementById('login-err');
+  const btn=document.getElementById('login-btn');
+  errEl.style.display='none';btn.textContent='登入中…';btn.disabled=true;
+  const LOCAL_ACCOUNTS=[
+    {email:'admin',password:'Admin2025',name:'系统管理员',role:'admin'},
+  ];
+  const local=LOCAL_ACCOUNTS.find(a=>a.email.toLowerCase()===email.toLowerCase()&&a.password===pw.trim());
+  if(local){
+    currentUser={id:'local-admin',email:local.email};
+    currentProfile={id:'local-admin',email:local.email,role:local.role,name:local.name,edit_scope:'all'};
+    sessionStorage.setItem('localProfile',JSON.stringify(currentProfile));
+    showApp();return;
+  }
+  if(email.toLowerCase()==='admin'){
+    errEl.textContent='密码错误，当前密码为 Admin2025（区分大小写）';
+    errEl.style.display='block';btn.textContent='登入';btn.disabled=false;return;
+  }
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
+  if(error){errEl.textContent='帐号或密码错误';errEl.style.display='block';btn.textContent='登入';btn.disabled=false;return}
+  currentUser=data.user;
+  const ipAllowed=await checkSiteIpAllowed();
+  if(!ipAllowed){
+    await sb.auth.signOut();
+    errEl.textContent='当前 IP 不在白名单内，无法登入';
+    errEl.style.display='block';btn.textContent='登入';btn.disabled=false;return;
+  }
+  const profile=await fetchProfileByUser(data.user);
+  const role=profile?.role||'viewer';
+  currentProfile={
+    id:data.user.id,
+    email:data.user.email,
+    role,
+    edit_scope:profile?.edit_scope||null,
+    name:profile?.name||data.user.email.split('@')[0]
+  };
+  sessionStorage.setItem('localProfile',JSON.stringify(currentProfile));
+  showApp();
+}
+async function loadProfile(user){
+  currentUser=user;
+  const ipAllowed=await checkSiteIpAllowed();
+  if(!ipAllowed){
+    await sb.auth.signOut();
+    document.getElementById('login-err').textContent='当前 IP 不在白名单内，无法使用';
+    document.getElementById('login-err').style.display='block';
+    return;
+  }
+  const profile=await fetchProfileByUser(user);
+  const role=profile?.role||'viewer';
+  currentProfile={
+    id:user.id,
+    email:user.email,
+    role,
+    edit_scope:profile?.edit_scope||null,
+    name:profile?.name||user.email.split('@')[0]
+  };
+  sessionStorage.setItem('localProfile',JSON.stringify(currentProfile));
+  showApp();
+}
+function showApp(){
+  document.getElementById('login-wrap').style.display='none';
+  document.getElementById('app-wrap').style.display='block';
+  const isAdmin=currentProfile?.role==='admin';
+  document.getElementById('nav-user').textContent=currentProfile?.name||currentUser.email.split('@')[0];
+  document.getElementById('nav-role').textContent=isAdmin?'编辑':'检视';
+  document.getElementById('nav-role').className='role-tag '+(isAdmin?'role-admin':'role-viewer');
+  if(isAdmin)document.querySelectorAll('.admin-only').forEach(el=>el.classList.remove('hidden'));
+  if(isAdmin)document.querySelectorAll('.editor-tab').forEach(el=>el.classList.remove('hidden'));
+  document.getElementById('conn-dot').className='conn-dot ok';
+  loadPeriods();
+}
+async function doLogout(){sessionStorage.removeItem('localProfile');await sb.auth.signOut();location.reload()}
+// UUID 与 profiles 不匹配时用 email 兜底查询
+async function fetchProfileByUser(user){
+  const {data:byId}=await sbAdmin.from('profiles').select('*').eq('id',user.id).maybeSingle();
+  if(byId)return byId;
+  if(user.email){
+    const {data:byEmail}=await sbAdmin.from('profiles').select('*').ilike('email',user.email).maybeSingle();
+    return byEmail||null;
+  }
+  return null;
+}
+
+/* ── PERIODS ── */
+async function loadPeriods(){
+  const {data}=await sb.from('periods').select('*').order('year').order('half');
+  periods=data||[];
+  renderPeriodTabs();
+  renderPeriodsPage();
+  if(periods.length){
+    const active=periods.find(p=>p.status==='active')||periods[periods.length-1];
+    await selectPeriod(active.id);
+  }
+}
+
+function renderPeriodTabs(){
+  const container=document.getElementById('period-tabs');
+  container.innerHTML=periods.map(p=>{
+    const statusLabel=p.status==='active'?'进行中':p.status==='closed'?'已结束':'草稿';
+    const statusCls=`status-${p.status}`;
+    return`<button class="period-tab${p.status==='closed'?' closed':''}" id="ptab-${p.id}" onclick="selectPeriod(${p.id})">
+      ${p.name}<span class="period-status ${statusCls}">${statusLabel}</span>
+    </button>`;
+  }).join('');
+}
+
+async function selectPeriod(id){
+  currentPeriodId=id;
+  document.querySelectorAll('.period-tab').forEach(t=>t.classList.remove('active'));
+  const tab=document.getElementById(`ptab-${id}`);
+  if(tab)tab.classList.add('active');
+  const p=periods.find(x=>x.id===id);
+  if(p){
+    document.getElementById('query-title').textContent=`${p.name} · 考核查询`;
+    document.getElementById('query-sub').textContent=`人员绩效后台`;
+    document.getElementById('staff-period-label').textContent=`当前期间：${p.name}`;
+    document.getElementById('settings-period-label').textContent=`当前期间：${p.name}`;
+  }
+  openIdx=null;
+  await Promise.all([loadStaffScores(),loadRules(),loadBaseConfig()]);
+  renderQuery();
+}
+
+/* ── STAFF SCORES ── */
+async function loadStaffScores(){
+  if(!currentPeriodId)return;
+  const {data,error}=await sb.from('staff_scores').select('*,staff(id,name,unit)').eq('period_id',currentPeriodId);
+  if(error){toast('载入人员资料失败：'+error.message,true);staffScores=[];renderQuery();return;}
+  staffScores=(data||[]).map(r=>({
+    id:r.id,staff_id:r.staff_id,
+    name:r.staff?.name||'',unit:r.staff?.unit||'',
+    shift:r.shift,base:r.base_score,
+    perfect:r.perfect,attendance:r.attendance,
+    jinsun:r.jinsun,score:r.score,score2:r.score2,
+    rank:r.rank,rank2:r.rank2,mgr_bonus:r.mgr_bonus,mgr_note:r.mgr_note||'',
+    comment:r.comment||'',
+    jul:r.jul,aug:r.aug,sep:r.sep,oct:r.oct,nov:r.nov,dec:r.dec,
+    jan:r.jan,feb:r.feb,mar:r.mar,apr:r.apr,may:r.may,jun:r.jun,
+    month_detail:r.month_detail||{},
+  }));
+  staffScores.forEach(d=>{const c=calcScore(d);d.score=c.score;d.score2=c.score2;});
+  // 检视者权限：每次直接查数据库取最新 edit_scope（sbAdmin 用 service_role 绕过 RLS）
+  if(currentProfile?.role!=='admin'&&currentUser?.id&&currentUser.id!=='local-admin'){
+    const fp=await fetchProfileByUser(currentUser);
+    const _vs=fp?.edit_scope||null;
+    if(currentProfile)currentProfile.edit_scope=_vs;
+    const _scopeOk=_vs&&_vs!=='all'&&_vs!=='none';
+    toast(`[调试] profile=${fp?'有':'无'} | scope=${_vs||'null'} | ${_scopeOk?'已限制':'未限制'}`,!_scopeOk);
+    if(_scopeOk){
+      staffScores=staffScores.filter(d=>d.shift===_vs);
+    }
+  }
+  // 按班次+单位分组排名
+  const groups={};
+  staffScores.forEach(d=>{const k=`${d.shift}|${d.unit}`;if(!groups[k])groups[k]=[];groups[k].push(d);});
+  Object.values(groups).forEach(g=>{
+    const rm=calcGroupRank(g,'score');
+    g.forEach(d=>d.rank2=rm[d.id]);
+  });
+  renderStaffTable();
+}
+
+/* ── RULES ── */
+async function loadRules(){
+  if(!currentPeriodId)return;
+  const {data}=await sb.from('period_rules').select('*').eq('period_id',currentPeriodId).order('sort_order');
+  rules.deduct=(data||[]).filter(r=>r.type==='deduct');
+  rules.bonus=(data||[]).filter(r=>r.type==='bonus');
+}
+
+async function loadBaseConfig(){
+  if(!currentPeriodId)return;
+  const {data}=await sb.from('period_base_config').select('*').eq('period_id',currentPeriodId).single();
+  if(data){
+    baseConfig=data;
+    document.getElementById('base-score').value=data.base_score;
+    document.getElementById('max-score').value=data.max_score;
+    document.getElementById('perfect-bonus').value=data.perfect_bonus;
+    document.getElementById('attend-bonus').value=data.attend_bonus;
+    document.getElementById('pass-score').value=data.pass_score;
+    document.getElementById('rank-cutoff').value=data.rank_cutoff;
+  }
+}
+
+/* ── QUERY ── */
+function switchPage(id,el){
+  document.querySelectorAll('.topnav-tab').forEach(t=>t.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(id==='settings'){renderList('deduct');renderList('bonus')}
+  if(id==='users')loadUsers();
+  if(id==='account'){}
+  if(id==='staff')renderStaffTable();
+  if(id==='periods')renderPeriodsPage();
+  if(id==='edit')renderEditPage();
+}
+
+let editFShift='全部',editFUnit='全部',editSortKey='score2';
+function setEditSort(k,el){editSortKey=k;document.querySelectorAll('.edit-sort-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderEditPage();}
+function setEditFilter(type,val,el){
+  if(type==='shift'){editFShift=val;document.querySelectorAll('#edit-filters .ef-shift').forEach(b=>b.classList.toggle('active',b===el))}
+  else{editFUnit=val;document.querySelectorAll('#edit-filters .ef-unit').forEach(b=>b.classList.toggle('active',b===el))}
+  renderEditPage();
+}
+
+let staffFShift='全部',staffFUnit='全部',staffSortKey='name';
+function setStaffFilter(type,val,el){
+  if(type==='shift'){staffFShift=val;document.querySelectorAll('#staff-filters .sf-shift').forEach(b=>b.classList.toggle('active',b===el))}
+  else{staffFUnit=val;document.querySelectorAll('#staff-filters .sf-unit').forEach(b=>b.classList.toggle('active',b===el))}
+  renderStaffTable();
+}
+function setStaffSort(k,el){staffSortKey=k;document.querySelectorAll('.staff-sort-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderStaffTable();}
+function renderEditPage(){
+  const isAdmin=currentProfile?.role==='admin';
+  const editScope=currentProfile?.edit_scope||'none';
+  const scope=(isAdmin&&editScope!=='none')?editScope:'all';
+  const p=periods.find(x=>x.id===currentPeriodId);
+  document.getElementById('edit-title').textContent=`编辑后台 · ${p?.name||''}`;
+
+  const shifts=['全部','早','中','晚'];
+  const units=['全部','BB','四方','财务','总管'];
+  const fEl=document.getElementById('edit-filters');
+  if(!fEl.dataset.init){
+    fEl.dataset.init='1';
+    fEl.innerHTML=`
+      <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+        ${shifts.map(s=>`<button class="filter-btn ef-shift${s==='全部'?' active':''}" onclick="setEditFilter('shift','${s}',this)">${s==='全部'?'全部班别':s}</button>`).join('')}
+        <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
+        ${units.map(u=>`<button class="filter-btn ef-unit${u==='全部'?' active':''}" onclick="setEditFilter('unit','${u}',this)">${u==='全部'?'全部班组':u}</button>`).join('')}
+      </div>`;
+  }
+
+  let list=staffScores;
+  if(scope!=='all'){
+    list=staffScores.filter(d=>d.shift===scope||d.unit===scope);
+  }
+  if(editFShift!=='全部')list=list.filter(d=>d.shift===editFShift);
+  if(editFUnit!=='全部')list=list.filter(d=>d.unit===editFUnit);
+  if(editSortKey==='name')list=[...list].sort((a,b)=>a.name.localeCompare(b.name,'zh'));
+  else list=[...list].sort((a,b)=>(b[editSortKey]||0)-(a[editSortKey]||0));
+  document.getElementById('edit-count').textContent=list.length;
+  document.getElementById('edit-sub').textContent=scope==='all'?'显示全部人员':`显示范围：${scope}`;
+
+  const mc=getMonthConfig();
+  document.getElementById('edit-thead').innerHTML=`<tr>
+    <th>人员</th><th style="width:60px">班别</th><th style="width:60px">总分</th>
+    ${mc.labels.map(m=>`<th style="width:52px">${m}</th>`).join('')}
+    <th style="width:52px">无失误</th><th style="width:52px">出勤</th><th style="width:80px">综合评语</th><th style="width:80px">干部加减</th>
+    <th style="width:75px">最终分数</th><th style="width:65px">最终排名</th>
+  </tr>`;
+
+  // 计算最终排名（按班次+单位分组，依score2排序）
+  const finalRankMap={};
+  const fgroups={};
+  staffScores.forEach(d=>{const k=`${d.shift}|${d.unit}`;if(!fgroups[k])fgroups[k]=[];fgroups[k].push(d);});
+  Object.values(fgroups).forEach(g=>{
+    const rm=calcGroupRank(g,'score2');
+    Object.assign(finalRankMap,rm);
+  });
+
+  const tb=document.getElementById('edit-tbody');
+  if(!list.length){tb.innerHTML=`<tr><td colspan="${3+mc.keys.length+4}" class="loading-state">无可编辑的人员</td></tr>`;return}
+
+  tb.innerHTML=list.map(d=>{
+    const monthCells=mc.keys.map((k,i)=>{
+      const v=d[k]||0;
+      const color=v>0?'var(--green)':v<0?'var(--red)':'var(--ink3)';
+      const txt=v>0?`+${v}`:v<0?`${v}`:'—';
+      return`<td class="c" style="cursor:pointer;color:${color};font-weight:500;font-size:12px" onclick="openMonthModal(${d.id},'${k}','${mc.labels[i]}')">${txt}</td>`;
+    }).join('');
+    const cls=scoreClass(d.score||0);
+    const pf=d.perfect>0?`<span style="color:var(--green);font-size:15px">✓</span>`:`<span style="color:var(--border);font-size:15px">○</span>`;
+    const at=d.attendance>0?`<span style="color:var(--green);font-size:15px">✓</span>`:`<span style="color:var(--border);font-size:15px">○</span>`;
+    const shortName=d.name.includes('-')?d.name.split('-').slice(1).join('-'):d.name;
+    return`<tr>
+      <td style="font-weight:500">${shortName}<span class="unit-tag tag-${d.unit}">${d.unit}</span></td>
+      <td><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
+      <td><span class="score-num ${cls}">${d.score||0}</span></td>
+      ${monthCells}
+      <td class="c" style="cursor:pointer" title="点击切换无失误奖励" onclick="togglePerfect(${d.id},${d.perfect||0});setTimeout(renderEditPage,300)">${pf}</td>
+      <td class="c" style="cursor:pointer" title="点击切换出勤奖励" onclick="toggleAttend(${d.id},${d.attendance||0});setTimeout(renderEditPage,300)">${at}</td>
+      <td class="c" style="cursor:pointer;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:${d.comment?'var(--ink2)':'var(--ink3)'}" onclick="openCommentModal(${d.id})" title="${d.comment||'点击填写评语'}">${d.comment?'✎ '+d.comment.slice(0,6)+(d.comment.length>6?'…':''):'✎ 填写'}</td>
+      <td class="c" style="cursor:pointer;font-size:12px;font-weight:500;color:${(d.mgr_bonus||0)>0?'var(--green)':(d.mgr_bonus||0)<0?'var(--red)':'var(--ink3)'}" onclick="openMgrModal(${d.id})" title="${d.mgr_note||'点击编辑干部加减分'}">${(d.mgr_bonus||0)>0?'+'+d.mgr_bonus:(d.mgr_bonus||0)<0?d.mgr_bonus:'✎ —'}</td>
+      <td class="c"><span class="score-num ${scoreClass(d.score2||0)}">${d.score2||0}</span></td>
+      <td class="c">${rankBadge(finalRankMap[d.id]||'—')}</td>
+    </tr>`;
+  }).join('');
+}
+
+function setFilter(type,val,el){
+  if(type==='shift'){fShift=val;document.querySelectorAll('.filters .filter-btn').forEach((b,i)=>{if(i<5)b.classList.toggle('active',b===el)})}
+  else{fUnit=val;document.querySelectorAll('.filters .filter-btn').forEach((b,i)=>{if(i>=6)b.classList.toggle('active',b===el)})}
+  openIdx=null;renderQuery();
+}
+function setSort(k,el){sortKey=k;document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderQuery()}
+
+function scoreClass(s){return s>=90?'high':s>=60?'mid':'low'}
+function calcGroupRank(arr,scoreKey){
+  const sorted=[...arr].sort((a,b)=>(b[scoreKey]||0)-(a[scoreKey]||0));
+  const rankMap={};
+  sorted.forEach((d,i)=>{
+    if(i===0){rankMap[d.id]=1;}
+    else{rankMap[d.id]=(sorted[i-1][scoreKey]||0)===(d[scoreKey]||0)?rankMap[sorted[i-1].id]:i+1;}
+  });
+  return rankMap;
+}
+function barColor(s){return s>=90?'#1a7a4a':s>=60?'#b8820a':'#c0392b'}
+function rankBadge(r){
+  const n=parseInt(r);
+  if(isNaN(n))return`<span class="rank-badge rank-other">${r||'—'}</span>`;
+  const c=n===1?'rank-1':n===2?'rank-2':n===3?'rank-3':'rank-other';
+  return`<span class="rank-badge ${c}">${n}</span>`;
+}
+
+function renderQuery(){
+  const q=(document.getElementById('search')?.value||'').trim().toLowerCase();
+  const isAdmin=currentProfile?.role==='admin';
+  const scopeShift=(!isAdmin&&currentProfile?.edit_scope&&currentProfile.edit_scope!=='none'&&currentProfile.edit_scope!=='all')?currentProfile.edit_scope:null;
+  const banner=document.getElementById('scope-banner');
+  if(banner){if(scopeShift){banner.style.display='';banner.textContent=`⚠ 目前检视范围限制：仅${scopeShift}班（如需调整请联系管理员）`;}else{banner.style.display='none';}}
+  // 受限检视者：隐藏无关班次筛选按钮
+  document.querySelectorAll('.filters .filter-btn').forEach(btn=>{
+    if((btn.getAttribute('onclick')||'').includes("'shift'"))btn.style.display=scopeShift?'none':'';
+  });
+  let list=staffScores.filter(d=>{
+    if(scopeShift&&d.shift!==scopeShift)return false;
+    if(fShift!=='全部'&&d.shift!==fShift)return false;
+    if(fUnit!=='全部'&&d.unit!==fUnit)return false;
+    if(q&&!d.name.toLowerCase().includes(q))return false;
+    return true;
+  });
+  if(sortKey==='name')list.sort((a,b)=>a.name.localeCompare(b.name,'zh'));
+  else list.sort((a,b)=>(b[sortKey]||0)-(a[sortKey]||0));
+  document.getElementById('count-label').textContent=`共 ${list.length} 人`;
+  if(list.length){
+    const avg=(list.reduce((s,d)=>s+(d.score||0),0)/list.length).toFixed(1);
+    const pass=list.filter(d=>(d.score||0)>=60).length;
+    const top=list.filter(d=>(d.score||0)>=100).length;
+    document.getElementById('stat-avg').textContent=avg;
+    document.getElementById('stat-pass').textContent=Math.round(pass/list.length*100)+'%';
+    document.getElementById('stat-top').textContent=top;
+  }
+  const tb=document.getElementById('tbody');
+  if(!list.length){tb.innerHTML='';document.getElementById('no-results').style.display='';return}
+  document.getElementById('no-results').style.display='none';
+  const maxS=Math.max(...list.map(d=>d.score2||0),1);
+  tb.innerHTML=list.map((d,i)=>{
+    const cls=scoreClass(d.score||0);const bc=barColor(d.score||0);
+    const pct=Math.round((d.score2||0)/maxS*100);
+    const shortName=d.name.includes('-')?d.name.split('-').slice(1).join('-'):d.name;
+    const uTag=`<span class="unit-tag tag-${d.unit}">${d.unit}</span>`;
+    const mgr=d.mgr_bonus>0?`+${d.mgr_bonus}`:d.mgr_bonus<0?`${d.mgr_bonus}`:'—';
+    const mgrC=d.mgr_bonus>0?'var(--green)':d.mgr_bonus<0?'var(--red)':'var(--ink3)';
+    const js=d.jinsun>0?`<span style="color:var(--red)">¥${d.jinsun.toLocaleString()}</span>`:`<span style="color:var(--ink3)">—</span>`;
+    const dEncoded=encodeURIComponent(JSON.stringify(d));
+    return`<tr onclick="toggleDetail(${i},'${dEncoded}')" id="qrow-${i}">
+      <td><span style="font-weight:500">${shortName}</span>${uTag}</td>
+      <td class="c"><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
+      <td><div style="display:flex;align-items:center;gap:8px"><span class="score-num ${cls}">${d.score||0}</span><div style="flex:1"><div class="score-bar-bg"><div class="score-bar-fill" style="width:${pct}%;background:${bc}"></div></div></div></div></td>
+      <td class="c">${rankBadge(d.rank2)}</td>
+      <td>${js}</td>
+    </tr>
+    <tr id="qdrawer-${i}" style="display:none"><td colspan="5" style="padding:0"><div class="drawer open" id="qdetail-${i}"></div></td></tr>`;
+  }).join('');
+}
+
+function toggleDetail(i,enc){
+  const d=JSON.parse(decodeURIComponent(enc));
+  const dr=document.getElementById(`qdrawer-${i}`);
+  const row=document.getElementById(`qrow-${i}`);
+  if(openIdx===i){dr.style.display='none';row.classList.remove('selected');openIdx=null;return}
+  if(openIdx!==null){
+    const p=document.getElementById(`qdrawer-${openIdx}`);const pr=document.getElementById(`qrow-${openIdx}`);
+    if(p)p.style.display='none';if(pr)pr.classList.remove('selected');
+  }
+  openIdx=i;row.classList.add('selected');dr.style.display='';
+  const p=periods.find(x=>x.id===currentPeriodId);
+  const isFirstHalf=p?.half==='上半年';
+  const months=isFirstHalf
+    ?[['1月',d.jan],['2月',d.feb],['3月',d.mar],['4月',d.apr],['5月',d.may],['6月',d.jun]]
+    :[['7月',d.jul],['8月',d.aug],['9月',d.sep],['10月',d.oct],['11月',d.nov],['12月',d.dec]];
+  const mb=months.map(([m,v])=>`<div class="month-block"><div class="ml">${m}</div><div class="mv ${(v||0)>0?'pos':(v||0)<0?'neg':'zero'}">${(v||0)>0?'+'+(v||0):(v||0)===0?'—':(v||0)}</div></div>`).join('');
+  const bonusCls=(d.mgr_bonus||0)>0?'bonus-pos':(d.mgr_bonus||0)<0?'bonus-neg':'bonus-zero';
+  const jb=d.jinsun>0?`<div class="jinsun-warn">⚠ 金损金额：¥${d.jinsun.toLocaleString()}</div>`:'';
+  document.getElementById(`qdetail-${i}`).innerHTML=`
+    <div class="drawer-grid">
+      <div><div class="drawer-section"><h4>月度扣分明细</h4>
+        <div class="score-breakdown">${mb}</div>
+        ${jb}
+      </div></div>
+      <div>
+        <div class="drawer-section"><h4>分数构成</h4>
+          <div class="score-items">
+            <div class="score-item"><span>起始分</span><span>${d.base||80}</span></div>
+            <div class="score-item"><span>半年度无失误奖励</span><span style="color:${(d.perfect||0)>0?'var(--green)':'var(--ink3)'}">${(d.perfect||0)>0?'+'+(d.perfect||0):'×'}</span></div>
+            <div class="score-item"><span>半年度出勤正常</span><span style="color:${(d.attendance||0)>0?'var(--green)':'var(--ink3)'}">${(d.attendance||0)>0?'+'+(d.attendance||0):'×'}</span></div>
+            <div class="score-item" style="border-top:1px solid var(--border);margin-top:2px"><span style="font-weight:500">总分</span><span style="font-size:15px;font-family:var(--ffs);font-weight:600">${calcScore(d).score}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ── STAFF TABLE ── */
+function getMonthConfig(){
+  const p=periods.find(x=>x.id===currentPeriodId);
+  if(p?.half==='上半年')return{keys:['jan','feb','mar','apr','may','jun'],labels:['1月','2月','3月','4月','5月','6月']};
+  return{keys:['jul','aug','sep','oct','nov','dec'],labels:['7月','8月','9月','10月','11月','12月']};
+}
+
+function renderStaffTable(){
+  document.getElementById('staff-thead').innerHTML=`<tr>
+    <th>人员</th><th style="width:60px">班别</th><th style="width:60px">起始分</th>
+    <th style="width:70px">操作</th>
+  </tr>`;
+  const tb=document.getElementById('staff-tbody');
+  let list=staffScores;
+  if(staffFShift!=='全部')list=list.filter(d=>d.shift===staffFShift);
+  if(staffFUnit!=='全部')list=list.filter(d=>d.unit===staffFUnit);
+  if(staffSortKey==='name')list=[...list].sort((a,b)=>a.name.localeCompare(b.name,'zh'));
+  else if(staffSortKey==='shift')list=[...list].sort((a,b)=>a.shift.localeCompare(b.shift,'zh'));
+  else list=[...list].sort((a,b)=>(b[staffSortKey]||0)-(a[staffSortKey]||0));
+  document.getElementById('staff-count').textContent=`共 ${list.length} 人`;
+  if(!list.length){tb.innerHTML=`<tr><td colspan="4" class="loading-state">此期间暂无人员资料，请新增或汇入</td></tr>`;return}
+  tb.innerHTML=list.map(d=>{
+    return`<tr>
+      <td style="font-weight:500">${d.name}<span class="unit-tag tag-${d.unit}">${d.unit}</span></td>
+      <td><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
+      <td>${d.base||80}</td>
+      <td style="display:flex;gap:4px">
+        <button class="btn-icon" onclick="editStaff(${d.id})">✎</button>
+        <button class="btn-icon del" onclick="deleteStaff(${d.id})">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function calcScore(d){
+  const mc=getMonthConfig();
+  const monthTotal=mc.keys.reduce((s,k)=>s+(d[k]||0),0);
+  return{score:(d.base||80)+(d.perfect||0)+(d.attendance||0)+monthTotal,score2:(d.base||80)+(d.perfect||0)+(d.attendance||0)+monthTotal+(d.mgr_bonus||0)};
+}
+
+let mmEntries=[];
+let mmPendingPts=0,mmPendingItem='';
+
+function openMonthModal(staffScoreId,monthKey,monthLabel){
+  const d=staffScores.find(x=>x.id===staffScoreId);if(!d)return;
+  const shortName=d.name.includes('-')?d.name.split('-').slice(1).join('-'):d.name;
+  document.getElementById('mm-title').textContent=`${shortName} · ${monthLabel}`;
+  document.getElementById('mm-staff-id').value=staffScoreId;
+  document.getElementById('mm-month-key').value=monthKey;
+  document.getElementById('mm-note-prompt').style.display='none';
+  document.getElementById('mm-custom-item').value='';
+  document.getElementById('mm-custom-pts').value='';
+  document.getElementById('mm-custom-note').value='';
+  const detail=d.month_detail||{};
+  mmEntries=JSON.parse(JSON.stringify(detail[monthKey]||[]));
+  if(mmEntries.length===0&&(d[monthKey]||0)!==0){
+    mmEntries=[{item:'手动记录',pts:d[monthKey],note:''}];
+  }
+  mmRenderEntries();
+  const dRules=rules.deduct.filter(r=>r.enabled);
+  const bRules=rules.bonus.filter(r=>r.enabled);
+  document.getElementById('mm-deduct-section').innerHTML=dRules.length?`
+    <div style="font-size:11px;color:var(--ink3);letter-spacing:.5px;margin:12px 0 6px">扣分项目 · 点击套用</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px">
+      ${dRules.map(r=>`<button class="filter-btn" style="border-color:var(--red-bd);color:var(--red)" onclick="applyRuleToMonth(${r.pts},'${r.name}')">${r.name}&nbsp;${r.pts}分</button>`).join('')}
+    </div>`:'';
+  document.getElementById('mm-bonus-section').innerHTML=bRules.length?`
+    <div style="font-size:11px;color:var(--ink3);letter-spacing:.5px;margin:12px 0 6px">加分项目 · 点击套用</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px">
+      ${bRules.map(r=>`<button class="filter-btn" style="border-color:var(--green-bd);color:var(--green)" onclick="applyRuleToMonth(${r.pts},'${r.name}')">+${r.pts} ${r.name}</button>`).join('')}
+    </div>`:'';
+  document.getElementById('month-modal').classList.add('open');
+}
+
+function mmRenderEntries(){
+  const total=mmEntries.reduce((s,e)=>s+e.pts,0);
+  const el=document.getElementById('mm-current');
+  el.textContent=total>0?`+${total}`:total===0?'0':`${total}`;
+  el.style.color=total>0?'var(--green)':total<0?'var(--red)':'var(--ink3)';
+  const list=document.getElementById('mm-entries');
+  if(!mmEntries.length){
+    list.innerHTML='<div style="color:var(--ink3);font-size:12px;padding:6px 0;text-align:center">尚无记录，点击下方项目或自定义新增</div>';
+    return;
+  }
+  list.innerHTML=`<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">${
+    mmEntries.map((e,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border);font-size:13px;background:#fff">
+      <span style="color:${e.pts>=0?'var(--green)':'var(--red)'};font-weight:700;font-family:var(--ffs);width:42px;flex-shrink:0">${e.pts>=0?'+'+e.pts:e.pts}</span>
+      <span style="flex:1">${e.item}</span>
+      <span style="color:var(--ink3);font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.note||''}">${e.note||'<span style="opacity:.45">无备注</span>'}</span>
+      <button onclick="mmRemoveEntry(${i})" style="color:var(--red);background:none;border:none;cursor:pointer;padding:2px 6px;font-size:16px;line-height:1;flex-shrink:0">×</button>
+    </div>`).join('')
+  }</div>`;
+}
+
+function mmRemoveEntry(i){
+  mmEntries.splice(i,1);
+  mmRenderEntries();
+}
+
+function applyRuleToMonth(pts,itemName){
+  mmPendingPts=pts;
+  mmPendingItem=itemName;
+  document.getElementById('mm-note-label').textContent=`${itemName}（${pts>0?'+':''}${pts}分）· 填写备注`;
+  document.getElementById('mm-note-input').value='';
+  document.getElementById('mm-note-prompt').style.display='block';
+  setTimeout(()=>document.getElementById('mm-note-input').focus(),50);
+}
+
+function confirmRuleEntry(){
+  const note=document.getElementById('mm-note-input').value.trim();
+  mmEntries.push({item:mmPendingItem,pts:mmPendingPts,note});
+  document.getElementById('mm-note-prompt').style.display='none';
+  mmRenderEntries();
+}
+
+function cancelRuleEntry(){
+  document.getElementById('mm-note-prompt').style.display='none';
+}
+
+function addCustomEntry(){
+  const item=document.getElementById('mm-custom-item').value.trim();
+  const pts=parseFloat(document.getElementById('mm-custom-pts').value)||0;
+  const note=document.getElementById('mm-custom-note').value.trim();
+  if(!item){toast('请填写项目名称',true);return}
+  if(!pts){toast('请填写分值',true);return}
+  mmEntries.push({item,pts,note});
+  document.getElementById('mm-custom-item').value='';
+  document.getElementById('mm-custom-pts').value='';
+  document.getElementById('mm-custom-note').value='';
+  mmRenderEntries();
+}
+
+async function saveMonthScore(){
+  const id=parseInt(document.getElementById('mm-staff-id').value);
+  const key=document.getElementById('mm-month-key').value;
+  const d=staffScores.find(x=>x.id===id);if(!d)return;
+  const val=mmEntries.reduce((s,e)=>s+e.pts,0);
+  const detail=JSON.parse(JSON.stringify(d.month_detail||{}));
+  detail[key]=mmEntries;
+  const {score,score2}=calcScore({...d,[key]:val});
+  const {error}=await sb.from('staff_scores').update({[key]:val,month_detail:detail,score,score2}).eq('id',id);
+  if(error){toast('保存失败：'+error.message,true);return}
+  d[key]=val;d.month_detail=detail;d.score=score;d.score2=score2;
+  closeModal('month-modal');
+  renderStaffTable();renderQuery();
+  if(document.getElementById('page-edit').classList.contains('active'))renderEditPage();
+  toast('已保存');
+}
+
+async function togglePerfect(staffScoreId,current){
+  const d=staffScores.find(x=>x.id===staffScoreId);if(!d)return;
+  const newVal=current>0?0:(baseConfig.perfect_bonus||10);
+  const {score,score2}=calcScore({...d,perfect:newVal});
+  const {error}=await sb.from('staff_scores').update({perfect:newVal,score,score2}).eq('id',staffScoreId);
+  if(error){toast('保存失败',true);return}
+  d.perfect=newVal;d.score=score;d.score2=score2;
+  renderStaffTable();renderQuery();toast(newVal>0?'已给予无失误奖励':'已取消无失误奖励');
+}
+
+async function toggleAttend(staffScoreId,current){
+  const d=staffScores.find(x=>x.id===staffScoreId);if(!d)return;
+  const newVal=current>0?0:(baseConfig.attend_bonus||10);
+  const {score,score2}=calcScore({...d,attendance:newVal});
+  const {error}=await sb.from('staff_scores').update({attendance:newVal,score,score2}).eq('id',staffScoreId);
+  if(error){toast('保存失败',true);return}
+  d.attendance=newVal;d.score=score;d.score2=score2;
+  renderStaffTable();renderQuery();toast(newVal>0?'已给予出勤奖励':'已取消出勤奖励');
+}
+
+function openMgrModal(staffScoreId){
+  const d=staffScores.find(x=>x.id===staffScoreId);if(!d)return;
+  const shortName=d.name.includes('-')?d.name.split('-').slice(1).join('-'):d.name;
+  document.getElementById('mgr-title').textContent=`${shortName} · 干部加减分`;
+  document.getElementById('mgr-staff-id').value=staffScoreId;
+  document.getElementById('mgr-pts').value=d.mgr_bonus||0;
+  document.getElementById('mgr-note').value=d.mgr_note||'';
+  document.getElementById('mgr-modal').classList.add('open');
+}
+
+async function saveMgrBonus(){
+  const id=parseInt(document.getElementById('mgr-staff-id').value);
+  const mgr_bonus=+document.getElementById('mgr-pts').value||0;
+  const mgr_note=document.getElementById('mgr-note').value.trim();
+  const d=staffScores.find(x=>x.id===id);if(!d)return;
+  const score2=calcScore(d).score+mgr_bonus;
+  const {error}=await sb.from('staff_scores').update({mgr_bonus,mgr_note,score2}).eq('id',id);
+  if(error){toast('保存失败：'+error.message,true);return}
+  d.mgr_bonus=mgr_bonus;d.mgr_note=mgr_note;d.score2=score2;
+  closeModal('mgr-modal');
+  renderEditPage();
+  toast('干部加减分已保存');
+}
+
+function openCommentModal(staffScoreId){
+  const d=staffScores.find(x=>x.id===staffScoreId);if(!d)return;
+  const shortName=d.name.includes('-')?d.name.split('-').slice(1).join('-'):d.name;
+  document.getElementById('cm-title').textContent=`${shortName} · 综合评语`;
+  document.getElementById('cm-staff-id').value=staffScoreId;
+  document.getElementById('cm-comment').value=d.comment||'';
+  document.getElementById('comment-modal').classList.add('open');
+}
+
+async function saveComment(){
+  const id=parseInt(document.getElementById('cm-staff-id').value);
+  const comment=document.getElementById('cm-comment').value.trim();
+  const d=staffScores.find(x=>x.id===id);if(!d)return;
+  const {error}=await sb.from('staff_scores').update({comment}).eq('id',id);
+  if(error){toast('保存失败：'+error.message,true);return}
+  d.comment=comment;
+  closeModal('comment-modal');
+  renderEditPage();
+  toast('评语已保存');
+}
+
+function openAddStaffModal(){
+  document.getElementById('staff-modal-title').textContent='新增人员';
+  document.getElementById('sm-edit-id').value='';
+  ['sm-name'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('sm-base').value='80';
+  document.getElementById('staff-modal').classList.add('open');
+}
+
+function editStaff(id){
+  const d=staffScores.find(x=>x.id===id);if(!d)return;
+  document.getElementById('staff-modal-title').textContent='编辑人员';
+  document.getElementById('sm-edit-id').value=id;
+  document.getElementById('sm-name').value=d.name;
+  document.getElementById('sm-unit').value=d.unit;
+  document.getElementById('sm-shift').value=d.shift;
+  document.getElementById('sm-base').value=d.base||80;
+  document.getElementById('staff-modal').classList.add('open');
+}
+
+async function saveStaff(){
+  const editId=document.getElementById('sm-edit-id').value;
+  const name=document.getElementById('sm-name').value.trim();
+  if(!name){alert('请填写姓名');return}
+  const unit=document.getElementById('sm-unit').value;
+  const shift=document.getElementById('sm-shift').value;
+  const base_score=+document.getElementById('sm-base').value||80;
+
+  if(editId){
+    const d=staffScores.find(x=>x.id===parseInt(editId));
+    if(d){
+      const mc=getMonthConfig();
+      const monthTotal=mc.keys.reduce((s,k)=>s+(d[k]||0),0);
+      const score=base_score+(d.perfect||0)+(d.attendance||0)+monthTotal;
+      const score2=score+(d.mgr_bonus||0);
+      const {error:serr}=await sb.from('staff').update({name,unit}).eq('id',d.staff_id);
+      const {error:scerr}=await sb.from('staff_scores').update({shift,base_score,score,score2,updated_at:new Date().toISOString()}).eq('id',parseInt(editId));
+      if(serr||scerr){toast('保存失败',true);return}
+    }
+  } else {
+    const {data:staffData,error:se}=await sb.from('staff').insert({name,unit}).select().single();
+    if(se){toast('新增失败',true);return}
+    const {error:sce}=await sb.from('staff_scores').insert({period_id:currentPeriodId,staff_id:staffData.id,shift,base_score,score:base_score,score2:base_score,mgr_bonus:0,mgr_note:'',perfect:0,attendance:0,jinsun:0});
+    if(sce){toast('新增失败',true);return}
+  }
+  closeModal('staff-modal');
+  await loadStaffScores();
+  renderQuery();
+  toast(editId?'已更新':'已新增');
+}
+
+async function deleteStaff(id){
+  if(!confirm('确认删除此人员的本期资料？'))return;
+  await sb.from('staff_scores').delete().eq('id',id);
+  await loadStaffScores();renderQuery();toast('已删除');
+}
+
+async function copyFromLastPeriod(){
+  const idx=periods.findIndex(p=>p.id===currentPeriodId);
+  if(idx<=0){toast('没有上期可以沿用',true);return}
+  const lastPeriod=periods[idx-1];
+  if(!confirm(`确认从「${lastPeriod.name}」沿用所有人员资料？`))return;
+  const {data:lastScores}=await sb.from('staff_scores').select('*').eq('period_id',lastPeriod.id);
+  if(!lastScores?.length){toast('上期没有人员资料',true);return}
+  const inserts=lastScores.map(s=>({
+    period_id:currentPeriodId,staff_id:s.staff_id,shift:s.shift,
+    base_score:s.base_score,perfect:0,attendance:0,jinsun:0,
+    score:0,score2:0,rank:'',rank2:'',mgr_bonus:0,comment:''
+  }));
+  const {error}=await sb.from('staff_scores').upsert(inserts,{onConflict:'period_id,staff_id'});
+  if(error){toast('沿用失败：'+error.message,true);return}
+  await loadStaffScores();renderQuery();
+  toast(`已从「${lastPeriod.name}」沿用 ${inserts.length} 名人员（分数已清零）`);
+}
+
+async function importExcel(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async(e)=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){toast('档案没有资料',true);return}
+      const UNIT_VALS=['BB','四方','财务','总管'];
+      const SHIFT_VALS=['早','中','晚','总管'];
+      let ok=0,fail=[];
+      for(const row of rows){
+        const name=(row['姓名']||row['人员']||row['名字']||'').toString().trim();
+        const unit=(row['单位']||'BB').toString().trim();
+        const shift=(row['班次']||row['班别']||'').toString().trim();
+        const base_score=parseInt(row['起始分']||row['初始分']||row['基础分']||80)||80;
+        if(!name){fail.push('空白姓名');continue}
+        if(!SHIFT_VALS.includes(shift)){fail.push(`${name}：班别「${shift}」无效`);continue}
+        const finalUnit=UNIT_VALS.includes(unit)?unit:'BB';
+        const {data:staffData,error:se}=await sb.from('staff').insert({name,unit:finalUnit}).select().single();
+        if(se){fail.push(`${name}：${se.message}`);continue}
+        const {error:sce}=await sb.from('staff_scores').insert({period_id:currentPeriodId,staff_id:staffData.id,shift,base_score,score:0,score2:0,mgr_bonus:0,perfect:0,attendance:0,jinsun:0,comment:''});
+        if(sce){fail.push(`${name}：${sce.message}`);continue}
+        ok++;
+      }
+      await loadStaffScores();renderQuery();
+      if(fail.length)toast(`汇入完成：${ok} 人成功，${fail.length} 人失败\n${fail.slice(0,3).join('；')}`,true);
+      else toast(`汇入成功：共 ${ok} 人`);
+    }catch(err){toast('档案解析失败：'+err.message,true)}
+  };
+  reader.readAsArrayBuffer(file);
+  input.value='';
+}
+
+/* ── RULES ── */
+function switchPane(id){
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['deduct','bonus','base','preview','ip'][i]===id));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pane-'+id).classList.add('active');
+  if(id==='preview')renderPreview();
+  if(id==='ip'){loadSiteIps();detectSiteIp();}
+}
+
+function renderList(type){
+  const list=rules[type];
+  const el=document.getElementById(type+'-list');
+  const em=document.getElementById(type+'-empty');
+  const cnt=document.getElementById(type+'-count');
+  cnt.textContent=`${list.filter(r=>r.enabled).length} / ${list.length} 项启用`;
+  if(!list.length){el.innerHTML='';em.style.display='';return}
+  em.style.display='none';
+  el.innerHTML=list.map(r=>{
+    const pStr=r.pts>0?'+'+r.pts:r.pts;
+    return`<div class="rule-card${r.enabled?'':' disabled'}">
+      <div class="rule-row">
+        <div class="drag-handle">⠿</div>
+        <div>
+          <div class="rule-name">${r.name}</div>
+          <div class="rule-meta">
+            <span class="type-badge ${type==='deduct'?'type-deduct':'type-bonus'}">${type==='deduct'?'扣分':'加分'}</span>
+            <span>适用：${r.scope==='all'?'全体':r.scope}</span>
+            <span>${r.max_times?`最多${r.max_times}次`:'不限次数'}</span>
+            ${r.note?`<span>${r.note.slice(0,22)}${r.note.length>22?'…':''}</span>`:''}
+          </div>
+        </div>
+        <div class="pts-badge ${r.pts>0?'pos':'neg'}">${pStr}分</div>
+        <label class="rule-toggle">
+          <input type="checkbox" ${r.enabled?'checked':''} onchange="toggleRule('${type}',${r.id})">
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+        <button class="btn-icon" onclick="editRule('${type}',${r.id})">✎</button>
+        <button class="btn-icon del" onclick="deleteRule('${type}',${r.id})">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function toggleRule(type,id){
+  const r=rules[type].find(x=>x.id===id);if(!r)return;
+  r.enabled=!r.enabled;
+  const {error}=await sb.from('period_rules').update({enabled:r.enabled}).eq('id',id);
+  if(error){r.enabled=!r.enabled;toast('更新失败',true);return}
+  renderList(type);toast(r.enabled?`「${r.name}」已启用`:`「${r.name}」已停用`);
+}
+
+async function deleteRule(type,id){
+  const r=rules[type].find(x=>x.id===id);
+  if(!r||!confirm(`确认删除「${r.name}」？`))return;
+  const {error}=await sb.from('period_rules').delete().eq('id',id);
+  if(error){toast('删除失败',true);return}
+  rules[type]=rules[type].filter(x=>x.id!==id);
+  renderList(type);toast('已删除');
+}
+
+let ruleModalType='deduct';
+function openRuleModal(type,id=null){
+  ruleModalType=type;
+  const isEdit=id!=null;
+  document.getElementById('rule-modal-title').textContent=isEdit?'编辑项目':`新增${type==='deduct'?'扣分':'加分'}项目`;
+  document.getElementById('rm-mode').value=type;
+  document.getElementById('rm-edit-id').value=id||'';
+  if(isEdit){
+    const r=rules[type].find(x=>x.id===id);
+    document.getElementById('rm-name').value=r.name;
+    document.getElementById('rm-pts').value=r.pts;
+    document.getElementById('rm-max').value=r.max_times||'';
+    document.getElementById('rm-scope').value=r.scope;
+    document.getElementById('rm-note').value=r.note||'';
+  } else {
+    document.getElementById('rm-name').value='';
+    document.getElementById('rm-pts').value=type==='deduct'?'-10':'5';
+    document.getElementById('rm-max').value='';
+    document.getElementById('rm-scope').value='all';
+    document.getElementById('rm-note').value='';
+  }
+  document.getElementById('rule-modal').classList.add('open');
+}
+function editRule(type,id){openRuleModal(type,id)}
+
+async function saveRule(){
+  const name=document.getElementById('rm-name').value.trim();
+  if(!name){alert('请填写项目名称');return}
+  const pts=parseFloat(document.getElementById('rm-pts').value);
+  if(isNaN(pts)){alert('请填写有效分值');return}
+  const maxV=document.getElementById('rm-max').value;
+  const max_times=maxV?parseInt(maxV):null;
+  const scope=document.getElementById('rm-scope').value;
+  const note=document.getElementById('rm-note').value.trim();
+  const type=document.getElementById('rm-mode').value;
+  const editId=document.getElementById('rm-edit-id').value;
+  if(editId){
+    const {error}=await sb.from('period_rules').update({name,pts,max_times,scope,note}).eq('id',parseInt(editId));
+    if(error){toast('保存失败',true);return}
+    const r=rules[type].find(x=>x.id===parseInt(editId));
+    if(r)Object.assign(r,{name,pts,max_times,scope,note});
+  } else {
+    const newId=Date.now();
+    const {error}=await sb.from('period_rules').insert({id:newId,period_id:currentPeriodId,type,name,pts,max_times,scope,note,enabled:true,sort_order:rules[type].length});
+    if(error){toast('新增失败：'+error.message,true);return}
+    rules[type].push({id:newId,period_id:currentPeriodId,type,name,pts,max_times,scope,note,enabled:true});
+  }
+  renderList(type);closeModal('rule-modal');
+  toast(editId?'项目已更新':'新项目已保存');
+}
+
+async function saveBaseConfig(){
+  const data={
+    period_id:currentPeriodId,
+    base_score:+document.getElementById('base-score').value||80,
+    max_score:+document.getElementById('max-score').value||120,
+    perfect_bonus:+document.getElementById('perfect-bonus').value||10,
+    attend_bonus:+document.getElementById('attend-bonus').value||10,
+    pass_score:+document.getElementById('pass-score').value||60,
+    rank_cutoff:+document.getElementById('rank-cutoff').value||0,
+  };
+  const {error}=await sb.from('period_base_config').upsert(data,{onConflict:'period_id'});
+  if(error){toast('保存失败',true);return}
+  Object.assign(baseConfig,data);toast('基础分设定已保存');
+}
+
+function renderPreview(){
+  const ed=rules.deduct.filter(r=>r.enabled);
+  const eb=rules.bonus.filter(r=>r.enabled);
+  const maxD=ed.reduce((s,r)=>s+(r.pts*(r.max_times||1)),0);
+  const maxB=eb.reduce((s,r)=>s+(r.pts*(r.max_times||1)),0);
+  const worst=Math.max(0,baseConfig.base_score+maxD);
+  const best=Math.min(baseConfig.max_score,baseConfig.base_score+baseConfig.perfect_bonus+baseConfig.attend_bonus+maxB);
+  document.getElementById('preview-content').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="preview-card" style="margin:0"><h3>最高可得分</h3><div style="font-family:var(--ffs);font-size:34px;font-weight:700;color:var(--green);margin:5px 0">${best}</div><div style="font-size:12px;color:var(--ink3)">起始${baseConfig.base_score}+出勤${baseConfig.attend_bonus}+无失误${baseConfig.perfect_bonus}+加分${maxB}</div></div>
+      <div class="preview-card" style="margin:0"><h3>最低可得分</h3><div style="font-family:var(--ffs);font-size:34px;font-weight:700;color:var(--red);margin:5px 0">${worst}</div><div style="font-size:12px;color:var(--ink3)">起始${baseConfig.base_score}+最大扣分${maxD}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="preview-card" style="margin:0"><h3>扣分项（${ed.length}项）</h3>
+        ${ed.map(r=>`<div class="preview-item deduct"><span>${r.name}</span><span>${r.pts}分</span></div>`).join('')||'<div style="color:var(--ink3);font-size:12px;padding:5px 0">无启用扣分项</div>'}
+        <div class="preview-total"><span>扣分最多</span><span style="color:var(--red)">${maxD}分</span></div>
+      </div>
+      <div class="preview-card" style="margin:0"><h3>加分项（${eb.length}项）</h3>
+        <div class="preview-item bonus"><span>无失误奖励</span><span>+${baseConfig.perfect_bonus}</span></div>
+        <div class="preview-item bonus"><span>出勤正常奖励</span><span>+${baseConfig.attend_bonus}</span></div>
+        ${eb.map(r=>`<div class="preview-item bonus"><span>${r.name}</span><span>+${r.pts}分</span></div>`).join('')}
+        <div class="preview-total"><span>加分上限</span><span style="color:var(--green)">+${baseConfig.perfect_bonus+baseConfig.attend_bonus+maxB}分</span></div>
+      </div>
+    </div>`;
+}
+
+/* ── PERIODS PAGE ── */
+function renderPeriodsPage(){
+  const el=document.getElementById('periods-list');
+  if(!el)return;
+  const statusMap={active:'进行中',closed:'已结束',draft:'草稿'};
+  el.innerHTML=periods.map(p=>`
+    <div class="period-card">
+      <div>
+        <div class="period-card-name">${p.name} <span class="period-status status-${p.status}">${statusMap[p.status]}</span></div>
+        <div class="period-card-meta">${p.year}年 · ${p.half}</div>
+      </div>
+      <div class="period-actions">
+        <button class="btn-icon" onclick="inheritRules(${p.id})" title="继承此期规则至下期">↓继承</button>
+        <button class="btn-icon" onclick="togglePeriodStatus(${p.id},'${p.status}')" title="切换状态">${p.status==='active'?'⏸封存':'▶启用'}</button>
+      </div>
+    </div>`).join('');
+}
+
+function openNewPeriodModal(){document.getElementById('period-modal').classList.add('open')}
+
+async function createPeriod(){
+  const year=parseInt(document.getElementById('pm-year').value);
+  const half=document.getElementById('pm-half').value;
+  const status=document.getElementById('pm-status').value;
+  if(!year){alert('请填写年度');return}
+  const name=`${year}${half}`;
+  const {data,error}=await sb.from('periods').insert({name,year,half,status}).select().single();
+  if(error){toast('建立失败：'+error.message,true);return}
+  closeModal('period-modal');
+  await loadPeriods();
+  toast(`期间「${name}」已建立`);
+}
+
+async function togglePeriodStatus(id,current){
+  const newStatus=current==='active'?'closed':'active';
+  await sb.from('periods').update({status:newStatus}).eq('id',id);
+  await loadPeriods();
+  toast('期间状态已更新');
+}
+
+async function inheritRules(fromPeriodId){
+  const fromP=periods.find(p=>p.id===fromPeriodId);
+  const idx=periods.findIndex(p=>p.id===fromPeriodId);
+  if(idx>=periods.length-1){toast('没有下期可继承',true);return}
+  const toPeriod=periods[idx+1];
+  if(!confirm(`确认将「${fromP.name}」的规则复制到「${toPeriod.name}」？（会覆盖目标期间现有规则）`))return;
+  const {data:srcRules}=await sb.from('period_rules').select('*').eq('period_id',fromPeriodId);
+  const {data:srcBase}=await sb.from('period_base_config').select('*').eq('period_id',fromPeriodId).single();
+  if(srcRules?.length){
+    await sb.from('period_rules').delete().eq('period_id',toPeriod.id);
+    const newRules=srcRules.map(r=>({...r,id:Date.now()+Math.random(),period_id:toPeriod.id}));
+    await sb.from('period_rules').insert(newRules);
+  }
+  if(srcBase){
+    await sb.from('period_base_config').upsert({...srcBase,period_id:toPeriod.id},{onConflict:'period_id'});
+  }
+  toast(`规则已继承至「${toPeriod.name}」`);
+}
+
+/* ── USERS ── */
+async function loadUsers(){
+  const {data}=await sb.from('profiles').select('*').order('created_at');
+  document.getElementById('users-count').textContent=`共 ${(data||[]).length} 个帐号`;
+  document.getElementById('users-tbody').innerHTML=(data||[]).map(u=>{
+    const isViewer=u.role==='viewer';
+    let scopeSel;
+    if(isViewer){
+      const vOpts=['all','早','中','晚'];
+      const vLabels={all:'全部班别',早:'仅早班',中:'仅中班',晚:'仅晚班'};
+      const vCur=(u.edit_scope&&u.edit_scope!=='none')?u.edit_scope:'all';
+      scopeSel=`<select style="font-size:11px;padding:2px 4px;border:1px solid var(--green-bd);border-radius:3px;font-family:var(--ff)" onchange="changeUserScope('${u.id}',this.value,'viewer')">
+        ${vOpts.map(s=>`<option value="${s}"${vCur===s?' selected':''}>${vLabels[s]}</option>`).join('')}
+      </select>`;
+    }else{
+      const scopeOpts=['none','all','早','中','晚'];
+      const scopeLabels={none:'不限',all:'全部',早:'早班',中:'中班',晚:'晚班'};
+      const cur=u.edit_scope||'none';
+      scopeSel=`<select style="font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;font-family:var(--ff)" onchange="changeUserScope('${u.id}',this.value,'admin')">
+        ${scopeOpts.map(s=>`<option value="${s}"${cur===s?' selected':''}>${scopeLabels[s]}</option>`).join('')}
+      </select>`;
+    }
+    return`<tr>
+      <td style="font-family:monospace;font-size:12px">${u.email}</td>
+      <td>${u.name||'—'}</td>
+      <td><span class="role-tag ${u.role==='admin'?'role-admin':'role-viewer'}">${u.role==='admin'?'编辑':'检视'}</span></td>
+      <td>${scopeSel}</td>
+      <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${u.is_active?'var(--green)':'var(--border)'};margin-right:5px"></span>${u.is_active?'启用':'停用'}</td>
+      <td style="display:flex;gap:4px">
+        <button class="btn-icon" onclick="toggleUserActive('${u.id}',${u.is_active})">${u.is_active?'⏸':'▶'}</button>
+        <button class="btn-icon" onclick="changeUserRole('${u.id}','${u.role}')">🔑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function toggleUserActive(id,cur){await sb.from('profiles').update({is_active:!cur}).eq('id',id);loadUsers();toast(cur?'帐号已停用':'帐号已启用')}
+async function changeUserRole(id,cur){
+  const nr=cur==='admin'?'viewer':'admin';
+  if(!confirm(`确认将此帐号改为${nr==='admin'?'编辑':'检视'}权限？`))return;
+  const update={id,role:nr};
+  if(nr==='viewer')update.edit_scope='all';
+  await sb.from('profiles').upsert(update,{onConflict:'id'});loadUsers();toast('权限已更新');
+}
+async function changeUserScope(id,scope,roleType='admin'){
+  // 用 sbAdmin（service_role）写入，绕过 RLS
+  const {error}=await sbAdmin.from('profiles').update({edit_scope:scope}).eq('id',id);
+  if(error){toast('保存失败：'+error.message,true);return;}
+  // 立即回读验证
+  const {data:vf}=await sbAdmin.from('profiles').select('edit_scope').eq('id',id).maybeSingle();
+  if(!vf||vf.edit_scope!==scope){
+    toast(`⚠ 存入失败（DB实际值：${vf?.edit_scope??'null'}，user_id=${id.slice(0,8)}…）`,true);
+    loadUsers();return;
+  }
+  loadUsers();
+  if(roleType==='viewer'){
+    toast(scope==='all'?'检视范围：全部班别':`✓ 检视班别已设为：${scope}`);
+  }else{
+    toast(scope==='none'?'已取消编辑权限':`✓ 编辑权限已设为：${scope==='all'?'全部':scope}`);
+  }
+}
+
+async function createUser(){
+  const email=document.getElementById('au-email').value.trim();
+  const name=document.getElementById('au-name').value.trim();
+  const pw=document.getElementById('au-pw').value;
+  const role=document.getElementById('au-role').value;
+  if(!email||!pw){alert('请填写帐号和密码');return}
+  const {data,error}=await sb.auth.admin.createUser({email,password:pw,email_confirm:true});
+  if(error){toast('建立失败：'+error.message,true);return}
+  const uid=data.user.id;
+  await sb.from('profiles').insert({id:uid,email,name:name||null,role,edit_scope:'none',is_active:true});
+  closeModal('adduser-modal');
+  loadUsers();
+  toast('帐号已建立：'+email);
+}
+
+/* ── 全站 IP 白名单 ── */
+async function checkSiteIpAllowed(){
+  try{
+    const {data:siteIps}=await sbAdmin.from('ip_whitelist').select('ip').eq('user_id','site');
+    if(!siteIps||siteIps.length===0)return true; // 未设定时放行所有
+    const r=await fetch('https://api.ipify.org?format=json');
+    const {ip}=await r.json();
+    return siteIps.some(row=>row.ip===ip);
+  }catch(e){return true;} // 网络异常时放行，避免误封
+}
+async function loadSiteIps(){
+  const {data}=await sbAdmin.from('ip_whitelist').select('*').eq('user_id','site');
+  const el=document.getElementById('site-ip-list');
+  if(!el)return;
+  el.innerHTML=(data||[]).length
+    ?(data||[]).map(i=>`<div class="ip-item"><div><span class="ip-addr">${i.ip}</span><span style="color:var(--ink3);font-size:12px;margin-left:8px">${i.label||''}</span></div><button class="btn-icon del" onclick="deleteSiteIp(${i.id})">🗑</button></div>`).join('')
+    :'<div style="color:var(--ink3);font-size:13px;padding:6px 0">尚无 IP 限制（允许所有来源登入）</div>';
+}
+async function addSiteIp(){
+  const ip=document.getElementById('site-ip-input').value.trim();
+  const label=document.getElementById('site-ip-label').value.trim();
+  if(!ip){toast('请填写 IP 地址',true);return}
+  await sbAdmin.from('ip_whitelist').insert({user_id:'site',ip,label});
+  document.getElementById('site-ip-input').value='';document.getElementById('site-ip-label').value='';
+  loadSiteIps();toast('✓ IP 已加入白名单');
+}
+async function deleteSiteIp(id){
+  await sbAdmin.from('ip_whitelist').delete().eq('id',id);
+  loadSiteIps();toast('IP 已移除');
+}
+async function detectSiteIp(){
+  try{
+    const r=await fetch('https://api.ipify.org?format=json');
+    const {ip}=await r.json();
+    const el=document.getElementById('site-current-ip');
+    if(el)el.textContent=ip;
+  }catch(e){}
+}
+async function addCurrentIpToSite(){
+  const el=document.getElementById('site-current-ip');
+  const ip=el?el.textContent:'';
+  if(!ip||ip==='检测中…'){toast('IP 尚未检测完成，请稍候',true);return}
+  document.getElementById('site-ip-input').value=ip;
+  document.getElementById('site-ip-label').value='当前设备';
+}
+
+/* ── ACCOUNT ── */
+async function changePassword(){
+  const pw=document.getElementById('new-pw').value;
+  const conf=document.getElementById('confirm-pw').value;
+  if(!pw||pw.length<6){toast('密码至少6位',true);return}
+  if(pw!==conf){toast('两次密码不一致',true);return}
+  const {error}=await sb.auth.updateUser({password:pw});
+  if(error){toast('修改失败：'+error.message,true);return}
+  document.getElementById('new-pw').value='';document.getElementById('confirm-pw').value='';
+  toast('密码已更新！');
+}
+
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+function toast(msg,isErr=false){
+  const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(isErr?' err':'');
+  void t.offsetWidth;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+const _savedLocal=sessionStorage.getItem('localProfile');
+if(_savedLocal){
+  currentProfile=JSON.parse(_savedLocal);
+  currentUser={id:currentProfile.id,email:currentProfile.email};
+  showApp();
+}else{
+  sb.auth.getSession().then(({data:{session}})=>{if(session?.user)loadProfile(session.user)});
+}
+</script>
+</body>
+</html>
