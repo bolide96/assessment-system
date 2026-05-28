@@ -232,6 +232,34 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
 .toast{position:fixed;bottom:22px;right:22px;background:var(--ink);color:#fff;padding:10px 16px;font-size:13px;border-radius:var(--r);opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:200;font-family:var(--ff)}
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.err{background:var(--red)}
+
+/* Grade badges */
+.grade-badge{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:4px;font-size:13px;font-weight:700;font-family:var(--ffs)}
+.grade-A{background:#edf7f2;color:#1a7a4a;border:1px solid #a8dfc2}
+.grade-B{background:#eef3fc;color:#1a4fa0;border:1px solid #b0c8f0}
+.grade-C{background:#fef8e7;color:#9a6400;border:1px solid #f0d990}
+.grade-D{background:#fdf0ee;color:#c0392b;border:1px solid #f5c6c0}
+.grade-override::after{content:'✎';position:absolute;top:-4px;right:-4px;font-size:8px;color:var(--ink3)}
+.grade-section{margin-bottom:28px}
+.grade-section-title{font-family:var(--ffs);font-size:15px;font-weight:600;color:var(--ink);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:8px}
+.grade-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.grade-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.grade-col-head{padding:8px 12px;font-size:12px;font-weight:600;letter-spacing:.5px;display:flex;align-items:center;justify-content:space-between}
+.grade-col-head.gA{background:#edf7f2;color:#1a7a4a;border-bottom:2px solid #a8dfc2}
+.grade-col-head.gB{background:#eef3fc;color:#1a4fa0;border-bottom:2px solid #b0c8f0}
+.grade-col-head.gC{background:#fef8e7;color:#9a6400;border-bottom:2px solid #f0d990}
+.grade-col-head.gD{background:#fdf0ee;color:#c0392b;border-bottom:2px solid #f5c6c0}
+.grade-col-body{padding:6px}
+.grade-person{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:4px;font-size:12px;margin-bottom:3px;background:var(--surface2)}
+.grade-person:last-child{margin-bottom:0}
+.grade-unit-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
+.grade-unit-head{padding:10px 14px;background:var(--surface2);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.grade-unit-head h4{font-size:13px;font-weight:500;color:var(--ink)}
+.grade-config-table{width:100%;border-collapse:collapse;margin-bottom:0}
+.grade-config-table th{padding:7px 12px;background:var(--ink);color:rgba(255,255,255,.8);font-size:11px;font-weight:500;text-align:left;letter-spacing:.5px}
+.grade-config-table td{padding:7px 12px;border-bottom:1px solid var(--border);background:var(--surface)}
+.grade-config-table tr:last-child td{border-bottom:none}
+.grade-config-table input[type=number]{width:80px;border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:13px;font-family:var(--ff);text-align:center;outline:none}
 </style>
 </head>
 <body>
@@ -258,6 +286,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     <div class="topnav-brand">期末成绩</div>
     <div class="topnav-tabs">
       <button class="topnav-tab active" onclick="switchPage('query',this)">查询后台</button>
+      <button class="topnav-tab" onclick="switchPage('grade-view',this)">级别总览</button>
       <button class="topnav-tab editor-tab hidden" onclick="switchPage('edit',this)">编辑后台</button>
       <button class="topnav-tab admin-only hidden" onclick="switchPage('staff',this)">人员管理</button>
       <button class="topnav-tab admin-only hidden" onclick="switchPage('settings',this)">规则设置</button>
@@ -322,13 +351,14 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     <div class="tbl-wrap">
       <table class="tbl">
         <thead><tr>
-          <th style="width:190px">姓名 / 单位</th>
-          <th class="c" style="width:65px">班次</th>
-          <th style="width:150px">总分</th>
-          <th class="c" style="width:65px">班内排名</th>
+          <th style="width:180px">姓名 / 单位</th>
+          <th class="c" style="width:60px">班次</th>
+          <th class="c" style="width:50px">级别</th>
+          <th style="width:140px">总分</th>
+          <th class="c" style="width:60px">班内排名</th>
           <th>金损金额</th>
         </tr></thead>
-        <tbody id="tbody"><tr><td colspan="5" class="loading-state">选择期间载入中…</td></tr></tbody>
+        <tbody id="tbody"><tr><td colspan="6" class="loading-state">选择期间载入中…</td></tr></tbody>
       </table>
       <div id="no-results" class="no-results" style="display:none">没有符合条件的人员</div>
     </div>
@@ -414,6 +444,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <button class="nav-tab" onclick="switchPane('bonus')">加分项目</button>
       <button class="nav-tab" onclick="switchPane('base')">基础分设定</button>
       <button class="nav-tab" onclick="switchPane('preview')">规则预览</button>
+      <button class="nav-tab" onclick="switchPane('grade-config')">级别设定</button>
     </div>
     <div id="pane-deduct" class="pane active">
       <div id="inherit-banner-deduct"></div>
@@ -446,10 +477,35 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn-primary" onclick="saveBaseConfig()">保存至云端</button></div>
     </div>
+    <div id="pane-grade-config" class="pane">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div>
+          <div style="font-size:14px;font-weight:500;color:var(--ink2)">级别分数区间设定</div>
+          <div style="font-size:12px;color:var(--ink3);margin-top:3px">可针对不同组别设定不同分数线，不设定则使用预设（90+=A, 80-89=B, 70-79=C, 0-69=D）</div>
+        </div>
+        <button class="btn-add" onclick="addGradeUnitSection()">＋ 新增组别设定</button>
+      </div>
+      <div id="grade-config-list"></div>
+    </div>
     <div id="pane-preview" class="pane"><div id="preview-content"></div></div>
   </div>
 
   <!-- PERIODS -->
+
+  <!-- GRADE VIEW -->
+  <div id="page-grade-view" class="page">
+    <div class="sec-hd">
+      <div><h1 id="grade-view-title">级别总览</h1><p>依组别 · 班次分级显示</p></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:12px;color:var(--ink3)">显示方式</span>
+        <button class="filter-btn active" onclick="setGradeViewMode('split',this)">分班次</button>
+        <button class="filter-btn" onclick="setGradeViewMode('merge',this)">合并班次</button>
+      </div>
+    </div>
+    <div id="grade-view-content"></div>
+  </div>
+
+
   <div id="page-periods" class="page">
     <div class="page-hd"><h1>期间管理</h1><p>管理所有考核期间</p></div>
     <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
@@ -827,8 +883,10 @@ async function selectPeriod(id){
     document.getElementById('settings-period-label').textContent=`当前期间：${p.name}`;
   }
   openIdx=null;
-  await Promise.all([loadStaffScores(),loadRules(),loadBaseConfig()]);
+  await Promise.all([loadStaffScores(),loadRules(),loadBaseConfig(),loadGradeConfigs()]);
   renderQuery();
+  if(document.getElementById('page-grade-view')?.classList.contains('active'))renderGradeView();
+  const gvTitle=document.getElementById('grade-view-title');if(gvTitle&&p)gvTitle.textContent=`${p.name} · 级别总览`;
   if(document.getElementById('page-settings').classList.contains('active')){
     renderList('deduct');renderList('bonus');
   }
@@ -912,6 +970,7 @@ function switchPage(id,el){
   if(id==='logs')loadAuditLogs();
   if(id==='staff')renderStaffTable();
   if(id==='periods')renderPeriodsPage();
+  if(id==='grade-view')renderGradeView();
 }
 
 let editFShift='全部',editFUnit='全部',editSortKey='score2';
@@ -1091,11 +1150,12 @@ function renderQuery(){
     return`<tr onclick="toggleDetail(${i},'${dEncoded}')" id="qrow-${i}">
       <td><span style="font-weight:500">${shortName}</span>${uTag}</td>
       <td class="c"><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
+      <td class="c">${gradeBadgeHtml(d)}</td>
       <td><div style="display:flex;align-items:center;gap:8px"><span class="score-num ${cls}">${d.score||0}</span><div style="flex:1"><div class="score-bar-bg"><div class="score-bar-fill" style="width:${pct}%;background:${bc}"></div></div></div></div></td>
       <td class="c">${rankBadge(d.rank2)}</td>
       <td>${js}</td>
     </tr>
-    <tr id="qdrawer-${i}" style="display:none"><td colspan="5" style="padding:0"><div class="drawer open" id="qdetail-${i}"></div></td></tr>`;
+    <tr id="qdrawer-${i}" style="display:none"><td colspan="6" style="padding:0"><div class="drawer open" id="qdetail-${i}"></div></td></tr>`;
   }).join('');
 }
 
@@ -1132,7 +1192,19 @@ function toggleDetail(i,enc){
           <div class="score-item"><span>半年度无失误奖励</span><span style="color:${(d.perfect||0)>0?'var(--green)':'var(--ink3)'}">${(d.perfect||0)>0?'+'+(d.perfect||0):'×'}</span></div>
           <div class="score-item"><span>半年度出勤正常</span><span style="color:${(d.attendance||0)>0?'var(--green)':'var(--ink3)'}">${(d.attendance||0)>0?'+'+(d.attendance||0):'×'}</span></div>
           <div class="score-item" style="border-top:1px solid var(--border);margin-top:2px"><span style="font-weight:500">总分</span><span style="font-size:15px;font-family:var(--ffs);font-weight:600">${calcScore(d).score}</span></div>
+          <div class="score-item" style="background:var(--surface2)"><span style="font-weight:500">级别${d.grade_override?'（干部指定）':'（自动）'}</span><span class="grade-badge grade-${getEffectiveGrade(d).grade}">${getEffectiveGrade(d).grade}</span></div>
         </div>
+        ${currentProfile?.role==='admin'?`<div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--ink3)">手动覆盖：</span>
+          <select id="grade-override-sel-${d.id}" style="border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--ff)">
+            <option value="">自动判断</option>
+            <option value="A" ${d.grade==='A'&&d.grade_override?'selected':''}>A 级</option>
+            <option value="B" ${d.grade==='B'&&d.grade_override?'selected':''}>B 级</option>
+            <option value="C" ${d.grade==='C'&&d.grade_override?'selected':''}>C 级</option>
+            <option value="D" ${d.grade==='D'&&d.grade_override?'selected':''}>D 级</option>
+          </select>
+          <button class="btn-primary" style="padding:4px 10px;font-size:12px" onclick="saveGradeOverride(${d.id})">确认</button>
+        </div>`:''}
       </div>
     </div>`:`<div><div class="drawer-section"><p style="color:var(--ink3);font-size:13px;padding:8px 0">成绩尚未公布</p></div></div>`;
   document.getElementById(`qdetail-${i}`).innerHTML=`
@@ -1482,12 +1554,175 @@ async function importExcel(input){
 }
 
 /* ── RULES ── */
+
+/* ── GRADE SYSTEM ── */
+let gradeConfigs=[];
+let gradeViewMode='split';
+
+async function loadGradeConfigs(){
+  if(!currentPeriodId)return;
+  const {data}=await sb.from('grade_config').select('*').eq('period_id',currentPeriodId).order('unit').order('sort_order');
+  gradeConfigs=data||[];
+}
+
+function getGrade(score,unit){
+  const configs=gradeConfigs.filter(g=>g.unit===unit||g.unit==='all');
+  if(!configs.length){
+    if(score>=90)return'A';if(score>=80)return'B';if(score>=70)return'C';return'D';
+  }
+  const unitSpecific=configs.filter(g=>g.unit===unit);
+  const toUse=unitSpecific.length?unitSpecific:configs.filter(g=>g.unit==='all');
+  const match=toUse.sort((a,b)=>b.min_score-a.min_score).find(g=>score>=g.min_score&&score<=g.max_score);
+  return match?match.grade:'D';
+}
+
+function getEffectiveGrade(d){
+  if(d.grade_override&&d.grade)return{grade:d.grade,override:true};
+  return{grade:getGrade(d.score2||d.score||0,d.unit),override:false};
+}
+
+function gradeBadgeHtml(d){
+  const{grade,override}=getEffectiveGrade(d);
+  return`<span class="grade-badge grade-${grade}${override?' grade-override':''}" style="position:relative">${grade}</span>`;
+}
+
+function setGradeViewMode(mode,el){
+  gradeViewMode=mode;
+  document.querySelectorAll('#page-grade-view .filter-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderGradeView();
+}
+
+function renderGradeView(){
+  const el=document.getElementById('grade-view-content');
+  if(!el)return;
+  if(!staffScores.length){el.innerHTML='<div class="no-results">此期间暂无人员资料</div>';return}
+  const units=['BB','四方','财务','总管','TB钱包'];
+  const shifts=['早','中','晚','总管'];
+  let html='';
+  if(gradeViewMode==='split'){
+    units.forEach(unit=>{
+      shifts.forEach(shift=>{
+        const list=staffScores.filter(d=>d.unit===unit&&d.shift===shift);
+        if(!list.length)return;
+        html+=renderGradeBlock(`${shift}班 · ${unit}`,list);
+      });
+    });
+  } else {
+    units.forEach(unit=>{
+      const list=staffScores.filter(d=>d.unit===unit);
+      if(!list.length)return;
+      html+=renderGradeBlock(unit,list);
+    });
+  }
+  el.innerHTML=html||'<div class="no-results">暂无资料</div>';
+}
+
+function renderGradeBlock(title,list){
+  const gradeGroups={A:[],B:[],C:[],D:[]};
+  list.forEach(d=>{const{grade}=getEffectiveGrade(d);if(gradeGroups[grade])gradeGroups[grade].push(d)});
+  const cols=['A','B','C','D'].map(g=>{
+    const people=gradeGroups[g].sort((a,b)=>(b.score2||0)-(a.score2||0));
+    const shortName=n=>n.includes('-')?n.split('-').slice(1).join('-'):n;
+    return`<div class="grade-col">
+      <div class="grade-col-head g${g}"><span>${g} 级</span><span style="font-size:11px;opacity:.7">${people.length} 人</span></div>
+      <div class="grade-col-body">
+        ${people.length?people.map(d=>`<div class="grade-person"><span style="font-weight:500">${shortName(d.name)}</span><span style="font-family:var(--ffs);font-size:12px;color:var(--ink3)">${d.score2||d.score||0}分</span></div>`).join(''):'<div style="padding:8px;font-size:12px;color:var(--ink3);text-align:center">—</div>'}
+      </div>
+    </div>`;
+  }).join('');
+  return`<div class="grade-section">
+    <div class="grade-section-title"><span>${title}</span><span style="font-size:12px;font-weight:400;color:var(--ink3)">${list.length} 人</span></div>
+    <div class="grade-grid">${cols}</div>
+  </div>`;
+}
+
+function renderGradeConfigPane(){
+  const el=document.getElementById('grade-config-list');
+  if(!el)return;
+  if(!gradeConfigs.length){
+    el.innerHTML='<div class="empty-rules">尚未设定级别区间，点击右上角「新增组别设定」，或使用预设（90+=A, 80-89=B, 70-79=C, 0-69=D）</div>';
+    return;
+  }
+  const unitLabels={all:'全体（预设）',BB:'BB',四方:'四方',财务:'财务',总管:'总管','TB钱包':'TB钱包'};
+  const grouped={};
+  gradeConfigs.forEach(g=>{if(!grouped[g.unit])grouped[g.unit]=[];grouped[g.unit].push(g)});
+  el.innerHTML=Object.entries(grouped).map(([unit,configs])=>`
+    <div class="grade-unit-section">
+      <div class="grade-unit-head">
+        <h4>${unitLabels[unit]||unit}</h4>
+        <div style="display:flex;gap:6px">
+          <button class="btn-primary" style="padding:4px 12px;font-size:12px" onclick="saveGradeConfig('${unit}')">保存</button>
+          <button class="btn-icon del" onclick="deleteGradeUnit('${unit}')">🗑</button>
+        </div>
+      </div>
+      <div style="padding:12px">
+        <table class="grade-config-table">
+          <thead><tr><th>级别</th><th>最低分</th><th>最高分（留空不限）</th></tr></thead>
+          <tbody>
+            ${['A','B','C','D'].map(g=>{
+              const cfg=configs.find(c=>c.grade===g)||{grade:g,min_score:g==='A'?90:g==='B'?80:g==='C'?70:0,max_score:g==='A'?999:g==='B'?89:g==='C'?79:69};
+              return`<tr>
+                <td><span class="grade-badge grade-${g}">${g}</span></td>
+                <td><input type="number" id="gc-min-${unit}-${g}" value="${cfg.min_score}"></td>
+                <td><input type="number" id="gc-max-${unit}-${g}" value="${cfg.max_score>=999?'':cfg.max_score}" placeholder="不限"></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`).join('');
+}
+
+function addGradeUnitSection(){
+  const units=['all','BB','四方','财务','总管','TB钱包'];
+  const existing=new Set(gradeConfigs.map(g=>g.unit));
+  const available=units.filter(u=>!existing.has(u));
+  if(!available.length){toast('所有组别都已设定');return}
+  const unit=available[0];
+  [{grade:'A',min:90,max:999},{grade:'B',min:80,max:89},{grade:'C',min:70,max:79},{grade:'D',min:0,max:69}].forEach((d,i)=>{
+    gradeConfigs.push({id:null,period_id:currentPeriodId,unit,grade:d.grade,min_score:d.min,max_score:d.max,sort_order:i});
+  });
+  renderGradeConfigPane();
+}
+
+async function saveGradeConfig(unit){
+  const toSave=['A','B','C','D'].map((g,i)=>{
+    const min=parseFloat(document.getElementById(`gc-min-${unit}-${g}`).value)||0;
+    const maxVal=document.getElementById(`gc-max-${unit}-${g}`).value;
+    const max=maxVal===''?999:parseFloat(maxVal)||999;
+    return{period_id:currentPeriodId,unit,grade:g,min_score:min,max_score:max,sort_order:i};
+  });
+  await sb.from('grade_config').delete().eq('period_id',currentPeriodId).eq('unit',unit);
+  const{error}=await sb.from('grade_config').insert(toSave);
+  if(error){toast('保存失败：'+error.message,true);return}
+  await loadGradeConfigs();renderGradeConfigPane();renderQuery();
+  toast(`${unit==='all'?'全体':unit} 级别设定已保存`);
+}
+
+async function deleteGradeUnit(unit){
+  if(!confirm('确认删除此组别的级别设定？'))return;
+  await sb.from('grade_config').delete().eq('period_id',currentPeriodId).eq('unit',unit);
+  await loadGradeConfigs();renderGradeConfigPane();toast('已删除');
+}
+
+async function saveGradeOverride(scoreId){
+  const sel=document.getElementById(`grade-override-sel-${scoreId}`);
+  const val=sel.value;
+  const{error}=await sb.from('staff_scores').update({grade:val||null,grade_override:val!==''}).eq('id',scoreId);
+  if(error){toast('保存失败',true);return}
+  const d=staffScores.find(x=>x.id===scoreId);
+  if(d){d.grade=val||'';d.grade_override=val!==''}
+  renderQuery();
+  toast(val?`级别已覆盖为 ${val}`:'已恢复自动判断');
+}
 function switchPane(id){
-  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['deduct','bonus','base','preview'][i]===id));
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['deduct','bonus','base','preview','grade-config'][i]===id));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane-'+id).classList.add('active');
   if(id==='deduct'||id==='bonus')loadRules().then(()=>renderList(id));
   if(id==='preview')renderPreview();
+  if(id==='grade-config')renderGradeConfigPane();
 }
 
 function renderList(type){
