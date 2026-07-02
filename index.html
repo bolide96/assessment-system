@@ -339,19 +339,19 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <button class="filter-btn" onclick="setFilter('unit','财务',this)">财务</button>
       <button class="filter-btn" onclick="setFilter('unit','总管',this)">总管</button>
       <button class="filter-btn" onclick="setFilter('unit','TB钱包',this)">TB钱包</button>
-      <div class="search-wrap"><span class="search-icon">🔍</span><input id="search" placeholder="搜索姓名…" oninput="renderQuery()"></div>
+      <div class="search-wrap"><span class="search-icon">🔍</span><input id="search" placeholder="搜索代号…" oninput="renderQuery()"></div>
     </div>
     <div class="sort-row">
       <span class="sort-label">排序</span>
       <button class="sort-btn active" onclick="setSort('score',this)">总分↓</button>
       <button class="sort-btn" onclick="setSort('jinsun',this)">金损↓</button>
-      <button class="sort-btn" onclick="setSort('name',this)">姓名</button>
+      <button class="sort-btn" onclick="setSort('name',this)">代号</button>
       <span class="result-count" id="count-label"></span>
     </div>
     <div class="tbl-wrap">
       <table class="tbl">
         <thead><tr>
-          <th style="width:180px">姓名 / 单位</th>
+          <th style="width:180px">代号 / 单位</th>
           <th class="c" style="width:60px">班次</th>
           <th class="c" style="width:50px">级别</th>
           <th style="width:140px">总分</th>
@@ -760,6 +760,20 @@ let staffScores=[],rules={deduct:[],bonus:[]};
 let baseConfig={base_score:80,max_score:120,perfect_bonus:10,attend_bonus:10,pass_score:60,rank_cutoff:0};
 let fShift='全部',fUnit='全部',sortKey='score',openIdx=null;
 
+/* Stable public code: same person keeps the same code across all periods. */
+function personCode(d){
+  if(d?.code) return d.code;
+  const unit=d?.unit||'';
+  const id=d?.staff_id||d?.staff?.id||'';
+  return id ? `${unit}-${id}` : unit || '---';
+}
+function matchesPersonQuery(d,q){
+  if(!q)return true;
+  const s=q.toLowerCase();
+  return personCode(d).toLowerCase().includes(s) || (d.name||'').toLowerCase().includes(s);
+}
+
+
 /* ── AUTH ── */
 async function doLogin(){
   const email=document.getElementById('login-email').value.trim();
@@ -897,11 +911,11 @@ async function selectPeriod(id){
 /* ── STAFF SCORES ── */
 async function loadStaffScores(){
   if(!currentPeriodId)return;
-  const {data,error}=await sb.from('staff_scores').select('*,staff(id,name,unit)').eq('period_id',currentPeriodId);
+  const {data,error}=await sb.from('staff_scores').select('*,staff(id,name,unit,code)').eq('period_id',currentPeriodId);
   if(error){toast('载入人员资料失败：'+error.message,true);staffScores=[];renderQuery();return;}
   staffScores=(data||[]).map(r=>({
     id:r.id,staff_id:r.staff_id,
-    name:r.staff?.name||'',unit:r.staff?.unit||'',
+    name:r.staff?.name||'',unit:r.staff?.unit||'',code:r.staff?.code||'',
     shift:r.shift,base:r.base_score,
     perfect:r.perfect,attendance:r.attendance,
     jinsun:r.jinsun,score:r.score,score2:r.score2,
@@ -1049,7 +1063,7 @@ function renderEditPage(){
     const cls=scoreClass(d.score||0);
     const pf=d.perfect>0?`<span style="color:var(--green);font-size:15px">✓</span>`:`<span style="color:var(--border);font-size:15px">○</span>`;
     const at=d.attendance>0?`<span style="color:var(--green);font-size:15px">✓</span>`:`<span style="color:var(--border);font-size:15px">○</span>`;
-    const shortName=d.name.includes('-')?d.name.split('-').slice(1).join('-'):d.name;
+    const shortName=personCode(d);
     return`<tr>
       <td style="font-weight:500">${shortName}<span class="unit-tag tag-${d.unit}">${d.unit}</span></td>
       <td><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
@@ -1111,7 +1125,7 @@ function renderQuery(){
     if(scopeShift&&d.shift!==scopeShift)return false;
     if(fShift!=='全部'&&d.shift!==fShift)return false;
     if(fUnit!=='全部'&&d.unit!==fUnit)return false;
-    if(q&&!d.name.toLowerCase().includes(q))return false;
+    if(!matchesPersonQuery(d,q))return false;
     return true;
   });
   if(sortKey==='name')list.sort((a,b)=>a.name.localeCompare(b.name,'zh'));
@@ -1131,7 +1145,7 @@ function renderQuery(){
   document.getElementById('no-results').style.display='none';
   const maxS=Math.max(...list.map(d=>d.score2||0),1);
   tb.innerHTML=list.map((d,i)=>{
-    const shortName=d.name.includes('-')?d.name.split('-').slice(1).join('-'):d.name;
+    const shortName=personCode(d);
     const uTag=`<span class="unit-tag tag-${d.unit}">${d.unit}</span>`;
     const js=d.jinsun>0?`<span style="color:var(--red)">¥${d.jinsun.toLocaleString()}</span>`:`<span style="color:var(--ink3)">—</span>`;
     const dEncoded=encodeURIComponent(JSON.stringify(d));
@@ -1226,7 +1240,7 @@ function getMonthConfig(){
 
 function renderStaffTable(){
   document.getElementById('staff-thead').innerHTML=`<tr>
-    <th>人员</th><th style="width:60px">班别</th><th style="width:60px">起始分</th>
+    <th>代码</th><th style="width:80px">真实姓名</th><th style="width:60px">班别</th><th style="width:60px">起始分</th>
     <th style="width:70px">操作</th>
   </tr>`;
   const tb=document.getElementById('staff-tbody');
@@ -1240,7 +1254,8 @@ function renderStaffTable(){
   if(!list.length){tb.innerHTML=`<tr><td colspan="4" class="loading-state">此期间暂无人员资料，请新增或汇入</td></tr>`;return}
   tb.innerHTML=list.map(d=>{
     return`<tr>
-      <td style="font-weight:500">${d.name}<span class="unit-tag tag-${d.unit}">${d.unit}</span></td>
+      <td style="font-weight:500">${d.code||'—'}<span class="unit-tag tag-${d.unit}">${d.unit}</span></td>
+      <td style="font-size:12px;color:var(--ink3)">${d.name}</td>
       <td><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td>${d.base||80}</td>
       <td style="display:flex;gap:4px">
@@ -1262,7 +1277,7 @@ let mmPendingPts=0,mmPendingItem='';
 
 function openMonthModal(staffScoreId,monthKey,monthLabel){
   const d=staffScores.find(x=>x.id===staffScoreId);if(!d)return;
-  const shortName=d.name.includes('-')?d.name.split('-').slice(1).join('-'):d.name;
+  const shortName=personCode(d);
   document.getElementById('mm-title').textContent=`${shortName} · ${monthLabel}`;
   document.getElementById('mm-staff-id').value=staffScoreId;
   document.getElementById('mm-month-key').value=monthKey;
@@ -1397,7 +1412,7 @@ async function toggleAttend(staffScoreId,current){
 
 function openMgrModal(staffScoreId){
   const d=staffScores.find(x=>x.id===staffScoreId);if(!d)return;
-  const shortName=d.name.includes('-')?d.name.split('-').slice(1).join('-'):d.name;
+  const shortName=personCode(d);
   document.getElementById('mgr-title').textContent=`${shortName} · 干部加减分`;
   document.getElementById('mgr-staff-id').value=staffScoreId;
   document.getElementById('mgr-pts').value=d.mgr_bonus||0;
@@ -1425,7 +1440,7 @@ async function saveMgrBonus(){
 
 function openCommentModal(staffScoreId){
   const d=staffScores.find(x=>x.id===staffScoreId);if(!d)return;
-  const shortName=d.name.includes('-')?d.name.split('-').slice(1).join('-'):d.name;
+  const shortName=personCode(d);
   document.getElementById('cm-title').textContent=`${shortName} · 综合评语`;
   document.getElementById('cm-staff-id').value=staffScoreId;
   document.getElementById('cm-comment').value=d.comment||'';
@@ -1623,11 +1638,11 @@ function renderGradeBlock(title,list){
   list.forEach(d=>{const{grade}=getEffectiveGrade(d);if(gradeGroups[grade])gradeGroups[grade].push(d)});
   const cols=['A','B','C','D'].map(g=>{
     const people=gradeGroups[g].sort((a,b)=>(b.score2||0)-(a.score2||0));
-    const shortName=n=>n.includes('-')?n.split('-').slice(1).join('-'):n;
+    const shortName=n=>n;
     return`<div class="grade-col">
       <div class="grade-col-head g${g}"><span>${g} 级</span><span style="font-size:11px;opacity:.7">${people.length} 人</span></div>
       <div class="grade-col-body">
-        ${people.length?people.map(d=>`<div class="grade-person"><span style="font-weight:500">${shortName(d.name)}</span><span style="font-family:var(--ffs);font-size:12px;color:var(--ink3)">${d.score2||d.score||0}分</span></div>`).join(''):'<div style="padding:8px;font-size:12px;color:var(--ink3);text-align:center">—</div>'}
+        ${people.length?people.map(d=>`<div class="grade-person"><span style="font-weight:500">${personCode(d)}</span><span style="font-family:var(--ffs);font-size:12px;color:var(--ink3)">${d.score2||d.score||0}分</span></div>`).join(''):'<div style="padding:8px;font-size:12px;color:var(--ink3);text-align:center">—</div>'}
       </div>
     </div>`;
   }).join('');
@@ -1957,20 +1972,41 @@ async function inheritFromPrevPeriod(){
   if(!confirm(`确认从「${fromP.name}」承继规则到「${toP.name}」？\n（会覆盖目前期间的现有规则）`))return;
   const {data:srcRules}=await sbAdmin.from('period_rules').select('*').eq('period_id',fromP.id);
   const {data:srcBase}=await sbAdmin.from('period_base_config').select('*').eq('period_id',fromP.id).single();
+  // 继承扣加分规则
   if(srcRules?.length){
     await sbAdmin.from('period_rules').delete().eq('period_id',toP.id);
-    const newRules=srcRules.map(r=>({...r,id:Date.now()+Math.random(),period_id:toP.id}));
-    await sbAdmin.from('period_rules').insert(newRules);
+    const newRules=srcRules.map(r=>{
+      const nr={...r,period_id:toP.id};
+      delete nr.id;
+      return nr;
+    });
+    const {error:rErr}=await sbAdmin.from('period_rules').insert(newRules);
+    if(rErr){toast('继承规则失败：'+rErr.message,true);console.error(rErr);return;}
+  } else {
+    toast('上期没有扣加分规则可继承',true);
   }
+  // 继承基础分设定
   if(srcBase){
-    await sbAdmin.from('period_base_config').upsert({...srcBase,period_id:toP.id},{onConflict:'period_id'});
+    const baseData={...srcBase,period_id:toP.id};
+    delete baseData.id;
+    const {error:bErr}=await sbAdmin.from('period_base_config').upsert(baseData,{onConflict:'period_id'});
+    if(bErr){toast('继承基础分失败：'+bErr.message,true);console.error(bErr);return;}
+  }
+  // 继承级别设定
+  const {data:srcGrades}=await sbAdmin.from('grade_config').select('*').eq('period_id',fromP.id);
+  if(srcGrades?.length){
+    await sbAdmin.from('grade_config').delete().eq('period_id',toP.id);
+    const newGrades=srcGrades.map(g=>{const ng={...g,period_id:toP.id};delete ng.id;return ng;});
+    await sbAdmin.from('grade_config').insert(newGrades);
   }
   await loadRules();
+  await loadBaseConfig();
+  if(typeof loadGradeConfigs==='function') await loadGradeConfigs();
   renderList('deduct');
   renderList('bonus');
   const activeTab=[...document.querySelectorAll('.nav-tab')].find(t=>t.classList.contains('active'));
   const activeIdx=[...document.querySelectorAll('.nav-tab')].indexOf(activeTab);
-  const paneId=['deduct','bonus','base','preview','ip'][activeIdx]||'deduct';
+  const paneId=['deduct','bonus','base','preview','grade-config'][activeIdx]||'deduct';
   switchPane(paneId);
   toast(`✓ 已从「${fromP.name}」承继规则`);
 }
@@ -2115,7 +2151,7 @@ async function changePassword(){
 function exportToExcel(){
   const p=periods.find(x=>x.id===currentPeriodId);
   const rows=staffScores.map((d,i)=>({
-    '姓名':d.name,'单位':d.unit,'班次':d.shift,
+    '固定代号':personCode(d),'单位':d.unit,'班次':d.shift,
     '总分':d.score2,'原始分':d.score,'起始分':d.base||80,
     '无失误奖励':d.perfect||0,'出勤奖励':d.attendance||0,
     '干部加减分':d.mgr_bonus||0,'金损金额':d.jinsun||0,
