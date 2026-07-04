@@ -286,7 +286,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     <div class="topnav-brand">期末成绩</div>
     <div class="topnav-tabs">
       <button class="topnav-tab active" onclick="switchPage('query',this)">查询后台</button>
-      <button class="topnav-tab" onclick="switchPage('grade-view',this)">级别总览</button>
+      <button class="topnav-tab" id="tab-grade-view" style="display:none" onclick="switchPage('grade-view',this)">级别总览</button>
       <button class="topnav-tab editor-tab hidden" onclick="switchPage('edit',this)">编辑后台</button>
       <button class="topnav-tab admin-only hidden" onclick="switchPage('staff',this)">人员管理</button>
       <button class="topnav-tab admin-only hidden" onclick="switchPage('settings',this)">规则设置</button>
@@ -521,7 +521,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <span id="users-count" style="font-size:13px;color:var(--ink3)"></span>
       <button class="btn-add" onclick="document.getElementById('adduser-modal').classList.add('open')">＋ 新增帐号</button>
     </div>
-    <table class="users-table"><thead><tr><th>帐号</th><th>名称</th><th>权限</th><th>编辑/检视班别</th><th>状态</th><th>操作</th></tr></thead>
+    <table class="users-table"><thead><tr><th>帐号</th><th>名称</th><th>权限</th><th>编辑/检视班别</th><th>级别总览</th><th>状态</th><th>操作</th></tr></thead>
     <tbody id="users-tbody"></tbody></table>
     <div class="account-card" style="margin-top:24px">
       <h3>全站 IP 白名单</h3>
@@ -811,6 +811,7 @@ async function doLogin(){
     email:data.user.email,
     role,
     edit_scope:profile?.edit_scope||null,
+    grade_access:profile?.grade_access||false,
     name:profile?.name||data.user.email.split('@')[0]
   };
   sessionStorage.setItem('localProfile',JSON.stringify(currentProfile));
@@ -832,6 +833,7 @@ async function loadProfile(user){
     email:user.email,
     role,
     edit_scope:profile?.edit_scope||null,
+    grade_access:profile?.grade_access||false,
     name:profile?.name||user.email.split('@')[0]
   };
   sessionStorage.setItem('localProfile',JSON.stringify(currentProfile));
@@ -845,6 +847,7 @@ function showApp(){
   document.getElementById('nav-role').textContent=isAdmin?'编辑':'检视';
   document.getElementById('nav-role').className='role-tag '+(isAdmin?'role-admin':'role-viewer');
   if(isAdmin)document.querySelectorAll('.admin-only').forEach(el=>el.classList.remove('hidden'));
+  // grade-view tab controlled per-period in selectPeriod
   if(isAdmin)document.querySelectorAll('.editor-tab').forEach(el=>el.classList.remove('hidden'));
   document.getElementById('conn-dot').className='conn-dot ok';
   loadPeriods();
@@ -901,6 +904,18 @@ async function selectPeriod(id){
   renderQuery();
   if(document.getElementById('page-grade-view')?.classList.contains('active'))renderGradeView();
   const gvTitle=document.getElementById('grade-view-title');if(gvTitle&&p)gvTitle.textContent=`${p.name} · 级别总览`;
+  // Control grade-view tab visibility
+  const gradeTab=document.getElementById('tab-grade-view');
+  if(gradeTab){
+    const canSeeGrade=(currentProfile?.role==='admin')||(currentProfile?.grade_access===true&&p?.grade_visible===true);
+gradeTab.style.display=canSeeGrade?'':'none';
+    if(!canSeeGrade&&document.getElementById('page-grade-view')?.classList.contains('active')){
+      document.querySelectorAll('.topnav-tab').forEach(t=>t.classList.remove('active'));
+      document.querySelector('.topnav-tab').classList.add('active');
+      document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
+      document.getElementById('page-query').classList.add('active');
+    }
+  }
   if(document.getElementById('page-settings').classList.contains('active')){
     renderList('deduct');renderList('bonus');
   }
@@ -1903,10 +1918,21 @@ function renderPeriodsPage(){
       <div class="period-actions">
         <button class="btn-icon" onclick="inheritRules(${p.id})" title="继承此期规则至下期">↓继承</button>
         <button class="btn-icon" onclick="togglePeriodStatus(${p.id},'${p.status}')" title="切换状态">${p.status==='active'?'⏸封存':'▶启用'}</button>
+        <button class="btn-icon${p.grade_visible?' ':'  del '}" onclick="toggleGradeVisible(${p.id},${p.grade_visible||false})" title="级别总览开放状态" style="min-width:70px;font-size:11px">${p.grade_visible?'📊 级别已开':'📊 级别未开'}</button>
         ${p.status==='draft'?`<button class="btn-icon del" onclick="deletePeriod(${p.id})" title="删除草稿">🗑删除</button>`:''}
       </div>
     </div>`).join('');
 }
+async function toggleGradeVisible(id, current){
+  const newVal = !current;
+  const {error} = await sbAdmin.from('periods').update({grade_visible: newVal}).eq('id', id);
+  if(error){toast('更新失败：'+error.message, true);return;}
+  const p = periods.find(x=>x.id===id);
+  if(p) p.grade_visible = newVal;
+  renderPeriodsPage();
+  toast(newVal ? '级别总览已开放' : '级别总览已关闭');
+}
+
 async function savePublishDate(id,field,val){
   const {error}=await sbAdmin.from('periods').update({[field]:val||null}).eq('id',id);
   if(error){toast('保存失败：'+error.message,true);return;}
@@ -2037,6 +2063,12 @@ async function loadUsers(){
       <td>${u.name||'—'}</td>
       <td><span class="role-tag ${u.role==='admin'?'role-admin':'role-viewer'}">${u.role==='admin'?'编辑':'检视'}</span></td>
       <td>${scopeSel}</td>
+      <td style="text-align:center">
+        <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:12px">
+          <input type="checkbox" ${u.grade_access?'checked':''} onchange="toggleGradeAccess('${u.id}',this.checked)" style="cursor:pointer">
+          ${u.grade_access?'<span style="color:var(--green)">开放</span>':'<span style="color:var(--ink3)">关闭</span>'}
+        </label>
+      </td>
       <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${u.is_active?'var(--green)':'var(--border)'};margin-right:5px"></span>${u.is_active?'启用':'停用'}</td>
       <td style="display:flex;gap:4px">
         <button class="btn-icon" onclick="toggleUserActive('${u.id}',${u.is_active})" title="${u.is_active?'停用':'启用'}">${u.is_active?'⏸':'▶'}</button>
@@ -2045,6 +2077,12 @@ async function loadUsers(){
       </td>
     </tr>`;
   }).join('');
+}
+
+async function toggleGradeAccess(id, val){
+  const {error} = await sbAdmin.from('profiles').update({grade_access: val}).eq('id', id);
+  if(error){toast('更新失败：'+error.message, true);loadUsers();return;}
+  toast(val ? '已开放级别总览权限' : '已关闭级别总览权限');
 }
 
 async function toggleUserActive(id,cur){await sb.from('profiles').update({is_active:!cur}).eq('id',id);loadUsers();toast(cur?'帐号已停用':'帐号已启用')}
