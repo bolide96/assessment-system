@@ -331,13 +331,13 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <button class="filter-btn" onclick="setFilter('shift','早',this)">早班</button>
       <button class="filter-btn" onclick="setFilter('shift','中',this)">中班</button>
       <button class="filter-btn" onclick="setFilter('shift','晚',this)">晚班</button>
-      <button class="filter-btn" onclick="setFilter('shift','总管',this)">总管</button>
+      <button class="filter-btn" onclick="setFilter('shift','总管',this)">管家</button>
       <span style="color:var(--border);margin:0 4px">|</span>
       <button class="filter-btn active" onclick="setFilter('unit','全部',this)">全部单位</button>
       <button class="filter-btn" onclick="setFilter('unit','BB',this)">BB</button>
-      <button class="filter-btn" onclick="setFilter('unit','四方',this)">四方</button>
-      <button class="filter-btn" onclick="setFilter('unit','财务',this)">财务</button>
-      <button class="filter-btn" onclick="setFilter('unit','总管',this)">总管</button>
+      <button class="filter-btn" onclick="setFilter('unit','四方',this)">四四</button>
+      <button class="filter-btn" onclick="setFilter('unit','财务',this)">金银财宝</button>
+      <button class="filter-btn" onclick="setFilter('unit','总管',this)">管家</button>
       <button class="filter-btn" onclick="setFilter('unit','TB钱包',this)">TB钱包</button>
       <div class="search-wrap"><span class="search-icon">🔍</span><input id="search" placeholder="搜索代号…" oninput="renderQuery()"></div>
     </div>
@@ -410,13 +410,13 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
         <button class="filter-btn sf-shift" onclick="setStaffFilter('shift','早',this)">早</button>
         <button class="filter-btn sf-shift" onclick="setStaffFilter('shift','中',this)">中</button>
         <button class="filter-btn sf-shift" onclick="setStaffFilter('shift','晚',this)">晚</button>
-        <button class="filter-btn sf-shift" onclick="setStaffFilter('shift','总管',this)">总管</button>
+        <button class="filter-btn sf-shift" onclick="setStaffFilter('shift','总管',this)">管家</button>
         <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
         <button class="filter-btn sf-unit active" onclick="setStaffFilter('unit','全部',this)">全部单位</button>
         <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','BB',this)">BB</button>
-        <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','四方',this)">四方</button>
-        <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','财务',this)">财务</button>
-        <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','总管',this)">总管</button>
+        <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','四方',this)">四四</button>
+        <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','财务',this)">金银财宝</button>
+        <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','总管',this)">管家</button>
         <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','TB钱包',this)">TB钱包</button>
       </div>
     </div>
@@ -600,15 +600,15 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     <div class="modal-head"><h3 id="staff-modal-title">新增人员</h3><button onclick="closeModal('staff-modal')">×</button></div>
     <div class="modal-body">
       <input type="hidden" id="sm-edit-id">
+      <input type="hidden" id="sm-name">
       <div class="form-grid">
-        <div class="form-row" style="margin:0"><label>姓名</label><input id="sm-name" placeholder="例：BB-林依樺"></div>
         <div class="form-row" style="margin:0"><label>单位</label>
-          <select id="sm-unit"><option value="BB">BB</option><option value="四方">四方</option><option value="财务">财务</option><option value="总管">总管</option><option value="TB钱包">TB钱包</option></select>
+          <select id="sm-unit"><option value="BB">BB</option><option value="四方">四四</option><option value="财务">金银财宝</option><option value="总管">管家</option><option value="TB钱包">TB钱包</option></select>
         </div>
       </div>
       <div class="form-grid" style="margin-top:10px">
         <div class="form-row" style="margin:0"><label>班次</label>
-          <select id="sm-shift"><option value="早">早班</option><option value="中">中班</option><option value="晚">晚班</option><option value="总管">总管</option></select>
+          <select id="sm-shift"><option value="早">早班</option><option value="中">中班</option><option value="晚">晚班</option><option value="总管">管家</option></select>
         </div>
         <div class="form-row" style="margin:0"><label>起始分</label><input id="sm-base" type="number" value="80"></div>
       </div>
@@ -761,6 +761,10 @@ let baseConfig={base_score:80,max_score:120,perfect_bonus:10,attend_bonus:10,pas
 let fShift='全部',fUnit='全部',sortKey='score',openIdx=null;
 
 /* Stable public code: same person keeps the same code across all periods. */
+function unitLabel(unit){
+  const map={'四方':'四四','财务':'金银财宝','总管':'管家','BB':'BB','TB钱包':'TB钱包'};
+  return map[unit]||unit;
+}
 function personCode(d){
   if(d?.code) return d.code;
   const unit=d?.unit||'';
@@ -1085,7 +1089,7 @@ function renderEditPage(){
     const at=d.attendance>0?`<span style="color:var(--green);font-size:15px">✓</span>`:`<span style="color:var(--border);font-size:15px">○</span>`;
     const shortName=personCode(d);
     return`<tr>
-      <td style="font-weight:500">${shortName}<span class="unit-tag tag-${d.unit}">${d.unit}</span></td>
+      <td style="font-weight:500">${shortName}<span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span></td>
       <td><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td><span class="score-num ${cls}">${d.score||0}</span></td>
       ${monthCells}
@@ -1166,7 +1170,7 @@ function renderQuery(){
   const maxS=Math.max(...list.map(d=>d.score2||0),1);
   tb.innerHTML=list.map((d,i)=>{
     const shortName=personCode(d);
-    const uTag=`<span class="unit-tag tag-${d.unit}">${d.unit}</span>`;
+    const uTag=`<span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span>`;
     const js=d.jinsun>0?`<span style="color:var(--red)">¥${d.jinsun.toLocaleString()}</span>`:`<span style="color:var(--ink3)">—</span>`;
     const dEncoded=encodeURIComponent(JSON.stringify(d));
     if(!scoreVisible){
@@ -1274,7 +1278,7 @@ function renderStaffTable(){
   if(!list.length){tb.innerHTML=`<tr><td colspan="4" class="loading-state">此期间暂无人员资料，请新增或汇入</td></tr>`;return}
   tb.innerHTML=list.map(d=>{
     return`<tr>
-      <td style="font-weight:500">${d.code||'—'}<span class="unit-tag tag-${d.unit}">${d.unit}</span></td>
+      <td style="font-weight:500">${d.code||'—'}<span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span></td>
       <td><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td>${d.base||80}</td>
       <td style="display:flex;gap:4px">
@@ -1632,6 +1636,7 @@ function renderGradeView(){
   if(!el)return;
   if(!staffScores.length){el.innerHTML='<div class="no-results">此期间暂无人员资料</div>';return}
   const units=['BB','四方','财务','总管','TB钱包'];
+  const unitNames={'BB':'BB','四方':'四四','财务':'金银财宝','总管':'管家','TB钱包':'TB钱包'};
   const shifts=['早','中','晚','总管'];
   let html='';
   if(gradeViewMode==='split'){
@@ -1639,14 +1644,14 @@ function renderGradeView(){
       shifts.forEach(shift=>{
         const list=staffScores.filter(d=>d.unit===unit&&d.shift===shift);
         if(!list.length)return;
-        html+=renderGradeBlock(`${shift}班 · ${unit}`,list);
+        html+=renderGradeBlock(`${shift}班 · ${unitNames[unit]||unit}`,list);
       });
     });
   } else {
     units.forEach(unit=>{
       const list=staffScores.filter(d=>d.unit===unit);
       if(!list.length)return;
-      html+=renderGradeBlock(unit,list);
+      html+=renderGradeBlock(unitNames[unit]||unit,list);
     });
   }
   el.innerHTML=html||'<div class="no-results">暂无资料</div>';
