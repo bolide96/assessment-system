@@ -1264,7 +1264,7 @@ function getMonthConfig(){
 
 function renderStaffTable(){
   document.getElementById('staff-thead').innerHTML=`<tr>
-    <th>代码</th><th style="width:60px">班别</th><th style="width:60px">起始分</th>
+    <th style="width:120px">代码</th><th style="width:80px">单位</th><th style="width:60px">班别</th><th style="width:60px">起始分</th>
     <th style="width:70px">操作</th>
   </tr>`;
   const tb=document.getElementById('staff-tbody');
@@ -1275,10 +1275,11 @@ function renderStaffTable(){
   else if(staffSortKey==='shift')list=[...list].sort((a,b)=>a.shift.localeCompare(b.shift,'zh'));
   else list=[...list].sort((a,b)=>(b[staffSortKey]||0)-(a[staffSortKey]||0));
   document.getElementById('staff-count').textContent=`共 ${list.length} 人`;
-  if(!list.length){tb.innerHTML=`<tr><td colspan="4" class="loading-state">此期间暂无人员资料，请新增或汇入</td></tr>`;return}
+  if(!list.length){tb.innerHTML=`<tr><td colspan="5" class="loading-state">此期间暂无人员资料，请新增或汇入</td></tr>`;return}
   tb.innerHTML=list.map(d=>{
     return`<tr>
-      <td style="font-weight:500">${d.code||'—'}<span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span></td>
+      <td style="font-weight:500">${d.code||'—'}</td>
+      <td><span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span></td>
       <td><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td>${d.base||80}</td>
       <td style="display:flex;gap:4px">
