@@ -338,7 +338,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <button class="filter-btn" onclick="setFilter('unit','四方',this)">四四</button>
       <button class="filter-btn" onclick="setFilter('unit','财务',this)">金银财宝</button>
       <button class="filter-btn" onclick="setFilter('unit','总管',this)">管家</button>
-      <button class="filter-btn" onclick="setFilter('unit','TB钱包',this)">TB钱包</button>
+      <button class="filter-btn" onclick="setFilter('unit','TB钱包',this)">TB</button>
       <div class="search-wrap"><span class="search-icon">🔍</span><input id="search" placeholder="搜索代号…" oninput="renderQuery()"></div>
     </div>
     <div class="sort-row">
@@ -417,7 +417,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
         <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','四方',this)">四四</button>
         <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','财务',this)">金银财宝</button>
         <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','总管',this)">管家</button>
-        <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','TB钱包',this)">TB钱包</button>
+        <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','TB钱包',this)">TB</button>
       </div>
     </div>
     <div class="tbl-wrap" style="overflow-x:auto">
@@ -581,7 +581,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
           <option value="all">全体人员</option>
           <option value="BB">BB 单位</option><option value="四方">四方 单位</option>
           <option value="财务">财务 单位</option><option value="总管">总管 单位</option>
-          <option value="TB钱包">TB钱包 单位</option>
+          <option value="TB钱包">TB 单位</option>
           <option value="早">早班</option><option value="中">中班</option><option value="晚">晚班</option>
         </select>
       </div>
@@ -603,7 +603,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <input type="hidden" id="sm-name">
       <div class="form-grid">
         <div class="form-row" style="margin:0"><label>单位</label>
-          <select id="sm-unit"><option value="BB">BB</option><option value="四方">四四</option><option value="财务">金银财宝</option><option value="总管">管家</option><option value="TB钱包">TB钱包</option></select>
+          <select id="sm-unit"><option value="BB">BB</option><option value="四方">四四</option><option value="财务">金银财宝</option><option value="总管">管家</option><option value="TB钱包">TB</option></select>
         </div>
       </div>
       <div class="form-grid" style="margin-top:10px">
@@ -762,7 +762,7 @@ let fShift='全部',fUnit='全部',sortKey='score',openIdx=null;
 
 /* Stable public code: same person keeps the same code across all periods. */
 function unitLabel(unit){
-  const map={'四方':'四四','财务':'金银财宝','总管':'管家','BB':'BB','TB钱包':'TB钱包'};
+  const map={'四方':'四四','财务':'金银财宝','总管':'管家','BB':'BB','TB钱包':'TB'};
   return map[unit]||unit;
 }
 function personCode(d){
@@ -1636,7 +1636,7 @@ function renderGradeView(){
   if(!el)return;
   if(!staffScores.length){el.innerHTML='<div class="no-results">此期间暂无人员资料</div>';return}
   const units=['BB','四方','财务','总管','TB钱包'];
-  const unitNames={'BB':'BB','四方':'四四','财务':'金银财宝','总管':'管家','TB钱包':'TB钱包'};
+  const unitNames={'BB':'BB','四方':'四四','财务':'金银财宝','总管':'管家','TB钱包':'TB'};
   const shifts=['早','中','晚','总管'];
   let html='';
   if(gradeViewMode==='split'){
@@ -1683,7 +1683,7 @@ function renderGradeConfigPane(){
     el.innerHTML='<div class="empty-rules">尚未设定级别区间，点击右上角「新增组别设定」，或使用预设（90+=A, 80-89=B, 70-79=C, 0-69=D）</div>';
     return;
   }
-  const unitLabels={all:'全体（预设）',BB:'BB',四方:'四方',财务:'财务',总管:'总管','TB钱包':'TB钱包'};
+  const unitLabels={all:'全体（预设）',BB:'BB',四方:'四方',财务:'财务',总管:'管家','TB钱包':'TB'};
   const grouped={};
   gradeConfigs.forEach(g=>{if(!grouped[g.unit])grouped[g.unit]=[];grouped[g.unit].push(g)});
   el.innerHTML=Object.entries(grouped).map(([unit,configs])=>`
