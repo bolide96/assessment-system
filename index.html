@@ -871,14 +871,19 @@ async function loadPeriods(){
   renderPeriodTabs();
   renderPeriodsPage();
   if(periods.length){
-    const active=periods.find(p=>p.status==='active')||periods[periods.length-1];
-    await selectPeriod(active.id);
+    const isAdmin=currentProfile?.role==='admin';
+    const visiblePeriods=isAdmin?periods:periods.filter(p=>p.status!=='closed');
+    const active=visiblePeriods.find(p=>p.status==='active')||visiblePeriods[visiblePeriods.length-1];
+    if(active) await selectPeriod(active.id);
   }
 }
 
 function renderPeriodTabs(){
   const container=document.getElementById('period-tabs');
-  container.innerHTML=periods.map(p=>{
+  const isAdmin=currentProfile?.role==='admin';
+  // 非admin只显示非封存期间
+  const visiblePeriods=isAdmin?periods:periods.filter(p=>p.status!=='closed');
+  container.innerHTML=visiblePeriods.map(p=>{
     const statusLabel=p.status==='active'?'进行中':p.status==='closed'?'已结束':'草稿';
     const statusCls=`status-${p.status}`;
     return`<button class="period-tab${p.status==='closed'?' closed':''}" id="ptab-${p.id}" onclick="selectPeriod(${p.id})">
