@@ -761,6 +761,19 @@ let baseConfig={base_score:80,max_score:120,perfect_bonus:10,attend_bonus:10,pas
 let fShift='全部',fUnit='全部',sortKey='score',openIdx=null;
 
 /* Stable public code: same person keeps the same code across all periods. */
+async function saveNickname(staffId, val, el){
+  el.style.border='none';
+  el.style.background='none';
+  el.style.borderRadius='0';
+  el.style.padding='0';
+  const nickname = val.trim();
+  const {error} = await sbAdmin.from('staff').update({nickname: nickname||null}).eq('id', staffId);
+  if(error){toast('昵称保存失败',true);return;}
+  // Update local data
+  staffScores.forEach(d=>{if(d.staff_id===staffId)d.nickname=nickname;});
+  toast('昵称已保存');
+}
+
 function unitLabel(unit){
   const map={'四方':'四四','财务':'金银财宝','总管':'管家','BB':'BB','TB钱包':'TB'};
   return map[unit]||unit;
@@ -935,11 +948,11 @@ gradeTab.style.display=canSeeGrade?'':'none';
 /* ── STAFF SCORES ── */
 async function loadStaffScores(){
   if(!currentPeriodId)return;
-  const {data,error}=await sb.from('staff_scores').select('*,staff(id,name,unit,code)').eq('period_id',currentPeriodId);
+  const {data,error}=await sb.from('staff_scores').select('*,staff(id,name,unit,code,nickname)').eq('period_id',currentPeriodId);
   if(error){toast('载入人员资料失败：'+error.message,true);staffScores=[];renderQuery();return;}
   staffScores=(data||[]).map(r=>({
     id:r.id,staff_id:r.staff_id,
-    name:r.staff?.name||'',unit:r.staff?.unit||'',code:r.staff?.code||'',
+    name:r.staff?.name||'',unit:r.staff?.unit||'',code:r.staff?.code||'',nickname:r.staff?.nickname||'',
     shift:r.shift,base:r.base_score,
     perfect:r.perfect,attendance:r.attendance,
     jinsun:r.jinsun,score:r.score,score2:r.score2,
@@ -1175,7 +1188,7 @@ function renderQuery(){
     const dEncoded=encodeURIComponent(JSON.stringify(d));
     if(!scoreVisible){
       return`<tr onclick="toggleDetail(${i},'${dEncoded}')" id="qrow-${i}">
-        <td><span style="font-weight:500">${shortName}</span>${uTag}</td>
+        <td><div style="display:flex;flex-direction:column;gap:1px"><span style="font-weight:500">${shortName}${uTag}</span>${d.nickname?`<span style="font-size:11px;color:var(--ink3)">${d.nickname}</span>`:''}</div></td>
         <td class="c"><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
         <td><span style="color:var(--ink3);font-size:13px">未结算</span></td>
         <td class="c"><span style="color:var(--ink3)">—</span></td>
@@ -1186,7 +1199,7 @@ function renderQuery(){
     const cls=scoreClass(d.score||0);const bc=barColor(d.score||0);
     const pct=Math.round((d.score2||0)/maxS*100);
     return`<tr onclick="toggleDetail(${i},'${dEncoded}')" id="qrow-${i}">
-      <td><span style="font-weight:500">${shortName}</span>${uTag}</td>
+      <td><div style="display:flex;flex-direction:column;gap:1px"><span style="font-weight:500">${shortName}${uTag}</span>${d.nickname?`<span style="font-size:11px;color:var(--ink3)">${d.nickname}</span>`:''}</div></td>
       <td class="c"><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td class="c">${gradeBadgeHtml(d)}</td>
       <td><div style="display:flex;align-items:center;gap:8px"><span class="score-num ${cls}">${d.score||0}</span><div style="flex:1"><div class="score-bar-bg"><div class="score-bar-fill" style="width:${pct}%;background:${bc}"></div></div></div></div></td>
@@ -1264,7 +1277,7 @@ function getMonthConfig(){
 
 function renderStaffTable(){
   document.getElementById('staff-thead').innerHTML=`<tr>
-    <th style="width:120px">代码</th><th style="width:80px">单位</th><th style="width:60px">班别</th><th style="width:60px">起始分</th>
+    <th style="width:110px">代码</th><th style="width:80px">昵称</th><th style="width:75px">单位</th><th style="width:55px">班别</th><th style="width:55px">起始分</th>
     <th style="width:70px">操作</th>
   </tr>`;
   const tb=document.getElementById('staff-tbody');
@@ -1275,10 +1288,11 @@ function renderStaffTable(){
   else if(staffSortKey==='shift')list=[...list].sort((a,b)=>a.shift.localeCompare(b.shift,'zh'));
   else list=[...list].sort((a,b)=>(b[staffSortKey]||0)-(a[staffSortKey]||0));
   document.getElementById('staff-count').textContent=`共 ${list.length} 人`;
-  if(!list.length){tb.innerHTML=`<tr><td colspan="5" class="loading-state">此期间暂无人员资料，请新增或汇入</td></tr>`;return}
+  if(!list.length){tb.innerHTML=`<tr><td colspan="6" class="loading-state">此期间暂无人员资料，请新增或汇入</td></tr>`;return}
   tb.innerHTML=list.map(d=>{
     return`<tr>
       <td style="font-weight:500">${d.code||'—'}</td>
+      <td><input value="${d.nickname||''}" placeholder="—" style="border:none;background:none;font-size:13px;color:var(--ink3);width:100%;font-family:var(--ff);outline:none;cursor:pointer" onclick="this.style.border='1px solid var(--border)';this.style.background='var(--surface)';this.style.borderRadius='4px';this.style.padding='2px 6px'" onblur="saveNickname(${d.staff_id},this.value,this)" onfocus="this.select()"></td>
       <td><span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span></td>
       <td><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td>${d.base||80}</td>
@@ -1667,7 +1681,7 @@ function renderGradeBlock(title,list){
     return`<div class="grade-col">
       <div class="grade-col-head g${g}"><span>${g} 级</span><span style="font-size:11px;opacity:.7">${people.length} 人</span></div>
       <div class="grade-col-body">
-        ${people.length?people.map(d=>`<div class="grade-person"><span style="font-weight:500">${personCode(d)}</span><span style="font-family:var(--ffs);font-size:12px;color:var(--ink3)">${d.score2||d.score||0}分</span></div>`).join(''):'<div style="padding:8px;font-size:12px;color:var(--ink3);text-align:center">—</div>'}
+        ${people.length?people.map(d=>`<div class="grade-person"><div style="display:flex;flex-direction:column;gap:1px"><span style="font-weight:500">${personCode(d)}</span>${d.nickname?`<span style="font-size:10px;color:var(--ink3)">${d.nickname}</span>`:''}</div><span style="font-family:var(--ffs);font-size:12px;color:var(--ink3)">${d.score2||d.score||0}分</span></div>`).join(''):'<div style="padding:8px;font-size:12px;color:var(--ink3);text-align:center">—</div>'}
       </div>
     </div>`;
   }).join('');
