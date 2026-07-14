@@ -381,7 +381,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     <div class="filters" id="edit-filters" style="margin-bottom:8px"></div>
     <div class="sort-row">
       <span class="sort-label">排序</span>
-      <button class="sort-btn active" onclick="setEditSort('score2',this)">含干部分↓</button>
+      <button class="sort-btn active" onclick="setEditSort('score2',this)">含老师分↓</button>
       <button class="sort-btn" onclick="setEditSort('score',this)">基础分↓</button>
       <button class="sort-btn" onclick="setEditSort('jinsun',this)">金损↓</button>
       <button class="sort-btn" onclick="setEditSort('name',this)">姓名</button>
@@ -623,7 +623,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
 <!-- Mgr bonus modal -->
 <div class="modal-bg" id="mgr-modal">
   <div class="modal" style="max-width:420px">
-    <div class="modal-head"><h3 id="mgr-title">干部加减分</h3><button onclick="closeModal('mgr-modal')">×</button></div>
+    <div class="modal-head"><h3 id="mgr-title">老师加减分</h3><button onclick="closeModal('mgr-modal')">×</button></div>
     <div class="modal-body">
       <input type="hidden" id="mgr-staff-id">
       <div class="form-row"><label>加減分值</label><input id="mgr-pts" type="number" placeholder="正數為加分，負數為扣分" style="width:100%"></div>
@@ -656,7 +656,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     <div class="modal-head"><h3 id="cm-title">综合评语</h3><button onclick="closeModal('comment-modal')">×</button></div>
     <div class="modal-body">
       <input type="hidden" id="cm-staff-id">
-      <div class="form-row"><label>综合评语</label><textarea id="cm-comment" placeholder="干部综合评述…" style="min-height:100px"></textarea></div>
+      <div class="form-row"><label>综合评语</label><textarea id="cm-comment" placeholder="老师综合评述…" style="min-height:100px"></textarea></div>
     </div>
     <div class="modal-foot">
       <button class="btn-cancel" onclick="closeModal('comment-modal')">取消</button>
@@ -1095,7 +1095,7 @@ function renderEditPage(){
   document.getElementById('edit-thead').innerHTML=`<tr>
     <th>人员</th><th style="width:60px">班别</th><th style="width:60px">总分</th>
     ${mc.labels.map(m=>`<th style="width:52px">${m}</th>`).join('')}
-    <th style="width:52px">无失误</th><th style="width:52px">出勤</th><th style="width:80px">综合评语</th><th style="width:80px">干部加减</th>
+    <th style="width:52px">无失误</th><th style="width:52px">出勤</th><th style="width:80px">综合评语</th><th style="width:80px">老师加减</th>
     <th style="width:75px">最终分数</th><th style="width:65px">最终排名</th>
   </tr>`;
 
@@ -1130,7 +1130,7 @@ function renderEditPage(){
       <td class="c" style="cursor:pointer" title="点击切换无失误奖励" onclick="togglePerfect(${d.id},${d.perfect||0});setTimeout(renderEditPage,300)">${pf}</td>
       <td class="c" style="cursor:pointer" title="点击切换出勤奖励" onclick="toggleAttend(${d.id},${d.attendance||0});setTimeout(renderEditPage,300)">${at}</td>
       <td class="c" style="cursor:pointer;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:${d.comment?'var(--ink2)':'var(--ink3)'}" onclick="openCommentModal(${d.id})" title="${d.comment||'点击填写评语'}">${d.comment?'✎ '+d.comment.slice(0,6)+(d.comment.length>6?'…':''):'✎ 填写'}</td>
-      <td class="c" style="cursor:pointer;font-size:12px;font-weight:500;color:${(d.mgr_bonus||0)>0?'var(--green)':(d.mgr_bonus||0)<0?'var(--red)':'var(--ink3)'}" onclick="openMgrModal(${d.id})" title="${d.mgr_note||'点击编辑干部加减分'}">${(d.mgr_bonus||0)>0?'+'+d.mgr_bonus:(d.mgr_bonus||0)<0?d.mgr_bonus:'✎ —'}</td>
+      <td class="c" style="cursor:pointer;font-size:12px;font-weight:500;color:${(d.mgr_bonus||0)>0?'var(--green)':(d.mgr_bonus||0)<0?'var(--red)':'var(--ink3)'}" onclick="openMgrModal(${d.id})" title="${d.mgr_note||'点击编辑老师加减分'}">${ (()=>{ const total=(d.mgr_bonus||0)+(d.analysis_total||0); return total>0?'+'+total:total<0?total:'✎ —'; })() }</td>
       <td class="c"><span class="score-num ${scoreClass(d.score2||0)}">${d.score2||0}</span></td>
       <td class="c">${rankBadge(finalRankMap[d.id]||'—')}</td>
     </tr>`;
@@ -1264,7 +1264,7 @@ function toggleDetail(i,enc){
           <div class="score-item"><span>半年度无失误奖励</span><span style="color:${(d.perfect||0)>0?'var(--green)':'var(--ink3)'}">${(d.perfect||0)>0?'+'+(d.perfect||0):'×'}</span></div>
           <div class="score-item"><span>半年度出勤正常</span><span style="color:${(d.attendance||0)>0?'var(--green)':'var(--ink3)'}">${(d.attendance||0)>0?'+'+(d.attendance||0):'×'}</span></div>
           <div class="score-item" style="border-top:1px solid var(--border);margin-top:2px"><span style="font-weight:500">总分</span><span style="font-size:15px;font-family:var(--ffs);font-weight:600">${calcScore(d).score}</span></div>
-          <div class="score-item" style="background:var(--surface2)"><span style="font-weight:500">级别${d.grade_override?'（干部指定）':'（自动）'}</span><span class="grade-badge grade-${getEffectiveGrade(d).grade}">${getEffectiveGrade(d).grade}</span></div>
+          <div class="score-item" style="background:var(--surface2)"><span style="font-weight:500">级别${d.grade_override?'（老师指定）':'（自动）'}</span><span class="grade-badge grade-${getEffectiveGrade(d).grade}">${getEffectiveGrade(d).grade}</span></div>
         </div>
         ${currentProfile?.role==='admin'?`<div style="margin-top:8px;display:flex;align-items:center;gap:8px">
           <span style="font-size:12px;color:var(--ink3)">手动覆盖：</span>
@@ -1472,7 +1472,7 @@ async function toggleAttend(staffScoreId,current){
 function openMgrModal(staffScoreId){
   const d=staffScores.find(x=>x.id===staffScoreId);if(!d)return;
   const shortName=personCode(d);
-  document.getElementById('mgr-title').textContent=`${shortName} · 干部加减分`;
+  document.getElementById('mgr-title').textContent=`${shortName}${d.nickname?' · '+d.nickname:''} · 老师加减分`;
   document.getElementById('mgr-staff-id').value=staffScoreId;
   document.getElementById('mgr-pts').value=d.mgr_bonus||0;
   document.getElementById('mgr-note').value=d.mgr_note||'';
@@ -1524,11 +1524,11 @@ async function saveMgrBonus(){
   const oldMgr=d.mgr_bonus||0;
   const mgrOldDesc=oldMgr===0?'无':`${oldMgr>0?'+':''}${oldMgr}分${d.mgr_note?'('+d.mgr_note+')':''}`;
   const mgrNewDesc=mgr_bonus===0?'取消':`${mgr_bonus>0?'+':''}${mgr_bonus}分${mgr_note?'('+mgr_note+')':''}`;
-  logAudit(d.name,'干部加减分',mgrOldDesc,mgrNewDesc);
+  logAudit(d.name,'老师加减分',mgrOldDesc,mgrNewDesc);
   d.mgr_bonus=mgr_bonus;d.mgr_note=mgr_note;d.score2=score2;
   closeModal('mgr-modal');
   renderEditPage();
-  toast('干部加减分已保存');
+  toast('老师加减分已保存');
 }
 
 function openCommentModal(staffScoreId){
@@ -2271,7 +2271,7 @@ function exportToExcel(){
     '固定代号':personCode(d),'单位':d.unit,'班次':d.shift,
     '总分':d.score2,'原始分':d.score,'起始分':d.base||80,
     '无失误奖励':d.perfect||0,'出勤奖励':d.attendance||0,
-    '干部加减分':d.mgr_bonus||0,'金损金额':d.jinsun||0,
+    '老师加减分':d.mgr_bonus||0,'金损金额':d.jinsun||0,
     '班内排名':d.rank2||'—','备注':d.comment||''
   }));
   if(!rows.length){toast('目前没有资料可导出',true);return}
