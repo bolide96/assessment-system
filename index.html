@@ -627,7 +627,21 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     <div class="modal-body">
       <input type="hidden" id="mgr-staff-id">
       <div class="form-row"><label>加減分值</label><input id="mgr-pts" type="number" placeholder="正數為加分，負數為扣分" style="width:100%"></div>
-      <div class="form-row"><label>備註說明</label><textarea id="mgr-note" placeholder="填寫原因或說明…" style="min-height:80px"></textarea></div>
+      <div class="form-row"><label>備註說明</label><textarea id="mgr-note" placeholder="填寫原因或說明…" style="min-height:60px"></textarea></div>
+      <div style="height:1px;background:var(--border);margin:12px 0"></div>
+      <div style="font-size:11px;color:var(--ink3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">报名分析加减分（每月）</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:8px" id="analysis-grid">
+        <div><div style="font-size:10px;color:var(--ink3);text-align:center;margin-bottom:3px" id="analysis-m1-label">月1</div><input id="analysis-m1" type="number" placeholder="0" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:4px;font-size:12px;text-align:center;font-family:var(--ff);outline:none" oninput="updateAnalysisTotal()"></div>
+        <div><div style="font-size:10px;color:var(--ink3);text-align:center;margin-bottom:3px" id="analysis-m2-label">月2</div><input id="analysis-m2" type="number" placeholder="0" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:4px;font-size:12px;text-align:center;font-family:var(--ff);outline:none" oninput="updateAnalysisTotal()"></div>
+        <div><div style="font-size:10px;color:var(--ink3);text-align:center;margin-bottom:3px" id="analysis-m3-label">月3</div><input id="analysis-m3" type="number" placeholder="0" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:4px;font-size:12px;text-align:center;font-family:var(--ff);outline:none" oninput="updateAnalysisTotal()"></div>
+        <div><div style="font-size:10px;color:var(--ink3);text-align:center;margin-bottom:3px" id="analysis-m4-label">月4</div><input id="analysis-m4" type="number" placeholder="0" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:4px;font-size:12px;text-align:center;font-family:var(--ff);outline:none" oninput="updateAnalysisTotal()"></div>
+        <div><div style="font-size:10px;color:var(--ink3);text-align:center;margin-bottom:3px" id="analysis-m5-label">月5</div><input id="analysis-m5" type="number" placeholder="0" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:4px;font-size:12px;text-align:center;font-family:var(--ff);outline:none" oninput="updateAnalysisTotal()"></div>
+        <div><div style="font-size:10px;color:var(--ink3);text-align:center;margin-bottom:3px" id="analysis-m6-label">月6</div><input id="analysis-m6" type="number" placeholder="0" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:4px;font-size:12px;text-align:center;font-family:var(--ff);outline:none" oninput="updateAnalysisTotal()"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface2);border-radius:4px;font-size:12px">
+        <span style="color:var(--ink3)">报名分析合计</span>
+        <span id="analysis-total" style="font-weight:600;font-size:14px;color:var(--ink)">0</span>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn-cancel" onclick="closeModal('mgr-modal')">取消</button>
@@ -961,6 +975,13 @@ async function loadStaffScores(){
     jul:r.jul,aug:r.aug,sep:r.sep,oct:r.oct,nov:r.nov,dec:r.dec,
     jan:r.jan,feb:r.feb,mar:r.mar,apr:r.apr,may:r.may,jun:r.jun,
     month_detail:r.month_detail||{},
+    grade:r.grade||'',grade_override:r.grade_override||false,
+    nickname:r.staff?.nickname||'',
+    analysis_jul:r.analysis_jul||0,analysis_aug:r.analysis_aug||0,analysis_sep:r.analysis_sep||0,
+    analysis_oct:r.analysis_oct||0,analysis_nov:r.analysis_nov||0,analysis_dec:r.analysis_dec||0,
+    analysis_jan:r.analysis_jan||0,analysis_feb:r.analysis_feb||0,analysis_mar:r.analysis_mar||0,
+    analysis_apr:r.analysis_apr||0,analysis_may:r.analysis_may||0,analysis_jun_a:r.analysis_jun||0,
+    analysis_total:r.analysis_total||0,
   }));
   staffScores.forEach(d=>{const c=calcScore(d);d.score=c.score;d.score2=c.score2;});
   // 检视者权限：每次直接查数据库取最新 edit_scope（sbAdmin 用 service_role 绕过 RLS）
@@ -1102,7 +1123,7 @@ function renderEditPage(){
     const at=d.attendance>0?`<span style="color:var(--green);font-size:15px">✓</span>`:`<span style="color:var(--border);font-size:15px">○</span>`;
     const shortName=personCode(d);
     return`<tr>
-      <td style="font-weight:500">${shortName}<span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span></td>
+      <td style="font-weight:500"><div style="display:flex;flex-direction:column;gap:1px"><span>${shortName}<span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span></span>${d.nickname?`<span style="font-size:10px;color:var(--ink3);font-weight:400">${d.nickname}</span>`:''}</div></td>
       <td><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td><span class="score-num ${cls}">${d.score||0}</span></td>
       ${monthCells}
@@ -1307,7 +1328,7 @@ function renderStaffTable(){
 function calcScore(d){
   const mc=getMonthConfig();
   const monthTotal=mc.keys.reduce((s,k)=>s+(d[k]||0),0);
-  return{score:(d.base||80)+(d.perfect||0)+(d.attendance||0)+monthTotal,score2:(d.base||80)+(d.perfect||0)+(d.attendance||0)+monthTotal+(d.mgr_bonus||0)};
+  return{score:(d.base||80)+(d.perfect||0)+(d.attendance||0)+monthTotal,score2:(d.base||80)+(d.perfect||0)+(d.attendance||0)+monthTotal+(d.mgr_bonus||0)+(d.analysis_total||0)};
 }
 
 let mmEntries=[];
@@ -1455,7 +1476,29 @@ function openMgrModal(staffScoreId){
   document.getElementById('mgr-staff-id').value=staffScoreId;
   document.getElementById('mgr-pts').value=d.mgr_bonus||0;
   document.getElementById('mgr-note').value=d.mgr_note||'';
+  // Set month labels and values based on period
+  const p=periods.find(x=>x.id===currentPeriodId);
+  const isFirstHalf=p?.half==='上半年';
+  const monthLabels=isFirstHalf?['1月','2月','3月','4月','5月','6月']:['7月','8月','9月','10月','11月','12月'];
+  const monthKeys=isFirstHalf?['analysis_jan','analysis_feb','analysis_mar','analysis_apr','analysis_may','analysis_jun']:['analysis_jul','analysis_aug','analysis_sep','analysis_oct','analysis_nov','analysis_dec'];
+  for(let i=1;i<=6;i++){
+    document.getElementById(`analysis-m${i}-label`).textContent=monthLabels[i-1];
+    document.getElementById(`analysis-m${i}`).value=d[monthKeys[i-1]]||'';
+  }
+  updateAnalysisTotal();
   document.getElementById('mgr-modal').classList.add('open');
+}
+
+function updateAnalysisTotal(){
+  let sum=0;
+  for(let i=1;i<=6;i++){
+    const v=parseFloat(document.getElementById(`analysis-m${i}`)?.value)||0;
+    sum+=v;
+    const inp=document.getElementById(`analysis-m${i}`);
+    if(inp){inp.style.color=v>0?'var(--green)':v<0?'var(--red)':'var(--ink)';inp.style.borderColor=v>0?'#a8dfc2':v<0?'#f5c6c0':'var(--border)';inp.style.background=v>0?'var(--green-bg)':v<0?'var(--red-bg)':'var(--surface)';}
+  }
+  const el=document.getElementById('analysis-total');
+  if(el){el.textContent=(sum>0?'+':'')+sum;el.style.color=sum>0?'var(--green)':sum<0?'var(--red)':'var(--ink)';}
 }
 
 async function saveMgrBonus(){
@@ -1463,8 +1506,20 @@ async function saveMgrBonus(){
   const mgr_bonus=+document.getElementById('mgr-pts').value||0;
   const mgr_note=document.getElementById('mgr-note').value.trim();
   const d=staffScores.find(x=>x.id===id);if(!d)return;
-  const score2=calcScore(d).score+mgr_bonus;
-  const {error}=await sb.from('staff_scores').update({mgr_bonus,mgr_note,score2}).eq('id',id);
+  // Collect analysis data
+  const p=periods.find(x=>x.id===currentPeriodId);
+  const isFirstHalf=p?.half==='上半年';
+  const aKeys=isFirstHalf?['analysis_jan','analysis_feb','analysis_mar','analysis_apr','analysis_may','analysis_jun']:['analysis_jul','analysis_aug','analysis_sep','analysis_oct','analysis_nov','analysis_dec'];
+  const analysisData={};
+  let analysisTotal=0;
+  for(let i=1;i<=6;i++){
+    const v=parseFloat(document.getElementById(`analysis-m${i}`)?.value)||0;
+    analysisData[aKeys[i-1]]=v;
+    analysisTotal+=v;
+  }
+  analysisData.analysis_total=analysisTotal;
+  const score2=calcScore(d).score+mgr_bonus+analysisTotal;
+  const {error}=await sb.from('staff_scores').update({mgr_bonus,mgr_note,score2,...analysisData}).eq('id',id);
   if(error){toast('保存失败：'+error.message,true);return}
   const oldMgr=d.mgr_bonus||0;
   const mgrOldDesc=oldMgr===0?'无':`${oldMgr>0?'+':''}${oldMgr}分${d.mgr_note?'('+d.mgr_note+')':''}`;
