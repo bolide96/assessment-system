@@ -2332,6 +2332,17 @@ function logAudit(staffName,fieldName,oldVal,newVal){
     period_name:entry.periodName
   }).then(()=>{}).catch(()=>{});
 }
+function getLogDisplayName(staffName){
+  // Try to find by name in staffScores
+  const d = staffScores.find(x => x.name === staffName);
+  if(d){
+    const code = d.code || personCode(d);
+    return d.nickname ? `${code} · ${d.nickname}` : code;
+  }
+  // Fallback: return as-is
+  return staffName || '—';
+}
+
 async function loadAuditLogs(){
   const filterPeriod=document.getElementById('log-period-filter')?.value||'';
   // 刷新期间下拉
@@ -2350,7 +2361,7 @@ async function loadAuditLogs(){
     count.textContent=`本次会话共 ${rows.length} 笔`;
     el.innerHTML=rows.length
       ?`<table class="users-table"><thead><tr><th>时间</th><th>操作人</th><th>人员</th><th>项目</th><th>改前</th><th>改后</th><th>期间</th></tr></thead><tbody>${
-        rows.map(r=>`<tr><td style="font-size:11px">${r.ts}</td><td>${r.operator}</td><td>${r.staffName}</td><td>${r.fieldName}</td><td style="color:var(--red)">${r.oldVal}</td><td style="color:var(--green)">${r.newVal}</td><td>${r.periodName}</td></tr>`).join('')
+        rows.map(r=>`<tr><td style="font-size:11px">${r.ts}</td><td>${r.operator}</td><td>${getLogDisplayName(r.staffName)}</td><td>${r.fieldName}</td><td style="color:var(--red)">${r.oldVal}</td><td style="color:var(--green)">${r.newVal}</td><td>${r.periodName}</td></tr>`).join('')
       }</tbody></table>`
       :'<div style="color:var(--ink3);padding:20px;text-align:center">本次会话暂无操作记录</div>';
     return;
@@ -2358,7 +2369,7 @@ async function loadAuditLogs(){
   count.textContent=`共 ${data.length} 笔`;
   el.innerHTML=data.length
     ?`<table class="users-table"><thead><tr><th>时间</th><th>操作人</th><th>人员</th><th>项目</th><th>改前</th><th>改后</th><th>期间</th></tr></thead><tbody>${
-      data.map(r=>`<tr><td style="font-size:11px">${new Date(r.created_at).toLocaleString('zh-TW')}</td><td>${r.operator||''}</td><td>${r.staff_name||''}</td><td>${r.field_name||''}</td><td style="color:var(--red)">${r.old_val||''}</td><td style="color:var(--green)">${r.new_val||''}</td><td>${r.period_name||''}</td></tr>`).join('')
+      data.map(r=>`<tr><td style="font-size:11px">${new Date(r.created_at).toLocaleString('zh-TW')}</td><td>${r.operator||''}</td><td>${getLogDisplayName(r.staff_name)}</td><td>${r.field_name||''}</td><td style="color:var(--red)">${r.old_val||''}</td><td style="color:var(--green)">${r.new_val||''}</td><td>${r.period_name||''}</td></tr>`).join('')
     }</tbody></table>`
     :'<div style="color:var(--ink3);padding:20px;text-align:center">尚无操作记录</div>';
 }
