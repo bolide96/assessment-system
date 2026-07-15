@@ -2333,14 +2333,17 @@ function logAudit(staffName,fieldName,oldVal,newVal){
   }).then(()=>{}).catch(()=>{});
 }
 function getLogDisplayName(staffName){
-  // Try to find by name in staffScores
-  const d = staffScores.find(x => x.name === staffName);
-  if(d){
-    const code = d.code || personCode(d);
-    return d.nickname ? `${code} · ${d.nickname}` : code;
-  }
-  // Fallback: return as-is
-  return staffName || '—';
+  if(!staffName) return '—';
+  const prefixes=['BB-总馆-','BB-四外-','BB-总管-','TB钱包-','TB-','BB-','四方-','财务-','总管-','总馆-'];
+  let pureName=staffName;
+  for(const p of prefixes){if(pureName.startsWith(p)){pureName=pureName.slice(p.length);break;}}
+  const d=staffScores.find(x=>{
+    let xn=x.name;
+    for(const p of prefixes){if(xn.startsWith(p)){xn=xn.slice(p.length);break;}}
+    return xn===pureName;
+  });
+  if(d){const code=d.code||personCode(d);return d.nickname?`${code} · ${d.nickname}`:code;}
+  return pureName||staffName;
 }
 
 async function loadAuditLogs(){
