@@ -2209,15 +2209,20 @@ async function createUser(){
 /* ── 全站 IP 白名单 ── */
 async function checkSiteIpAllowed(){
   try{
-    const {data:siteIps}=await sbAdmin.from('ip_whitelist').select('ip').eq('user_id','site');
-    if(!siteIps||siteIps.length===0)return true; // 未设定时放行所有
+    const {data:siteIps}=await sbAdmin.from('ip_whitelist').select('ip').eq('is_site',true);
+    if(!siteIps||siteIps.length===0)return true; // 未设定白名单时放行所有
     const r=await fetch('https://api.ipify.org?format=json');
     const {ip}=await r.json();
-    return siteIps.some(row=>row.ip===ip);
-  }catch(e){return true;} // 网络异常时放行，避免误封
+    const allowed=siteIps.some(row=>row.ip===ip);
+    if(!allowed)console.log('IP not in whitelist:',ip,'whitelist:',siteIps.map(x=>x.ip));
+    return allowed;
+  }catch(e){
+    console.log('IP check error:',e);
+    return true; // 网络异常时放行
+  }
 }
 async function loadSiteIps(){
-  const {data}=await sbAdmin.from('ip_whitelist').select('*').eq('user_id','site');
+  const {data}=await sbAdmin.from('ip_whitelist').select('*').eq('is_site',true);
   const el=document.getElementById('site-ip-list');
   if(!el)return;
   el.innerHTML=(data||[]).length
@@ -2228,7 +2233,7 @@ async function addSiteIp(){
   const ip=document.getElementById('site-ip-input').value.trim();
   const label=document.getElementById('site-ip-label').value.trim();
   if(!ip){toast('请填写 IP 地址',true);return}
-  await sbAdmin.from('ip_whitelist').insert({user_id:'site',ip,label});
+  await sbAdmin.from('ip_whitelist').insert({is_site:true,ip,label});
   document.getElementById('site-ip-input').value='';document.getElementById('site-ip-label').value='';
   loadSiteIps();toast('✓ IP 已加入白名单');
 }
