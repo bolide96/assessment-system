@@ -2209,16 +2209,29 @@ async function createUser(){
 /* ── 全站 IP 白名单 ── */
 async function checkSiteIpAllowed(){
   try{
-    const {data:siteIps}=await sbAdmin.from('ip_whitelist').select('ip').eq('is_site',true);
-    if(!siteIps||siteIps.length===0)return true; // 未设定白名单时放行所有
-    const r=await fetch('https://api.ipify.org?format=json');
-    const {ip}=await r.json();
-    const allowed=siteIps.some(row=>row.ip===ip);
-    if(!allowed)console.log('IP not in whitelist:',ip,'whitelist:',siteIps.map(x=>x.ip));
+    const {data:siteIps,error:sErr}=await sbAdmin.from('ip_whitelist').select('ip').eq('is_site',true);
+    console.log('[IP Check] siteIps:',siteIps,'error:',sErr);
+    if(sErr||!siteIps||siteIps.length===0)return true; // 未设定白名单时放行所有
+    // Try multiple IP detection services
+    let ip=null;
+    const ipServices=['https://api.ipify.org?format=json','https://api64.ipify.org?format=json'];
+    for(const svc of ipServices){
+      try{
+        const r=await fetch(svc,{signal:AbortSignal.timeout(5000)});
+        const d=await r.json();
+        if(d.ip){ip=d.ip;break;}
+      }catch(e){console.log('[IP Check] service failed:',svc,e);}
+    }
+    if(!ip){
+      console.log('[IP Check] Could not detect IP - blocking access');
+      return false; // 无法获取IP时拒绝（改为安全模式）
+    }
+    const allowed=siteIps.some(row=>row.ip===ip||row.ip===ip.replace('::ffff:',''));
+    console.log('[IP Check] detected IP:',ip,'allowed:',allowed,'whitelist:',siteIps.map(x=>x.ip));
     return allowed;
   }catch(e){
-    console.log('IP check error:',e);
-    return true; // 网络异常时放行
+    console.log('[IP Check] fatal error:',e);
+    return false; // 出错时拒绝（安全模式）
   }
 }
 async function loadSiteIps(){
