@@ -2338,21 +2338,26 @@ async function addCurrentIpToSite(){
 /* ── ACCOUNT ── */
 
 async function loadMfaStatus(){
-  if(!currentUser)return;
-  const {data,error}=await sb.auth.mfa.listFactors();
-  const totp=data?.totp?.[0];
   const statusEl=document.getElementById('mfa-status');
   const setupBtn=document.getElementById('mfa-setup-btn');
   const removeBtn=document.getElementById('mfa-remove-btn');
   if(!statusEl)return;
-  if(totp&&totp.status==='verified'){
-    statusEl.innerHTML='<span style="color:var(--green)">✓ 已绑定 Google Authenticator</span>';
-    setupBtn.style.display='none';
-    removeBtn.style.display='';
-  } else {
-    statusEl.textContent='尚未绑定两步验证';
-    setupBtn.style.display='';
-    removeBtn.style.display='none';
+  if(!currentUser){statusEl.textContent='请先登入';return;}
+  try{
+    const {data,error}=await sb.auth.mfa.listFactors();
+    if(error){statusEl.textContent='无法检查验证状态';return;}
+    const totp=(data?.totp||[]).find(f=>f.status==='verified');
+    if(totp){
+      statusEl.innerHTML='<span style="color:var(--green)">✓ 已绑定 Google Authenticator</span>';
+      if(setupBtn)setupBtn.style.display='none';
+      if(removeBtn)removeBtn.style.display='';
+    } else {
+      statusEl.textContent='尚未绑定两步验证';
+      if(setupBtn)setupBtn.style.display='';
+      if(removeBtn)removeBtn.style.display='none';
+    }
+  }catch(e){
+    statusEl.textContent='检查失败：'+e.message;
   }
 }
 
