@@ -2233,7 +2233,8 @@ async function addSiteIp(){
   const ip=document.getElementById('site-ip-input').value.trim();
   const label=document.getElementById('site-ip-label').value.trim();
   if(!ip){toast('请填写 IP 地址',true);return}
-  await sbAdmin.from('ip_whitelist').insert({is_site:true,ip,label});
+  const {error}=await sbAdmin.from('ip_whitelist').insert({is_site:true,ip,label});
+  if(error){toast('新增失败：'+error.message,true);console.error('addSiteIp error:',error);return;}
   document.getElementById('site-ip-input').value='';document.getElementById('site-ip-label').value='';
   loadSiteIps();toast('✓ IP 已加入白名单');
 }
