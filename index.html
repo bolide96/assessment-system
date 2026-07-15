@@ -817,6 +817,11 @@ async function doLogin(){
   ];
   const local=LOCAL_ACCOUNTS.find(a=>a.email.toLowerCase()===email.toLowerCase()&&a.password===pw.trim());
   if(local){
+    const ipAllowed=await checkSiteIpAllowed();
+    if(!ipAllowed){
+      errEl.textContent='当前 IP 不在白名单内，无法登入';
+      errEl.style.display='block';btn.textContent='登入';btn.disabled=false;return;
+    }
     currentUser={id:'local-admin',email:local.email};
     currentProfile={id:'local-admin',email:local.email,role:local.role,name:local.name,edit_scope:'all'};
     sessionStorage.setItem('localProfile',JSON.stringify(currentProfile));
