@@ -2339,7 +2339,8 @@ async function addCurrentIpToSite(){
 
 async function loadMfaStatus(){
   if(!currentUser)return;
-  const {data}=await sb.auth.mfa.listFactors();
+  const {data,error}=await sb.auth.mfa.listFactors();
+  console.log('[MFA] listFactors data:',data,'error:',error);
   const totp=data?.totp?.[0];
   const statusEl=document.getElementById('mfa-status');
   const setupBtn=document.getElementById('mfa-setup-btn');
