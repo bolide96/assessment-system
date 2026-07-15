@@ -271,12 +271,27 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <h1>期末成绩</h1>
       <p>内部专用 · 请登入</p>
     </div>
+    <!-- MFA Step -->
+    <div id="mfa-step" style="display:none">
+      <div class="login-head" style="background:var(--ink);padding:20px 28px">
+        <h1 style="font-size:16px">两步验证</h1>
+        <p style="font-size:12px;color:rgba(255,255,255,.5);margin-top:4px">请输入 Google Authenticator 的 6 位验证码</p>
+      </div>
+      <div style="padding:24px 28px 28px">
+        <div class="login-err" id="mfa-err"></div>
+        <div class="form-row"><label>验证码</label><input id="mfa-code" type="number" placeholder="000000" maxlength="6" style="letter-spacing:4px;font-size:18px;text-align:center" onkeydown="if(event.key==='Enter')verifyMfa()"></div>
+        <button class="btn-login" onclick="verifyMfa()">验证</button>
+        <button onclick="cancelMfa()" style="width:100%;margin-top:8px;padding:8px;background:none;border:1px solid var(--border);border-radius:4px;font-size:13px;cursor:pointer;font-family:var(--ff);color:var(--ink2)">返回登入</button>
+      </div>
+    </div>
+    <div id="login-main-step">
     <div class="login-body">
       <div class="login-err" id="login-err"></div>
       <div class="form-row"><label>帐号</label><input id="login-email" placeholder="例：DU00@sys.com" autocomplete="username"></div>
       <div class="form-row"><label>密码</label><input id="login-pw" type="password" placeholder="请输入密码" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
       <button class="btn-login" id="login-btn" onclick="doLogin()">登入</button>
     </div>
+    </div><!-- end login-main-step -->
   </div>
 </div>
 
@@ -556,6 +571,21 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
   <div id="page-account" class="page">
     <div class="page-hd"><h1>我的帐号</h1><p>修改密码</p></div>
     <div class="account-card">
+      <h3>两步验证（Google Authenticator）</h3>
+      <div id="mfa-status" style="font-size:13px;color:var(--ink3);margin-bottom:12px">检查中…</div>
+      <button class="btn-primary" id="mfa-setup-btn" onclick="setupMfa()" style="display:none">绑定 Google Authenticator</button>
+      <button class="btn-primary" id="mfa-remove-btn" onclick="removeMfa()" style="display:none;background:var(--red);border-color:var(--red)">解除绑定</button>
+      <div id="mfa-qr-area" style="display:none;margin-top:14px;text-align:center">
+        <p style="font-size:13px;color:var(--ink2);margin-bottom:10px">用 Google Authenticator 扫描以下 QR Code：</p>
+        <img id="mfa-qr-img" style="width:180px;height:180px;border:1px solid var(--border);border-radius:4px">
+        <p style="font-size:12px;color:var(--ink3);margin-top:8px;margin-bottom:12px">扫描后输入验证码完成绑定</p>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <input id="mfa-verify-code" type="number" placeholder="000000" style="width:140px;border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-size:16px;text-align:center;letter-spacing:3px;font-family:var(--ff);outline:none">
+          <button class="btn-primary" onclick="confirmMfaSetup()">确认绑定</button>
+        </div>
+      </div>
+    </div>
+    <div class="account-card">
       <h3>修改密码</h3>
       <div class="form-row"><label>新密码</label><input type="password" id="new-pw" placeholder="至少6位"></div>
       <div class="form-row"><label>确认新密码</label><input type="password" id="confirm-pw" placeholder="再次输入"></div>
@@ -806,33 +836,59 @@ function matchesPersonQuery(d,q){
 
 
 /* ── AUTH ── */
+
+let _mfaFactorId = null;
+
+function showMfaStep(){
+  document.getElementById('login-main-step').style.display='none';
+  document.getElementById('mfa-step').style.display='block';
+  setTimeout(()=>document.getElementById('mfa-code')?.focus(),100);
+}
+
+function cancelMfa(){
+  document.getElementById('mfa-step').style.display='none';
+  document.getElementById('login-main-step').style.display='block';
+  document.getElementById('mfa-code').value='';
+  document.getElementById('mfa-err').style.display='none';
+  _mfaFactorId=null;
+}
+
+async function verifyMfa(){
+  const code=document.getElementById('mfa-code').value.trim();
+  const errEl=document.getElementById('mfa-err');
+  errEl.style.display='none';
+  if(!code||code.length!==6){errEl.textContent='请输入6位验证码';errEl.style.display='block';return;}
+  // Get MFA factors
+  const {data:factors}=await sb.auth.mfa.listFactors();
+  const totp=factors?.totp?.[0];
+  if(!totp){errEl.textContent='未设定验证器，请联系管理员';errEl.style.display='block';return;}
+  // Create challenge
+  const {data:challenge,error:cErr}=await sb.auth.mfa.challenge({factorId:totp.id});
+  if(cErr){errEl.textContent='验证失败：'+cErr.message;errEl.style.display='block';return;}
+  // Verify
+  const {data,error}=await sb.auth.mfa.verify({factorId:totp.id,challengeId:challenge.id,code});
+  if(error){errEl.textContent='验证码错误，请重试';errEl.style.display='block';document.getElementById('mfa-code').value='';return;}
+  // MFA passed - continue login
+  const {data:{session}}=await sb.auth.getSession();
+  if(session?.user) await loadProfile(session.user);
+}
 async function doLogin(){
   const email=document.getElementById('login-email').value.trim();
   const pw=document.getElementById('login-pw').value;
   const errEl=document.getElementById('login-err');
   const btn=document.getElementById('login-btn');
   errEl.style.display='none';btn.textContent='登入中…';btn.disabled=true;
-  const LOCAL_ACCOUNTS=[
-    {email:'admin',password:'Admin2025',name:'系统管理员',role:'admin'},
-  ];
-  const local=LOCAL_ACCOUNTS.find(a=>a.email.toLowerCase()===email.toLowerCase()&&a.password===pw.trim());
-  if(local){
-    const ipAllowed=await checkSiteIpAllowed();
-    if(!ipAllowed){
-      errEl.textContent='当前 IP 不在白名单内，无法登入';
-      errEl.style.display='block';btn.textContent='登入';btn.disabled=false;return;
-    }
-    currentUser={id:'local-admin',email:local.email};
-    currentProfile={id:'local-admin',email:local.email,role:local.role,name:local.name,edit_scope:'all'};
-    sessionStorage.setItem('localProfile',JSON.stringify(currentProfile));
-    showApp();return;
-  }
-  if(email.toLowerCase()==='admin'){
-    errEl.textContent='密码错误，当前密码为 Admin2025（区分大小写）';
-    errEl.style.display='block';btn.textContent='登入';btn.disabled=false;return;
-  }
+
+
   const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
   if(error){errEl.textContent='帐号或密码错误';errEl.style.display='block';btn.textContent='登入';btn.disabled=false;return}
+  // Check if MFA is required
+  if(data?.session===null && data?.user===null){
+    // MFA required - show OTP input
+    showMfaStep();
+    btn.textContent='登入';btn.disabled=false;
+    return;
+  }
   currentUser=data.user;
   const ipAllowed=await checkSiteIpAllowed();
   if(!ipAllowed){
@@ -1048,6 +1104,7 @@ function switchPage(id,el){
   if(id==='staff')renderStaffTable();
   if(id==='periods')renderPeriodsPage();
   if(id==='grade-view')renderGradeView();
+  if(id==='account'){detectIp();loadMfaStatus();}
 }
 
 let editFShift='全部',editFUnit='全部',editSortKey='score2';
@@ -2279,6 +2336,58 @@ async function addCurrentIpToSite(){
 }
 
 /* ── ACCOUNT ── */
+
+async function loadMfaStatus(){
+  if(!currentUser)return;
+  const {data}=await sb.auth.mfa.listFactors();
+  const totp=data?.totp?.[0];
+  const statusEl=document.getElementById('mfa-status');
+  const setupBtn=document.getElementById('mfa-setup-btn');
+  const removeBtn=document.getElementById('mfa-remove-btn');
+  if(!statusEl)return;
+  if(totp&&totp.status==='verified'){
+    statusEl.innerHTML='<span style="color:var(--green)">✓ 已绑定 Google Authenticator</span>';
+    setupBtn.style.display='none';
+    removeBtn.style.display='';
+  } else {
+    statusEl.textContent='尚未绑定两步验证';
+    setupBtn.style.display='';
+    removeBtn.style.display='none';
+  }
+}
+
+let _mfaEnrollId=null;
+
+async function setupMfa(){
+  const {data,error}=await sb.auth.mfa.enroll({factorType:'totp',friendlyName:'Google Authenticator'});
+  if(error){toast('绑定失败：'+error.message,true);return;}
+  _mfaEnrollId=data.id;
+  document.getElementById('mfa-qr-img').src=data.totp.qr_code;
+  document.getElementById('mfa-qr-area').style.display='block';
+  document.getElementById('mfa-setup-btn').style.display='none';
+}
+
+async function confirmMfaSetup(){
+  const code=document.getElementById('mfa-verify-code').value.trim();
+  if(!code||code.length!==6){toast('请输入6位验证码',true);return;}
+  const {data:challenge}=await sb.auth.mfa.challenge({factorId:_mfaEnrollId});
+  const {error}=await sb.auth.mfa.verify({factorId:_mfaEnrollId,challengeId:challenge.id,code});
+  if(error){toast('验证码错误，请重试',true);return;}
+  document.getElementById('mfa-qr-area').style.display='none';
+  toast('✓ Google Authenticator 绑定成功！');
+  loadMfaStatus();
+}
+
+async function removeMfa(){
+  if(!confirm('确认解除 Google Authenticator 绑定？'))return;
+  const {data}=await sb.auth.mfa.listFactors();
+  const totp=data?.totp?.[0];
+  if(!totp)return;
+  const {error}=await sb.auth.mfa.unenroll({factorId:totp.id});
+  if(error){toast('解除失败：'+error.message,true);return;}
+  toast('已解除绑定');
+  loadMfaStatus();
+}
 async function changePassword(){
   const pw=document.getElementById('new-pw').value;
   const conf=document.getElementById('confirm-pw').value;
