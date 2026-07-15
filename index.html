@@ -986,6 +986,37 @@ function renderPeriodTabs(){
   }).join('');
 }
 
+function updateGradeTabVisibility(){
+  const gradeTab=document.getElementById('tab-grade-view');
+  if(!gradeTab)return;
+  const p=periods.find(x=>x.id===currentPeriodId);
+  const canSeeGrade=(currentProfile?.role==='admin')||(currentProfile?.grade_access===true&&p?.grade_visible===true);
+  gradeTab.style.display=canSeeGrade?'':'none';
+  if(!canSeeGrade&&document.getElementById('page-grade-view')?.classList.contains('active')){
+    document.querySelectorAll('.topnav-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelector('.topnav-tab').classList.add('active');
+    document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
+    document.getElementById('page-query').classList.add('active');
+  }
+}
+// 重新向资料库确认目前帐号的权限（role / edit_scope / grade_access），
+// 避免使用者靠 sessionStorage 缓存导致管理员改了权限却要等重新登入才生效
+async function refreshCurrentProfile(){
+  if(!currentUser?.id)return;
+  try{
+    const profile=await fetchProfileByUser(currentUser);
+    if(!profile)return;
+    currentProfile={
+      ...currentProfile,
+      role:profile.role||currentProfile.role,
+      edit_scope:profile.edit_scope??currentProfile.edit_scope,
+      grade_access:profile.grade_access||false,
+      name:profile.name||currentProfile.name
+    };
+    sessionStorage.setItem('localProfile',JSON.stringify(currentProfile));
+    updateGradeTabVisibility();
+  }catch(e){/* 静默失败，不影响既有画面 */}
+}
 async function selectPeriod(id){
   currentPeriodId=id;
   document.querySelectorAll('.period-tab').forEach(t=>t.classList.remove('active'));
@@ -1003,18 +1034,7 @@ async function selectPeriod(id){
   renderQuery();
   if(document.getElementById('page-grade-view')?.classList.contains('active'))renderGradeView();
   const gvTitle=document.getElementById('grade-view-title');if(gvTitle&&p)gvTitle.textContent=`${p.name} · 级别总览`;
-  // Control grade-view tab visibility
-  const gradeTab=document.getElementById('tab-grade-view');
-  if(gradeTab){
-    const canSeeGrade=(currentProfile?.role==='admin')||(currentProfile?.grade_access===true&&p?.grade_visible===true);
-gradeTab.style.display=canSeeGrade?'':'none';
-    if(!canSeeGrade&&document.getElementById('page-grade-view')?.classList.contains('active')){
-      document.querySelectorAll('.topnav-tab').forEach(t=>t.classList.remove('active'));
-      document.querySelector('.topnav-tab').classList.add('active');
-      document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
-      document.getElementById('page-query').classList.add('active');
-    }
-  }
+  updateGradeTabVisibility();
   if(document.getElementById('page-settings').classList.contains('active')){
     renderList('deduct');renderList('bonus');
   }
@@ -2530,9 +2550,18 @@ if(_savedLocal){
   currentProfile=JSON.parse(_savedLocal);
   currentUser={id:currentProfile.id,email:currentProfile.email};
   showApp();
+  refreshCurrentProfile(); // 背景重新确认权限（不阻塞画面显示）
 }else{
   sb.auth.getSession().then(({data:{session}})=>{if(session?.user)loadProfile(session.user)});
 }
+// 使用者切回此分页时，顺手重新确认一次权限（例如管理员刚开放了级别权限）
+let _lastProfileRefresh=Date.now();
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&currentUser?.id&&Date.now()-_lastProfileRefresh>30000){
+    _lastProfileRefresh=Date.now();
+    refreshCurrentProfile();
+  }
+});
 </script>
 </body>
 </html>
