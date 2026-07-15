@@ -1104,7 +1104,7 @@ function switchPage(id,el){
   if(id==='staff')renderStaffTable();
   if(id==='periods')renderPeriodsPage();
   if(id==='grade-view')renderGradeView();
-  if(id==='account'){detectIp();loadMfaStatus();}
+  if(id==='account'){detectIp();setTimeout(loadMfaStatus,100);}
 }
 
 let editFShift='全部',editFUnit='全部',editSortKey='score2';
@@ -2340,7 +2340,6 @@ async function addCurrentIpToSite(){
 async function loadMfaStatus(){
   if(!currentUser)return;
   const {data,error}=await sb.auth.mfa.listFactors();
-  console.log('[MFA] listFactors data:',data,'error:',error);
   const totp=data?.totp?.[0];
   const statusEl=document.getElementById('mfa-status');
   const setupBtn=document.getElementById('mfa-setup-btn');
