@@ -858,6 +858,18 @@ function cancelMfa(){
 // 不可以直接放行进入系统。
 async function checkAalAndProceed(user){
   currentUser=user;
+  // IP 白名单是登入的第一道关卡，不管有没有开两步验证都要先过
+  const ipAllowed=await checkSiteIpAllowed();
+  if(!ipAllowed){
+    await sb.auth.signOut();
+    document.getElementById('login-wrap').style.display='flex';
+    document.getElementById('app-wrap').style.display='none';
+    document.getElementById('mfa-step').style.display='none';
+    document.getElementById('login-main-step').style.display='block';
+    document.getElementById('login-err').textContent='当前 IP 不在白名单内，无法使用';
+    document.getElementById('login-err').style.display='block';
+    return;
+  }
   const {data:aalData,error:aalErr}=await sb.auth.mfa.getAuthenticatorAssuranceLevel();
   if(aalErr){
     // 无法确认 AAL 状态时，保守起见视为需要重新登入，避免绕过验证
@@ -865,7 +877,7 @@ async function checkAalAndProceed(user){
     return;
   }
   if(aalData?.nextLevel==='aal2' && aalData?.currentLevel==='aal1'){
-    // 尚未完成两步验证：一律先显示验证码画面，不放行
+    // 已过 IP 白名单，但尚未完成两步验证：显示验证码画面
     document.getElementById('login-wrap').style.display='flex';
     document.getElementById('app-wrap').style.display='none';
     showMfaStep();
@@ -880,8 +892,14 @@ async function verifyMfa(){
   if(!code||code.length!==6){errEl.textContent='请输入6位验证码';errEl.style.display='block';return;}
   // Get MFA factors
   const {data:factors}=await sb.auth.mfa.listFactors();
-  const totp=factors?.totp?.[0];
-  if(!totp){errEl.textContent='未设定验证器，请联系管理员';errEl.style.display='block';return;}
+  const totp=factors?.totp?.find(f=>f.status==='verified');
+  if(!totp){
+    // 帐号被判定需要两步验证，却查不到已绑定的验证器：状态异常，登出并要求重新登入
+    errEl.textContent='验证设定异常，请重新登入或联系管理员';errEl.style.display='block';
+    await sb.auth.signOut();
+    setTimeout(cancelMfa,1500);
+    return;
+  }
   // Create challenge
   const {data:challenge,error:cErr}=await sb.auth.mfa.challenge({factorId:totp.id});
   if(cErr){errEl.textContent='验证失败：'+cErr.message;errEl.style.display='block';return;}
@@ -902,6 +920,13 @@ async function doLogin(){
 
   const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
   if(error){errEl.textContent='帐号或密码错误';errEl.style.display='block';btn.textContent='登入';btn.disabled=false;return}
+  // IP 白名单优先检查，不管是否需要两步验证都要先过这关
+  const ipAllowed=await checkSiteIpAllowed();
+  if(!ipAllowed){
+    await sb.auth.signOut();
+    errEl.textContent='当前 IP 不在白名单内，无法登入';
+    errEl.style.display='block';btn.textContent='登入';btn.disabled=false;return;
+  }
   // Check if MFA is required (check AAL level)
   const {data:aalData}=await sb.auth.mfa.getAuthenticatorAssuranceLevel();
   if(aalData?.nextLevel==='aal2' && aalData?.currentLevel==='aal1'){
@@ -910,12 +935,6 @@ async function doLogin(){
     showMfaStep();
     btn.textContent='登入';btn.disabled=false;
     return;
-  }
-  const ipAllowed=await checkSiteIpAllowed();
-  if(!ipAllowed){
-    await sb.auth.signOut();
-    errEl.textContent='当前 IP 不在白名单内，无法登入';
-    errEl.style.display='block';btn.textContent='登入';btn.disabled=false;return;
   }
   const profile=await fetchProfileByUser(data.user);
   const role=profile?.role||'viewer';
