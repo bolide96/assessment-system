@@ -793,10 +793,12 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
 
 <script>
 const SUPABASE_URL='https://qbanwcdutejyjddolhrm.supabase.co';
-const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFiYW53Y2R1dGVqeWpkZG9saHJtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODIxMzgzMSwiZXhwIjoyMDkzNzg5ODMxfQ.pMdIxnODu_CUOf_fuYxXhg34szZNzRS8C-09LX4m2K4';
+// 注意：这里只能放 publishable / anon key（设计上就是安全、可公开的）。
+// 绝对不要把 secret / service_role key 放在这份前端文件里 —— 那把钥匙能绕过所有权限检查，
+// 一旦放进前端，任何打开网页检视原始码的人都能拿走，等于让资料库门户大开。
+// 真正的权限控管交给 Supabase 的 RLS（Row Level Security）规则处理，见随附的 SQL。
+const SUPABASE_KEY='sb_publishable_DzdxxsLu2O-8cRJFNVK1vg_zcoNKwLK';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-// 独立管理客户端：不持久化用户 session，始终用 service_role key 读取 profiles
-const sbAdmin=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 
 let currentUser=null,currentProfile=null;
 let periods=[],currentPeriodId=null;
@@ -811,7 +813,7 @@ async function saveNickname(staffId, val, el){
   el.style.borderRadius='0';
   el.style.padding='0';
   const nickname = val.trim();
-  const {error} = await sbAdmin.from('staff').update({nickname: nickname||null}).eq('id', staffId);
+  const {error} = await sb.from('staff').update({nickname: nickname||null}).eq('id', staffId);
   if(error){toast('昵称保存失败',true);return;}
   // Update local data
   staffScores.forEach(d=>{if(d.staff_id===staffId)d.nickname=nickname;});
@@ -987,10 +989,10 @@ function showApp(){
 async function doLogout(){sessionStorage.removeItem('localProfile');await sb.auth.signOut();location.reload()}
 // UUID 与 profiles 不匹配时用 email 兜底查询
 async function fetchProfileByUser(user){
-  const {data:byId}=await sbAdmin.from('profiles').select('*').eq('id',user.id).maybeSingle();
+  const {data:byId}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
   if(byId)return byId;
   if(user.email){
-    const {data:byEmail}=await sbAdmin.from('profiles').select('*').ilike('email',user.email).maybeSingle();
+    const {data:byEmail}=await sb.from('profiles').select('*').ilike('email',user.email).maybeSingle();
     return byEmail||null;
   }
   return null;
@@ -1105,7 +1107,7 @@ async function loadStaffScores(){
     analysis_total:r.analysis_total||0,
   }));
   staffScores.forEach(d=>{const c=calcScore(d);d.score=c.score;d.score2=c.score2;});
-  // 检视者权限：每次直接查数据库取最新 edit_scope（sbAdmin 用 service_role 绕过 RLS）
+  // 检视者权限：每次直接查数据库取最新 edit_scope（改用 publishable key + RLS 权限规则把关，不再用万能钥匙）
   if(currentProfile?.role!=='admin'&&currentUser?.id&&currentUser.id!=='local-admin'){
     const fp=await fetchProfileByUser(currentUser);
     const _vs=fp?.edit_scope||null;
@@ -2127,7 +2129,7 @@ function renderPeriodsPage(){
 }
 async function toggleGradeVisible(id, current){
   const newVal = !current;
-  const {error} = await sbAdmin.from('periods').update({grade_visible: newVal}).eq('id', id);
+  const {error} = await sb.from('periods').update({grade_visible: newVal}).eq('id', id);
   if(error){toast('更新失败：'+error.message, true);return;}
   const p = periods.find(x=>x.id===id);
   if(p) p.grade_visible = newVal;
@@ -2136,7 +2138,7 @@ async function toggleGradeVisible(id, current){
 }
 
 async function savePublishDate(id,field,val){
-  const {error}=await sbAdmin.from('periods').update({[field]:val||null}).eq('id',id);
+  const {error}=await sb.from('periods').update({[field]:val||null}).eq('id',id);
   if(error){toast('保存失败：'+error.message,true);return;}
   const p=periods.find(x=>x.id===id);
   if(p)p[field]=val||null;
@@ -2167,8 +2169,8 @@ async function togglePeriodStatus(id,current){
 }
 async function deletePeriod(id){
   if(!confirm('确认删除此草稿期间？此操作无法还原。'))return;
-  await sbAdmin.from('period_rules').delete().eq('period_id',id);
-  await sbAdmin.from('periods').delete().eq('id',id);
+  await sb.from('period_rules').delete().eq('period_id',id);
+  await sb.from('periods').delete().eq('id',id);
   await loadPeriods();
   toast('草稿已删除');
 }
@@ -2197,17 +2199,17 @@ async function inheritFromPrevPeriod(){
   const fromP=periods[idx-1];
   const toP=periods[idx];
   if(!confirm(`确认从「${fromP.name}」承继规则到「${toP.name}」？\n（会覆盖目前期间的现有规则）`))return;
-  const {data:srcRules}=await sbAdmin.from('period_rules').select('*').eq('period_id',fromP.id);
-  const {data:srcBase}=await sbAdmin.from('period_base_config').select('*').eq('period_id',fromP.id).single();
+  const {data:srcRules}=await sb.from('period_rules').select('*').eq('period_id',fromP.id);
+  const {data:srcBase}=await sb.from('period_base_config').select('*').eq('period_id',fromP.id).single();
   // 继承扣加分规则
   if(srcRules?.length){
-    await sbAdmin.from('period_rules').delete().eq('period_id',toP.id);
+    await sb.from('period_rules').delete().eq('period_id',toP.id);
     const newRules=srcRules.map(r=>{
       const nr={...r,period_id:toP.id};
       delete nr.id;
       return nr;
     });
-    const {error:rErr}=await sbAdmin.from('period_rules').insert(newRules);
+    const {error:rErr}=await sb.from('period_rules').insert(newRules);
     if(rErr){toast('继承规则失败：'+rErr.message,true);console.error(rErr);return;}
   } else {
     toast('上期没有扣加分规则可继承',true);
@@ -2216,15 +2218,15 @@ async function inheritFromPrevPeriod(){
   if(srcBase){
     const baseData={...srcBase,period_id:toP.id};
     delete baseData.id;
-    const {error:bErr}=await sbAdmin.from('period_base_config').upsert(baseData,{onConflict:'period_id'});
+    const {error:bErr}=await sb.from('period_base_config').upsert(baseData,{onConflict:'period_id'});
     if(bErr){toast('继承基础分失败：'+bErr.message,true);console.error(bErr);return;}
   }
   // 继承级别设定
-  const {data:srcGrades}=await sbAdmin.from('grade_config').select('*').eq('period_id',fromP.id);
+  const {data:srcGrades}=await sb.from('grade_config').select('*').eq('period_id',fromP.id);
   if(srcGrades?.length){
-    await sbAdmin.from('grade_config').delete().eq('period_id',toP.id);
+    await sb.from('grade_config').delete().eq('period_id',toP.id);
     const newGrades=srcGrades.map(g=>{const ng={...g,period_id:toP.id};delete ng.id;return ng;});
-    await sbAdmin.from('grade_config').insert(newGrades);
+    await sb.from('grade_config').insert(newGrades);
   }
   await loadRules();
   await loadBaseConfig();
@@ -2282,7 +2284,7 @@ async function loadUsers(){
 }
 
 async function toggleGradeAccess(id, val){
-  const {error} = await sbAdmin.from('profiles').update({grade_access: val}).eq('id', id);
+  const {error} = await sb.from('profiles').update({grade_access: val}).eq('id', id);
   if(error){toast('更新失败：'+error.message, true);loadUsers();return;}
   toast(val ? '已开放级别总览权限' : '已关闭级别总览权限');
 }
@@ -2296,11 +2298,11 @@ async function changeUserRole(id,cur){
   await sb.from('profiles').upsert(update,{onConflict:'id'});loadUsers();toast('权限已更新');
 }
 async function changeUserScope(id,scope,roleType='admin'){
-  // 用 sbAdmin（service_role）写入，绕过 RLS
-  const {error}=await sbAdmin.from('profiles').update({edit_scope:scope}).eq('id',id);
+  // 写入交给 RLS 规则把关（要求 is_admin()），不再用万能钥匙
+  const {error}=await sb.from('profiles').update({edit_scope:scope}).eq('id',id);
   if(error){toast('保存失败：'+error.message,true);return;}
   // 立即回读验证
-  const {data:vf}=await sbAdmin.from('profiles').select('edit_scope').eq('id',id).maybeSingle();
+  const {data:vf}=await sb.from('profiles').select('edit_scope').eq('id',id).maybeSingle();
   if(!vf||vf.edit_scope!==scope){
     toast(`⚠ 存入失败（DB实际值：${vf?.edit_scope??'null'}，user_id=${id.slice(0,8)}…）`,true);
     loadUsers();return;
@@ -2319,10 +2321,24 @@ async function createUser(){
   const pw=document.getElementById('au-pw').value;
   const role=document.getElementById('au-role').value;
   if(!email||!pw){alert('请填写帐号和密码');return}
-  const {data,error}=await sb.auth.admin.createUser({email,password:pw,email_confirm:true});
-  if(error){toast('建立失败：'+error.message,true);return}
-  const uid=data.user.id;
-  await sb.from('profiles').insert({id:uid,email,name:name||null,role,edit_scope:'none',is_active:true});
+  // 建帐号需要 service_role 权限，因此这里改呼叫 Supabase Edge Function（安全的服务器端），
+  // 而不是在前端直接持有 service_role 金钥
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){toast('登入状态异常，请重新登入',true);return}
+  let result;
+  try{
+    const resp=await fetch(`${SUPABASE_URL}/functions/v1/create-user`,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':`Bearer ${session.access_token}`,
+        'apikey':SUPABASE_KEY
+      },
+      body:JSON.stringify({email,password:pw,name,role})
+    });
+    result=await resp.json();
+    if(!resp.ok){toast('建立失败：'+(result?.error||'未知错误'),true);return}
+  }catch(e){toast('建立失败：连线异常',true);return}
   closeModal('adduser-modal');
   loadUsers();
   toast('帐号已建立：'+email);
@@ -2331,7 +2347,7 @@ async function createUser(){
 /* ── 全站 IP 白名单 ── */
 async function checkSiteIpAllowed(){
   try{
-    const {data:siteIps,error:sErr}=await sbAdmin.from('ip_whitelist').select('ip').eq('is_site',true);
+    const {data:siteIps,error:sErr}=await sb.from('ip_whitelist').select('ip').eq('is_site',true);
     if(sErr||!siteIps||siteIps.length===0)return true; // 未设定白名单时放行所有
     // Try multiple IP detection services
     let ip=null;
@@ -2359,7 +2375,7 @@ async function checkSiteIpAllowed(){
   }
 }
 async function loadSiteIps(){
-  const {data}=await sbAdmin.from('ip_whitelist').select('*').eq('is_site',true);
+  const {data}=await sb.from('ip_whitelist').select('*').eq('is_site',true);
   const el=document.getElementById('site-ip-list');
   if(!el)return;
   el.innerHTML=(data||[]).length
@@ -2370,13 +2386,13 @@ async function addSiteIp(){
   const ip=document.getElementById('site-ip-input').value.trim();
   const label=document.getElementById('site-ip-label').value.trim();
   if(!ip){toast('请填写 IP 地址',true);return}
-  const {error}=await sbAdmin.from('ip_whitelist').insert({is_site:true,ip,label});
+  const {error}=await sb.from('ip_whitelist').insert({is_site:true,ip,label});
   if(error){toast('新增失败：'+error.message,true);console.error('addSiteIp error:',error);return;}
   document.getElementById('site-ip-input').value='';document.getElementById('site-ip-label').value='';
   loadSiteIps();toast('✓ IP 已加入白名单');
 }
 async function deleteSiteIp(id){
-  await sbAdmin.from('ip_whitelist').delete().eq('id',id);
+  await sb.from('ip_whitelist').delete().eq('id',id);
   loadSiteIps();toast('IP 已移除');
 }
 async function detectSiteIp(){
@@ -2526,7 +2542,7 @@ function logAudit(staffName,fieldName,oldVal,newVal){
     periodName:p?.name||''
   };
   auditSession.unshift(entry);
-  sbAdmin.from('audit_logs').insert({
+  sb.from('audit_logs').insert({
     operator:entry.operator,staff_name:staffName,
     field_name:fieldName,old_val:entry.oldVal,new_val:entry.newVal,
     period_name:entry.periodName
@@ -2553,7 +2569,7 @@ async function loadAuditLogs(){
   if(sel&&sel.options.length<=1){
     periods.forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=p.name;sel.appendChild(o);});
   }
-  let q=sbAdmin.from('audit_logs').select('*').order('created_at',{ascending:false}).limit(200);
+  let q=sb.from('audit_logs').select('*').order('created_at',{ascending:false}).limit(200);
   if(filterPeriod)q=q.eq('period_name',filterPeriod);
   const {data,error}=await q;
   const el=document.getElementById('logs-list');
