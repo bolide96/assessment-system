@@ -853,6 +853,26 @@ function cancelMfa(){
   _mfaFactorId=null;
 }
 
+// 统一的登入后置检查：无论是「刚输入帐密登入」还是「网页重新整理后还原 session」，
+// 都必须先确认 AAL 等级已达标（若帐号有开启两步验证），否则一律先拦到验证码画面，
+// 不可以直接放行进入系统。
+async function checkAalAndProceed(user){
+  currentUser=user;
+  const {data:aalData,error:aalErr}=await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+  if(aalErr){
+    // 无法确认 AAL 状态时，保守起见视为需要重新登入，避免绕过验证
+    await sb.auth.signOut();
+    return;
+  }
+  if(aalData?.nextLevel==='aal2' && aalData?.currentLevel==='aal1'){
+    // 尚未完成两步验证：一律先显示验证码画面，不放行
+    document.getElementById('login-wrap').style.display='flex';
+    document.getElementById('app-wrap').style.display='none';
+    showMfaStep();
+    return;
+  }
+  await loadProfile(user);
+}
 async function verifyMfa(){
   const code=document.getElementById('mfa-code').value.trim();
   const errEl=document.getElementById('mfa-err');
@@ -882,12 +902,11 @@ async function doLogin(){
 
   const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
   if(error){errEl.textContent='帐号或密码错误';errEl.style.display='block';btn.textContent='登入';btn.disabled=false;return}
-  currentUser=data.user;
   // Check if MFA is required (check AAL level)
   const {data:aalData}=await sb.auth.mfa.getAuthenticatorAssuranceLevel();
-  console.log('[MFA Login] AAL:', aalData);
   if(aalData?.nextLevel==='aal2' && aalData?.currentLevel==='aal1'){
     // MFA required
+    currentUser=data.user;
     showMfaStep();
     btn.textContent='登入';btn.disabled=false;
     return;
@@ -2552,7 +2571,7 @@ if(_savedLocal){
   showApp();
   refreshCurrentProfile(); // 背景重新确认权限（不阻塞画面显示）
 }else{
-  sb.auth.getSession().then(({data:{session}})=>{if(session?.user)loadProfile(session.user)});
+  sb.auth.getSession().then(({data:{session}})=>{if(session?.user)checkAalAndProceed(session.user)});
 }
 // 使用者切回此分页时，顺手重新确认一次权限（例如管理员刚开放了级别权限）
 let _lastProfileRefresh=Date.now();
