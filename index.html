@@ -301,6 +301,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     <div class="topnav-brand">期末成绩</div>
     <div class="topnav-tabs">
       <button class="topnav-tab active" onclick="switchPage('query',this)">查询后台</button>
+      <button class="topnav-tab" onclick="switchPage('ai',this)">AI作品</button>
       <button class="topnav-tab" id="tab-grade-view" style="display:none" onclick="switchPage('grade-view',this)">级别总览</button>
       <button class="topnav-tab editor-tab hidden" onclick="switchPage('edit',this)">编辑后台</button>
       <button class="topnav-tab admin-only hidden" onclick="switchPage('staff',this)">人员管理</button>
@@ -386,6 +387,21 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
   </div>
 
   <!-- EDIT -->
+  <!-- AI WORKS -->
+  <div id="page-ai" class="page">
+    <div class="page-hd"><h1>AI 作品</h1><p>上传作品 · 老师评分 · 绑定当期半年度，换期归零重算</p></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">
+      <div style="display:flex;gap:6px" id="ai-filters">
+        <button class="filter-btn active" onclick="setAiFilter('all',this)">全部</button>
+        <button class="filter-btn" onclick="setAiFilter('pending',this)">待评</button>
+        <button class="filter-btn" onclick="setAiFilter('scored',this)">已评</button>
+      </div>
+      <button class="btn-add" onclick="openAiUpload()">＋ 上传作品</button>
+    </div>
+    <div id="ai-summary" style="font-size:12px;color:var(--ink3);margin-bottom:12px"></div>
+    <div id="ai-list"></div>
+  </div>
+
   <div id="page-edit" class="page">
     <div class="sec-hd">
       <div><h1 id="edit-title">编辑后台</h1><p id="edit-sub">依权限显示可编辑名单</p></div>
@@ -691,6 +707,68 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     <div class="modal-foot">
       <button class="btn-cancel" onclick="closeModal('comment-modal')">取消</button>
       <button class="btn-modal-save" onclick="saveComment()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI 上传 modal -->
+<div class="modal-bg" id="ai-upload-modal">
+  <div class="modal">
+    <div class="modal-head"><h3>上传 AI 作品</h3><button onclick="closeModal('ai-upload-modal')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row"><label>作品标题</label><input id="aiu-title" placeholder="例：排班自动化工具"></div>
+      <div class="form-grid">
+        <div class="form-row"><label>类型</label>
+          <select id="aiu-type" onchange="aiuRenderHint()"></select>
+        </div>
+        <div class="form-row"><label>连结</label><input id="aiu-link" placeholder="https://..."></div>
+      </div>
+      <div id="aiu-hint" style="font-size:11px;color:var(--ink3);margin:-6px 0 12px"></div>
+      <div class="form-row"><label>说明</label><textarea id="aiu-desc" placeholder="这个作品做了什么、解决什么问题…"></textarea></div>
+      <div style="height:1px;background:var(--border);margin:14px 0"></div>
+      <div class="form-row"><label>加入制作人</label>
+        <select id="aiu-pick" onchange="aiuAddMaker(this.value);this.value=''"></select>
+      </div>
+      <div id="aiu-makers"></div>
+      <div id="aiu-total" style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--surface2);border-radius:4px;font-size:12px;margin-top:8px"></div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:8px;line-height:1.6">贡献百分比加总须＝100。这只是<b>预设值</b>——老师评分时可以调整，最後取所有参与老师的平均。</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('ai-upload-modal')">取消</button>
+      <button class="btn-modal-save" onclick="saveAiWork(this)">送出</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI 评分 modal（老师端）-->
+<div class="modal-bg" id="ai-score-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="ais-title">评分</h3><button onclick="closeModal('ai-score-modal')">×</button></div>
+    <div class="modal-body">
+      <div id="ais-info" style="font-size:12px;color:var(--ink2);background:var(--surface2);border-radius:4px;padding:9px 11px;margin-bottom:14px;line-height:1.7"></div>
+      <div id="ais-existing" style="margin-bottom:14px"></div>
+      <div style="height:1px;background:var(--border);margin:14px 0"></div>
+      <div class="form-grid">
+        <div class="form-row"><label>你的名字</label><input id="ais-name" placeholder="输入自己的名字"></div>
+        <div class="form-row"><label id="ais-score-label">分数</label><input id="ais-score" type="number" step="0.5" placeholder="0"></div>
+      </div>
+      <div class="form-row" style="margin-top:-4px">
+        <label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;color:var(--ink2);cursor:pointer">
+          <input type="checkbox" id="ais-abstain" style="width:auto" onchange="aisToggleAbstain()">
+          弃权（没看过／无法判断／利害关系回避）
+        </label>
+      </div>
+      <div class="form-row"><label>评语 · 必填</label><textarea id="ais-comment" placeholder="给分要写理由；弃权也要写一句（回避／未看过／无法判断）"></textarea></div>
+      <div id="ais-pct-wrap">
+        <div style="height:1px;background:var(--border);margin:14px 0"></div>
+        <div style="font-size:11px;color:var(--ink3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">贡献比例 · 同意就不用动</div>
+        <div id="ais-pct"></div>
+        <div id="ais-pct-total" style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--surface2);border-radius:4px;font-size:12px;margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('ai-score-modal')">取消</button>
+      <button class="btn-modal-save" onclick="saveAiScore(this)">保存评分</button>
     </div>
   </div>
 </div>
@@ -1159,12 +1237,17 @@ function switchPage(id,el){
   const hidePeriodBar=['users','logs','account'];
   document.querySelector('.period-bar').style.display=hidePeriodBar.includes(id)?'none':'';
   if(id==='query')loadStaffScores().then(()=>renderQuery());
-  if(id==='edit')loadStaffScores().then(()=>renderEditPage());
+  // AI 资料只是编辑页多显示一栏，抓不到就当作没有——绝不能连累主表格
+  if(id==='edit')loadStaffScores()
+    .then(()=>loadAiData().catch(e=>{console.warn('AI 资料载入失败，AI分数栏将显示为空',e);}))
+    .then(renderEditPage)
+    .catch(e=>{console.error(e);renderEditPage();});
   if(id==='settings'){loadRules().then(()=>{renderList('deduct');renderList('bonus')})}
   if(id==='users'){loadUsers();loadSiteIps();detectSiteIp();}
   if(id==='logs')loadAuditLogs();
   if(id==='staff')renderStaffTable();
   if(id==='periods')renderPeriodsPage();
+  if(id==='ai')loadAiWorks();
   if(id==='grade-view')renderGradeView();
   if(id==='account'){if(typeof detectIp==='function')detectIp();setTimeout(loadMfaStatus,200);}
 }
@@ -1219,7 +1302,9 @@ function renderEditPage(){
   document.getElementById('edit-thead').innerHTML=`<tr>
     <th>人员</th><th style="width:60px">班别</th><th style="width:60px">总分</th>
     ${mc.labels.map(m=>`<th style="width:52px">${m}</th>`).join('')}
+    <th style="width:62px" title="整期0分记录累计次数：失=小失误 析=分析">累计</th>
     <th style="width:52px">无失误</th><th style="width:52px">出勤</th><th style="width:80px">综合评语</th><th style="width:80px">老师加减</th>
+    <th style="width:66px" title="AI 作品累计（0~40）。目前仅显示，未计入最终分数——老师自行斟酌後填进「老师加减」">AI分数</th>
     <th style="width:75px">最终分数</th><th style="width:65px">最终排名</th>
   </tr>`;
 
@@ -1232,15 +1317,28 @@ function renderEditPage(){
     Object.assign(finalRankMap,rm);
   });
 
+  // AI 作品累计（0~40）——目前只显示，不计入 score2。
+  // 老师看了自己斟酌，要计分就填进「老师加减」。
+  let aiEditTotals={},aiEditNotes={};
+  try{
+    aiEditTotals=aiPersonTotals();
+    aiWorks.forEach(w=>aiPersonScores(w.id).forEach(r=>{
+      if(r.score==null)return;
+      aiEditNotes[r.staff_id]=(aiEditNotes[r.staff_id]||'AI 作品明细：')+`
+· ${w.title} ${r.pct}% → ${r.score}`;
+    }));
+  }catch(e){console.warn('AI 分数计算失败，该栏显示为空',e);aiEditTotals={};aiEditNotes={};}
+
   const tb=document.getElementById('edit-tbody');
-  if(!list.length){tb.innerHTML=`<tr><td colspan="${3+mc.keys.length+4}" class="loading-state">无可编辑的人员</td></tr>`;return}
+  if(!list.length){tb.innerHTML=`<tr><td colspan="${3+mc.keys.length+8}" class="loading-state">无可编辑的人员</td></tr>`;return}
 
   tb.innerHTML=list.map(d=>{
     const monthCells=mc.keys.map((k,i)=>{
       const v=d[k]||0;
       const color=v>0?'var(--green)':v<0?'var(--red)':'var(--ink3)';
       const txt=v>0?`+${v}`:v<0?`${v}`:'—';
-      return`<td class="c" style="cursor:pointer;color:${color};font-weight:500;font-size:12px" onclick="openMonthModal(${d.id},'${k}','${mc.labels[i]}')">${txt}</td>`;
+      const marks=zeroMarksHtml((d.month_detail||{})[k]);
+      return`<td class="c" style="cursor:pointer;font-weight:500;font-size:12px;vertical-align:top;padding-top:7px" onclick="openMonthModal(${d.id},'${k}','${mc.labels[i]}')"><div style="color:${color};line-height:1.4">${txt}</div>${marks}</td>`;
     }).join('');
     const cls=scoreClass(d.score||0);
     const pf=d.perfect>0?`<span style="color:var(--green);font-size:15px">✓</span>`:`<span style="color:var(--border);font-size:15px">○</span>`;
@@ -1251,10 +1349,20 @@ function renderEditPage(){
       <td><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td><span class="score-num ${cls}">${d.score||0}</span></td>
       ${monthCells}
+      ${(()=>{const t=zeroMarkTotals(d);const g='var(--ink3)';
+        return`<td class="c" style="font-size:11px;white-space:nowrap">`+
+          `<span style="color:${t.f?'var(--red)':g}">失${t.f}</span>`+
+          `<span style="color:${g}"> / </span>`+
+          `<span style="color:${t.a?'var(--green)':g}">析${t.a}</span>`+
+          (t.o?`<span style="color:${g}"> / 记${t.o}</span>`:'')+
+        `</td>`;})()}
       <td class="c" style="cursor:pointer" title="点击切换无失误奖励" onclick="togglePerfect(${d.id},${d.perfect||0});setTimeout(renderEditPage,300)">${pf}</td>
       <td class="c" style="cursor:pointer" title="点击切换出勤奖励" onclick="toggleAttend(${d.id},${d.attendance||0});setTimeout(renderEditPage,300)">${at}</td>
       <td class="c" style="cursor:pointer;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:${d.comment?'var(--ink2)':'var(--ink3)'}" onclick="openCommentModal(${d.id})" title="${d.comment||'点击填写评语'}">${d.comment?'✎ '+d.comment.slice(0,6)+(d.comment.length>6?'…':''):'✎ 填写'}</td>
       <td class="c" style="cursor:pointer;font-size:12px;font-weight:500;color:${(d.mgr_bonus||0)>0?'var(--green)':(d.mgr_bonus||0)<0?'var(--red)':'var(--ink3)'}" onclick="openMgrModal(${d.id})" title="${d.mgr_note||'点击编辑老师加减分'}">${ (()=>{ const total=(d.mgr_bonus||0)+(d.analysis_total||0); return total>0?'+'+total:total<0?total:'✎ —'; })() }</td>
+      ${(()=>{const t=aiEditTotals[d.staff_id];
+        if(t==null)return`<td class="c" style="font-size:12px;color:var(--ink3)">—</td>`;
+        return`<td class="c" style="font-size:12px;font-weight:500;color:var(--amber)" title="${(aiEditNotes[d.staff_id]||'').replace(/"/g,'&quot;')}">${t}</td>`;})()}
       <td class="c"><span class="score-num ${scoreClass(d.score2||0)}">${d.score2||0}</span></td>
       <td class="c">${rankBadge(finalRankMap[d.id]||'—')}</td>
     </tr>`;
@@ -1268,6 +1376,41 @@ function setFilter(type,val,el){
 }
 function setSort(k,el){sortKey=k;document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderQuery()}
 
+/* ── 0分记录：不影响分数，但要看得见 ──
+   分类依项目名称：含「失误」→红「失」、含「分析」→绿「析」、其余→灰「记」
+   第三类是必要的 fallback——例如「制作AI（0~40）」也是 0 分规则，
+   没有 fallback 就会变成隐形的记录。 */
+function zeroMarkCounts(entries){
+  const c={f:0,a:0,o:0};
+  if(!Array.isArray(entries))return c;   // 旧资料结构不同也不能炸掉整页
+  entries.forEach(e=>{
+    if(!e||Number(e.pts)!==0)return;
+    const n=e.item||'';
+    if(n.indexOf('失误')>=0)c.f++;
+    else if(n.indexOf('分析')>=0)c.a++;
+    else c.o++;
+  });
+  return c;
+}
+function zeroMarkPill(t,n,bg,fg){
+  return n?`<span style="display:inline-block;padding:0 4px;border-radius:2px;background:${bg};color:${fg};font-size:10px;line-height:1.5;margin:0 1px">${t}${n}</span>`:'';
+}
+function zeroMarksHtml(entries){
+  const c=zeroMarkCounts(entries);
+  const h=zeroMarkPill('失',c.f,'var(--red-bg)','var(--red)')
+         +zeroMarkPill('析',c.a,'var(--green-bg)','var(--green)')
+         +zeroMarkPill('记',c.o,'var(--surface2)','var(--ink3)');
+  return h?`<div style="margin-top:2px;line-height:1">${h}</div>`:'';
+}
+/* 整期累计（半年度老师看次数用）*/
+function zeroMarkTotals(d){
+  const t={f:0,a:0,o:0};
+  const det=(d&&d.month_detail&&typeof d.month_detail==='object')?d.month_detail:{};
+  Object.keys(det).forEach(k=>{
+    const c=zeroMarkCounts(det[k]);t.f+=c.f;t.a+=c.a;t.o+=c.o;
+  });
+  return t;
+}
 function scoreClass(s){return s>=90?'high':s>=60?'mid':'low'}
 function calcGroupRank(arr,scoreKey){
   const sorted=[...arr].sort((a,b)=>(b[scoreKey]||0)-(a[scoreKey]||0));
@@ -1373,7 +1516,16 @@ function toggleDetail(i,enc){
   const mb=monthFull.map(([m,v,k])=>{
     const entries=detail[k]||[];
     const itemsHtml=entries.length
-      ?`<div style="margin-top:5px;border-top:1px solid var(--border);padding-top:5px;text-align:left">${entries.map(e=>`<div style="font-size:10px;color:${e.pts>=0?'var(--green)':'var(--red)'};line-height:1.5"><span style="font-weight:600">${e.pts>=0?'+':''}${e.pts}</span> ${e.item}${e.note?`<span style="color:var(--ink3)">・${e.note}</span>`:''}</div>`).join('')}</div>`
+      ?`<div style="margin-top:5px;border-top:1px solid var(--border);padding-top:5px;text-align:left">${entries.map(e=>{
+          if(Number(e.pts)===0){
+            const n=e.item||'';
+            const isF=n.indexOf('失误')>=0,isA=n.indexOf('分析')>=0;
+            const fg=isF?'var(--red)':isA?'var(--green)':'var(--ink3)';
+            const bg=isF?'var(--red-bg)':isA?'var(--green-bg)':'var(--surface2)';
+            return`<div style="font-size:10px;color:var(--ink3);line-height:1.6"><span style="display:inline-block;padding:0 4px;border-radius:2px;background:${bg};color:${fg}">记</span> ${e.item}${e.note?`<span>・${e.note}</span>`:''}</div>`;
+          }
+          return`<div style="font-size:10px;color:${e.pts>0?'var(--green)':'var(--red)'};line-height:1.5"><span style="font-weight:600">${e.pts>0?'+':''}${e.pts}</span> ${e.item}${e.note?`<span style="color:var(--ink3)">・${e.note}</span>`:''}</div>`;
+        }).join('')}</div>`
       :'';
     return`<div class="month-block" style="height:auto;align-items:flex-start;padding:8px 10px"><div class="ml">${m}</div><div class="mv ${v>0?'pos':v<0?'neg':'zero'}">${v>0?'+'+v:v===0?'—':v}</div>${itemsHtml}</div>`;
   }).join('');
@@ -1537,10 +1689,12 @@ function cancelRuleEntry(){
 
 function addCustomEntry(){
   const item=document.getElementById('mm-custom-item').value.trim();
-  const pts=parseFloat(document.getElementById('mm-custom-pts').value)||0;
+  const ptsRaw=document.getElementById('mm-custom-pts').value.trim();
+  const pts=parseFloat(ptsRaw);
   const note=document.getElementById('mm-custom-note').value.trim();
   if(!item){toast('请填写项目名称',true);return}
-  if(!pts){toast('请填写分值',true);return}
+  // 原本写 if(!pts)，0 是 falsy 会被挡掉，导致自订的 0 分记录存不进去
+  if(ptsRaw===''||isNaN(pts)){toast('请填写分值（填 0 = 只记录、不计分）',true);return}
   mmEntries.push({item,pts,note});
   document.getElementById('mm-custom-item').value='';
   document.getElementById('mm-custom-pts').value='';
@@ -2616,6 +2770,296 @@ document.addEventListener('visibilitychange',()=>{
     refreshCurrentProfile();
   }
 });
+/* ════════════ AI 作品 ════════════ */
+const AI_TYPES={
+  hands_on   :{label:'实际动手做', cap:20, hint:'建议区间 5–20，重视效益与完整度'},
+  requirement:{label:'完整需求提出',cap:15, hint:'建议区间 5–15，视需求结构完整度'},
+  non_work   :{label:'非工作项目', cap:10, hint:'建议区间 1–10，只能个人自己完成'},
+  bug        :{label:'回报 AI Bug',cap:3,  hint:'建议区间 1–3'},
+  suggestion :{label:'采纳小建议', cap:3,  hint:'建议区间 1–3'}
+};
+const AI_PERSON_CAP=40;
+let aiWorks=[],aiMakers=[],aiLinks=[],aiScores=[],aiFilter='all';
+let aiuMakers=[];
+let aisWorkId=null;
+
+const r1=v=>Math.round(v*10)/10;
+function aiIsTeacher(){return currentProfile?.role==='admin'}
+function aiStaffName(id){
+  const d=staffScores.find(x=>x.staff_id===id);
+  if(!d)return '#'+id;
+  return personCode(d)+(d.nickname?`（${d.nickname}）`:'');
+}
+
+/* 只抓资料、不碰画面——编辑页要拿 AI 分数，但不该去动 #ai-list */
+async function loadAiData(){
+  if(!currentPeriodId){aiWorks=[];aiMakers=[];aiLinks=[];aiScores=[];return}
+  const {data:w,error}=await sb.from('ai_works').select('*').eq('period_id',currentPeriodId).order('id',{ascending:false});
+  if(error){aiWorks=[];aiMakers=[];aiLinks=[];aiScores=[];return error}
+  aiWorks=w||[];
+  const ids=aiWorks.map(x=>x.id);
+  if(ids.length){
+    const [mk,lk,sc]=await Promise.all([
+      sb.from('ai_work_makers').select('*').in('work_id',ids),
+      sb.from('ai_work_links').select('*').in('work_id',ids),
+      sb.from('ai_work_scores').select('*').in('work_id',ids)
+    ]);
+    aiMakers=mk.data||[];aiLinks=lk.data||[];aiScores=sc.data||[];
+  }else{aiMakers=[];aiLinks=[];aiScores=[]}
+  return null;
+}
+async function loadAiWorks(){
+  const box=document.getElementById('ai-list');
+  if(!currentPeriodId){box.innerHTML='<div class="loading-state">请先选择期间</div>';return}
+  box.innerHTML='<div class="loading-state">载入中…</div>';
+  if(!staffScores.length)await loadStaffScores();
+  const err=await loadAiData();
+  if(err){box.innerHTML='<div class="loading-state">载入失败：'+err.message+'</div>';return}
+  renderAiWorks();
+}
+function setAiFilter(v,el){
+  aiFilter=v;
+  document.querySelectorAll('#ai-filters .filter-btn').forEach(b=>b.classList.toggle('active',b===el));
+  renderAiWorks();
+}
+
+function aiCalcWork(id){
+  const ss=aiScores.filter(s=>s.work_id===id);
+  if(!ss.length)return{score:null,note:'待评分（还没有老师评过）',valid:0,zero:0};
+  const valid=ss.filter(s=>!s.abstain);
+  if(!valid.length)return{score:0,note:'全数弃权 → 视为 0 分',valid:0,zero:0};
+  const zero=valid.filter(s=>Number(s.score)===0).length;
+  if(zero*2>valid.length)return{score:0,note:`过半给 0（${zero}/${valid.length}）→ 整件 0 分`,valid:valid.length,zero};
+  const avg=valid.reduce((a,s)=>a+Number(s.score),0)/valid.length;
+  return{score:r1(avg),note:`${valid.length} 位有效评分取平均`,valid:valid.length,zero};
+}
+function aiFinalPct(id){
+  const mks=aiMakers.filter(m=>m.work_id===id);
+  const base={};mks.forEach(m=>base[m.staff_id]=Number(m.contrib_pct));
+  const parts=aiScores.filter(s=>s.work_id===id&&!s.abstain);
+  if(!parts.length)return base;
+  const acc={};mks.forEach(m=>acc[m.staff_id]=0);
+  parts.forEach(sc=>{
+    const ov=(sc.contrib_override&&Object.keys(sc.contrib_override).length)?sc.contrib_override:null;
+    mks.forEach(m=>{
+      const v=ov?Number(ov[m.staff_id]??base[m.staff_id]??0):(base[m.staff_id]||0);
+      acc[m.staff_id]+=v;
+    });
+  });
+  const out={};mks.forEach(m=>out[m.staff_id]=Math.round(acc[m.staff_id]/parts.length*100)/100);
+  return out;
+}
+function aiPersonScores(id){
+  const {score}=aiCalcWork(id);
+  const pct=aiFinalPct(id);
+  const mks=aiMakers.filter(m=>m.work_id===id);
+  const rows=mks.map(m=>({staff_id:m.staff_id,pct:pct[m.staff_id]||0,
+    score:score==null?null:r1(score*(pct[m.staff_id]||0)/100)}));
+  if(score!=null&&rows.length){
+    const diff=r1(score-rows.reduce((a,x)=>a+x.score,0));
+    if(diff!==0){
+      let top=rows[0];rows.forEach(x=>{if(x.pct>top.pct)top=x});
+      top.score=r1(top.score+diff);
+    }
+  }
+  return rows;
+}
+function aiPersonTotals(){
+  const tot={};
+  aiWorks.forEach(w=>aiPersonScores(w.id).forEach(r=>{
+    if(r.score==null)return;
+    tot[r.staff_id]=r1((tot[r.staff_id]||0)+r.score);
+  }));
+  Object.keys(tot).forEach(k=>{if(tot[k]>AI_PERSON_CAP)tot[k]=AI_PERSON_CAP});
+  return tot;
+}
+
+function renderAiWorks(){
+  const box=document.getElementById('ai-list');
+  const teacher=aiIsTeacher();
+  const list=aiWorks.filter(w=>aiFilter==='all'||w.status===aiFilter);
+
+  const totals=aiPersonTotals();
+  const names=Object.keys(totals).sort((a,b)=>totals[b]-totals[a]);
+  document.getElementById('ai-summary').innerHTML=
+    `共 ${aiWorks.length} 件作品`+
+    (names.length?`　·　个人累计（上限 ${AI_PERSON_CAP}）：`+names.slice(0,8).map(k=>
+      `<span style="color:var(--ink2)">${aiStaffName(Number(k))} <b style="font-family:var(--ffs)">${totals[k]}</b></span>`).join('、')
+      +(names.length>8?` 等 ${names.length} 人`:''):'');
+
+  if(!list.length){box.innerHTML='<div class="loading-state">尚无作品</div>';return}
+
+  box.innerHTML=list.map(w=>{
+    const t=AI_TYPES[w.work_type]||{label:w.work_type,cap:20};
+    const calc=aiCalcWork(w.id);
+    const persons=aiPersonScores(w.id);
+    const link=aiLinks.find(l=>l.work_id===w.id);
+    const ss=aiScores.filter(x=>x.work_id===w.id);
+
+    const makerHtml=persons.map(pr=>
+      `<span style="display:inline-block;background:var(--surface2);border-radius:4px;padding:2px 9px;margin:2px 4px 2px 0;font-size:12px">${aiStaffName(pr.staff_id)} <span style="color:var(--ink3)">${pr.pct}%</span>${teacher&&pr.score!=null?` <b style="font-family:var(--ffs);color:var(--green)">${pr.score}</b>`:''}</span>`).join('');
+
+    const statusTag=w.status==='scored'
+      ? '<span style="font-size:10px;padding:2px 8px;border-radius:3px;background:var(--green-bg);border:1px solid var(--green-bd);color:var(--green)">已评</span>'
+      : '<span style="font-size:10px;padding:2px 8px;border-radius:3px;background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber)">待评</span>';
+
+    let teacherBlock='';
+    if(teacher){
+      const scoreLine=calc.score==null
+        ? `<span style="color:var(--ink3)">${calc.note}</span>`
+        : `作品总分 <b style="font-family:var(--ffs);font-size:16px;color:${calc.score>0?'var(--green)':'var(--red)'}">${calc.score}</b> <span style="color:var(--ink3);font-size:11px">· ${calc.note}</span>`;
+      const rows=ss.map(x=>
+        `<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="width:80px;flex-shrink:0;color:var(--ink2)">${x.teacher_name}</span><span style="width:44px;flex-shrink:0;font-family:var(--ffs);font-weight:600;color:${x.abstain?'var(--ink3)':(Number(x.score)>0?'var(--green)':'var(--red)')}">${x.abstain?'弃权':x.score}</span><span style="flex:1;color:var(--ink3)">${(x.comment||'').replace(/</g,'&lt;')}</span></div>`).join('');
+      teacherBlock=`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"><div style="font-size:12px;margin-bottom:8px">${scoreLine}</div>${link?`<div style="font-size:12px;margin-bottom:8px"><a href="${link.link}" target="_blank" rel="noopener" style="color:var(--blue)">${link.link}</a></div>`:''}${rows?`<div style="margin-bottom:8px">${rows}</div>`:'<div style="font-size:12px;color:var(--ink3);margin-bottom:8px">还没有人评分</div>'}<button class="btn-add" style="padding:5px 12px" onclick="openAiScore(${w.id})">评分 / 修改我的评分</button></div>`;
+    }
+
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span style="font-weight:500;font-size:14px">${(w.title||'').replace(/</g,'&lt;')}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue)">${t.label} · 上限${t.cap}</span>${statusTag}</div>${w.description?`<div style="font-size:12px;color:var(--ink3);margin-bottom:6px;line-height:1.6">${w.description.replace(/</g,'&lt;')}</div>`:''}<div>${makerHtml}</div>${teacherBlock}</div>`;
+  }).join('');
+}
+
+function openAiUpload(){
+  if(!currentPeriodId){toast('请先选择期间',true);return}
+  document.getElementById('aiu-title').value='';
+  document.getElementById('aiu-link').value='';
+  document.getElementById('aiu-desc').value='';
+  document.getElementById('aiu-type').innerHTML=Object.entries(AI_TYPES)
+    .map(([k,v])=>`<option value="${k}">${v.label}（上限${v.cap}）</option>`).join('');
+  const opts=[...staffScores].sort((a,b)=>(a.code||'').localeCompare(b.code||''));
+  document.getElementById('aiu-pick').innerHTML='<option value="">＋ 选择制作人…</option>'+
+    opts.map(d=>`<option value="${d.staff_id}">${personCode(d)}${d.nickname?' '+d.nickname:''}</option>`).join('');
+  aiuMakers=[];aiuRenderMakers();aiuRenderHint();
+  document.getElementById('ai-upload-modal').classList.add('open');
+}
+function aiuRenderHint(){
+  const t=AI_TYPES[document.getElementById('aiu-type').value];
+  document.getElementById('aiu-hint').textContent=t?t.hint+'　（下限只是参考，实际由老师判断）':'';
+}
+function aiuEvenSplit(){
+  if(!aiuMakers.length)return;
+  const even=Math.floor(100/aiuMakers.length*100)/100;
+  aiuMakers.forEach(m=>m.pct=even);
+  aiuMakers[0].pct=r1(100-even*(aiuMakers.length-1));
+}
+function aiuAddMaker(id){
+  if(!id)return;
+  id=Number(id);
+  if(aiuMakers.some(m=>m.staff_id===id)){toast('已经加过这个人了',true);return}
+  aiuMakers.push({staff_id:id,name:aiStaffName(id),pct:0});
+  aiuEvenSplit();aiuRenderMakers();
+}
+function aiuRemoveMaker(i){
+  aiuMakers.splice(i,1);aiuEvenSplit();aiuRenderMakers();
+}
+function aiuRenderMakers(){
+  const box=document.getElementById('aiu-makers');
+  box.innerHTML=aiuMakers.length?aiuMakers.map((m,i)=>
+    `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="flex:1">${m.name}</span><input type="number" value="${m.pct}" min="0" max="100" step="0.5" oninput="aiuMakers[${i}].pct=parseFloat(this.value)||0;aiuRenderTotal()" style="width:70px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:12px;text-align:right;font-family:var(--ff);outline:none"><span style="color:var(--ink3);font-size:12px">%</span><button onclick="aiuRemoveMaker(${i})" style="color:var(--red);background:none;border:none;cursor:pointer;font-size:16px;line-height:1;padding:2px 4px">×</button></div>`).join(''):'<div style="font-size:12px;color:var(--ink3);padding:6px 0">尚未选择制作人</div>';
+  aiuRenderTotal();
+}
+function aiuRenderTotal(){
+  const sum=r1(aiuMakers.reduce((a,m)=>a+(m.pct||0),0));
+  const ok=Math.abs(sum-100)<0.005;
+  document.getElementById('aiu-total').innerHTML=
+    `<span style="color:var(--ink3)">贡献合计</span><span style="font-weight:600;font-size:14px;color:${ok?'var(--green)':'var(--red)'}">${sum}%${ok?'':' · 必须等於 100'}</span>`;
+}
+async function saveAiWork(btn){
+  const title=document.getElementById('aiu-title').value.trim();
+  const link=document.getElementById('aiu-link').value.trim();
+  const type=document.getElementById('aiu-type').value;
+  const desc=document.getElementById('aiu-desc').value.trim();
+  if(!title){toast('请填写作品标题',true);return}
+  if(!link){toast('请填写连结',true);return}
+  if(!aiuMakers.length){toast('至少要选一位制作人',true);return}
+  const sum=r1(aiuMakers.reduce((a,m)=>a+(m.pct||0),0));
+  if(Math.abs(sum-100)>=0.005){toast('贡献百分比加总必须等於 100，目前 '+sum,true);return}
+  if(aiuMakers.some(m=>!(m.pct>0))){toast('每位制作人的贡献必须大於 0',true);return}
+  btn.disabled=true;
+  const {error}=await sb.rpc('ai_work_submit',{
+    p_period_id:currentPeriodId,p_title:title,p_work_type:type,
+    p_description:desc,p_link:link,
+    p_makers:aiuMakers.map(m=>({staff_id:m.staff_id,pct:m.pct}))
+  });
+  btn.disabled=false;
+  if(error){toast('送出失败：'+error.message,true);return}
+  closeModal('ai-upload-modal');toast('作品已送出');loadAiWorks();
+}
+
+function openAiScore(workId){
+  if(!aiIsTeacher()){toast('只有老师端可以评分',true);return}
+  aisWorkId=workId;
+  const w=aiWorks.find(x=>x.id===workId);if(!w)return;
+  const t=AI_TYPES[w.work_type]||{label:w.work_type,cap:20};
+  const calc=aiCalcWork(workId);
+  document.getElementById('ais-title').textContent='评分 · '+w.title;
+  document.getElementById('ais-score-label').textContent=`分数（0 ~ ${t.cap}）`;
+  document.getElementById('ais-score').max=t.cap;
+  document.getElementById('ais-info').innerHTML=
+    `类型：${t.label}　上限 ${t.cap} 分<br>${t.hint}<br>目前：${calc.score==null?calc.note:'作品总分 '+calc.score+'（'+calc.note+'）'}`;
+
+  const ss=aiScores.filter(x=>x.work_id===workId);
+  document.getElementById('ais-existing').innerHTML=ss.length
+    ?'<div style="font-size:11px;color:var(--ink3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">已有评分 · 老师之间不匿名</div>'+
+     ss.map(x=>`<div style="display:flex;gap:8px;font-size:12px;padding:3px 0"><span style="width:80px;color:var(--ink2)">${x.teacher_name}</span><span style="width:40px;font-family:var(--ffs);font-weight:600">${x.abstain?'弃权':x.score}</span><span style="flex:1;color:var(--ink3)">${(x.comment||'').replace(/</g,'&lt;')}</span></div>`).join('')
+    :'<div style="font-size:12px;color:var(--ink3)">还没有人评分</div>';
+
+  const saved=localStorage.getItem('aiTeacherName')||'';
+  document.getElementById('ais-name').value=saved;
+  const mine=ss.find(x=>x.teacher_name===saved);
+  document.getElementById('ais-abstain').checked=!!(mine&&mine.abstain);
+  document.getElementById('ais-score').value=(mine&&!mine.abstain)?mine.score:'';
+  document.getElementById('ais-comment').value=(mine&&mine.comment)||'';
+
+  const mks=aiMakers.filter(m=>m.work_id===workId);
+  const base=(mine&&mine.contrib_override)||null;
+  document.getElementById('ais-pct').innerHTML=mks.map(m=>
+    `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px"><span style="flex:1">${aiStaffName(m.staff_id)}</span><span style="font-size:11px;color:var(--ink3)">学生填 ${m.contrib_pct}%</span><input type="number" class="ais-pct-in" data-staff="${m.staff_id}" data-base="${m.contrib_pct}" value="${base?(base[m.staff_id]!==undefined?base[m.staff_id]:m.contrib_pct):m.contrib_pct}" min="0" max="100" step="0.5" oninput="aisRenderPctTotal()" style="width:70px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:12px;text-align:right;font-family:var(--ff);outline:none"><span style="color:var(--ink3);font-size:12px">%</span></div>`).join('');
+  aisRenderPctTotal();aisToggleAbstain();
+  document.getElementById('ai-score-modal').classList.add('open');
+}
+function aisRenderPctTotal(){
+  const ins=[...document.querySelectorAll('.ais-pct-in')];
+  const sum=r1(ins.reduce((a,el)=>a+(parseFloat(el.value)||0),0));
+  const ok=Math.abs(sum-100)<0.005;
+  document.getElementById('ais-pct-total').innerHTML=
+    `<span style="color:var(--ink3)">合计</span><span style="font-weight:600;font-size:14px;color:${ok?'var(--green)':'var(--red)'}">${sum}%${ok?'':' · 必须等於 100'}</span>`;
+}
+function aisToggleAbstain(){
+  const ab=document.getElementById('ais-abstain').checked;
+  const sc=document.getElementById('ais-score');
+  sc.disabled=ab;sc.style.background=ab?'var(--surface2)':'';
+  if(ab)sc.value='';
+  document.getElementById('ais-pct-wrap').style.display=ab?'none':'';
+}
+async function saveAiScore(btn){
+  const name=document.getElementById('ais-name').value.trim();
+  const abstain=document.getElementById('ais-abstain').checked;
+  const comment=document.getElementById('ais-comment').value.trim();
+  const scoreRaw=document.getElementById('ais-score').value;
+  if(!name){toast('请输入你的名字',true);return}
+  if(!comment){toast('评语必填——给分要写理由，弃权也要写一句',true);return}
+  if(!abstain&&scoreRaw===''){toast('未弃权就必须给分数',true);return}
+
+  let override=null;
+  if(!abstain){
+    const ins=[...document.querySelectorAll('.ais-pct-in')];
+    const sum=r1(ins.reduce((a,el)=>a+(parseFloat(el.value)||0),0));
+    if(Math.abs(sum-100)>=0.005){toast('贡献比例加总必须等於 100，目前 '+sum,true);return}
+    if(ins.some(el=>Math.abs((parseFloat(el.value)||0)-parseFloat(el.dataset.base))>=0.005)){
+      override={};ins.forEach(el=>override[el.dataset.staff]=parseFloat(el.value)||0);
+    }
+  }
+  btn.disabled=true;
+  const {error}=await sb.from('ai_work_scores').upsert({
+    work_id:aisWorkId,teacher_name:name,abstain,
+    score:abstain?null:parseFloat(scoreRaw),
+    comment,contrib_override:override,updated_at:new Date().toISOString()
+  },{onConflict:'work_id,teacher_name'});
+  btn.disabled=false;
+  if(error){toast('保存失败：'+error.message,true);return}
+  localStorage.setItem('aiTeacherName',name);
+  closeModal('ai-score-modal');toast('评分已保存');loadAiWorks();
+}
+
 </script>
 </body>
 </html>
