@@ -1161,6 +1161,14 @@ async function selectPeriod(id){
   if(document.getElementById('page-settings').classList.contains('active')){
     renderList('deduct');renderList('bonus');
   }
+  // ★AI 作品与 AI 分数都是跟着期间走的，换期间必须重抓。
+  //   漏掉的话：停在 AI 分页切期间，清单不会更新（看起来像作品不见了）；
+  //   停在编辑後台切期间，「AI分数」栏会显示上一期的数字。
+  if(document.getElementById('page-ai').classList.contains('active')){
+    loadAiWorks();
+  }else if(document.getElementById('page-edit').classList.contains('active')){
+    await loadAiData().catch(()=>{});
+  }
   if(document.getElementById('page-edit').classList.contains('active'))renderEditPage();
   if(document.getElementById('page-staff').classList.contains('active'))renderStaffTable();
 }
