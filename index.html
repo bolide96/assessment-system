@@ -1411,7 +1411,15 @@ function zeroMarkTotals(d){
   });
   return t;
 }
-function scoreClass(s){return s>=90?'high':s>=60?'mid':'low'}
+// 配色改成「占该期间基础分天花板的比例」。
+// 旧制天花板=100，90%/60% 就是 90/60，跟原本写死的数字完全一样；
+// 新制天花板=60，不改的话每个人都会被涂成红色。
+function _scoreCeil(){
+  return (Number(baseConfig.base_score)||80)
+        +(Number(baseConfig.perfect_bonus)||0)
+        +(Number(baseConfig.attend_bonus)||0);
+}
+function scoreClass(s){const c=_scoreCeil();return s>=c*0.9?'high':s>=c*0.6?'mid':'low'}
 function calcGroupRank(arr,scoreKey){
   const sorted=[...arr].sort((a,b)=>(b[scoreKey]||0)-(a[scoreKey]||0));
   const rankMap={};
@@ -1421,7 +1429,7 @@ function calcGroupRank(arr,scoreKey){
   });
   return rankMap;
 }
-function barColor(s){return s>=90?'#1a7a4a':s>=60?'#b8820a':'#c0392b'}
+function barColor(s){const c=_scoreCeil();return s>=c*0.9?'#1a7a4a':s>=c*0.6?'#b8820a':'#c0392b'}
 function rankBadge(r){
   const n=parseInt(r);
   if(isNaN(n))return`<span class="rank-badge rank-other">${r||'—'}</span>`;
@@ -1458,8 +1466,15 @@ function renderQuery(){
   document.getElementById('count-label').textContent=`共 ${list.length} 人`;
   if(list.length){
     const avg=(list.reduce((s,d)=>s+(d.score||0),0)/list.length).toFixed(1);
-    const pass=list.filter(d=>(d.score||0)>=60).length;
-    const top=list.filter(d=>(d.score||0)>=100).length;
+    // 原本写死 >=60 与 >=100，是照旧制（起始80+无失误10+出勤10=100、及格60）算的。
+    // 新制及格线改成 50、无失误奖励归 0，写死的话达标率会永远显示 0%。
+    // 改成读该期间的实际设定；旧期间 pass=60、天花板=80+10+10=100，结果完全不变。
+    const passLine=Number(baseConfig.pass_score)||60;
+    const baseCeil=(Number(baseConfig.base_score)||80)
+                  +(Number(baseConfig.perfect_bonus)||0)
+                  +(Number(baseConfig.attend_bonus)||0);
+    const pass=list.filter(d=>(d.score||0)>=passLine).length;
+    const top=list.filter(d=>(d.score||0)>=baseCeil).length;
     document.getElementById('stat-avg').textContent=avg;
     document.getElementById('stat-pass').textContent=Math.round(pass/list.length*100)+'%';
     document.getElementById('stat-top').textContent=top;
