@@ -718,7 +718,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
 <!-- AI 上传 modal -->
 <div class="modal-bg" id="ai-upload-modal">
   <div class="modal">
-    <div class="modal-head"><h3>上传 AI 作品</h3><button onclick="closeModal('ai-upload-modal')">×</button></div>
+    <div class="modal-head"><h3 id="aiu-head">上传 AI 作品</h3><button onclick="closeModal('ai-upload-modal')">×</button></div>
     <div class="modal-body">
       <div class="form-row"><label>作品标题</label><input id="aiu-title" placeholder="例：排班自动化工具"></div>
       <div class="form-grid">
@@ -739,7 +739,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     </div>
     <div class="modal-foot">
       <button class="btn-cancel" onclick="closeModal('ai-upload-modal')">取消</button>
-      <button class="btn-modal-save" onclick="saveAiWork(this)">送出</button>
+      <button class="btn-modal-save" id="aiu-save" onclick="saveAiWork(this)">送出</button>
     </div>
   </div>
 </div>
@@ -753,9 +753,10 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <div id="ais-existing" style="margin-bottom:14px"></div>
       <div style="height:1px;background:var(--border);margin:14px 0"></div>
       <div class="form-grid">
-        <div class="form-row"><label>你的名字</label><input id="ais-name" placeholder="输入自己的名字"></div>
+        <div class="form-row"><label>你的名字</label><input id="ais-name" placeholder="输入自己的名字" oninput="aisNameHint()" autocomplete="off"></div>
         <div class="form-row"><label id="ais-score-label">分数</label><input id="ais-score" type="number" step="0.5" placeholder="0"></div>
       </div>
+      <div id="ais-name-hint" style="font-size:11px;margin:-8px 0 10px;line-height:1.6"></div>
       <div class="form-row" style="margin-top:-4px">
         <label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;color:var(--ink2);cursor:pointer">
           <input type="checkbox" id="ais-abstain" style="width:auto" onchange="aisToggleAbstain()">
@@ -2955,24 +2956,36 @@ function renderAiWorks(){
         : `作品总分 <b style="font-family:var(--ffs);font-size:16px;color:${calc.score>0?'var(--green)':'var(--red)'}">${calc.score}</b> <span style="color:var(--ink3);font-size:11px">· ${calc.note}</span>`;
       const rows=ss.map(x=>
         `<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="width:80px;flex-shrink:0;color:var(--ink2)">${x.teacher_name}</span><span style="width:44px;flex-shrink:0;font-family:var(--ffs);font-weight:600;color:${x.abstain?'var(--ink3)':(Number(x.score)>0?'var(--green)':'var(--red)')}">${x.abstain?'弃权':x.score}</span><span style="flex:1;color:var(--ink3)">${(x.comment||'').replace(/</g,'&lt;')}</span></div>`).join('');
-      teacherBlock=`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"><div style="font-size:12px;margin-bottom:8px">${scoreLine}</div>${link?`<div style="font-size:12px;margin-bottom:8px"><a href="${link.link}" target="_blank" rel="noopener" style="color:var(--blue)">${link.link}</a></div>`:''}${rows?`<div style="margin-bottom:8px">${rows}</div>`:'<div style="font-size:12px;color:var(--ink3);margin-bottom:8px">还没有人评分</div>'}<button class="btn-add" style="padding:5px 12px" onclick="openAiScore(${w.id})">评分 / 修改我的评分</button></div>`;
+      teacherBlock=`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"><div style="font-size:12px;margin-bottom:8px">${scoreLine}</div>${link?`<div style="font-size:12px;margin-bottom:8px"><a href="${link.link}" target="_blank" rel="noopener" style="color:var(--blue)">${link.link}</a></div>`:''}${rows?`<div style="margin-bottom:8px">${rows}</div>`:'<div style="font-size:12px;color:var(--ink3);margin-bottom:8px">还没有人评分</div>'}<button class="btn-add" style="padding:5px 12px" onclick="openAiScore(${w.id})">评分 / 修改我的评分</button>
+          <button class="filter-btn" style="padding:5px 12px;margin-left:6px" onclick="openAiUpload(${w.id})">编辑作品</button>
+          <button class="filter-btn" style="padding:5px 12px;margin-left:6px;border-color:var(--red-bd);color:var(--red)" onclick="deleteAiWork(${w.id})">删除</button></div>`;
     }
 
     return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span style="font-weight:500;font-size:14px">${(w.title||'').replace(/</g,'&lt;')}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue)">${t.label} · 上限${t.cap}</span>${statusTag}</div>${w.description?`<div style="font-size:12px;color:var(--ink3);margin-bottom:6px;line-height:1.6">${w.description.replace(/</g,'&lt;')}</div>`:''}<div>${makerHtml}</div>${teacherBlock}</div>`;
   }).join('');
 }
 
-function openAiUpload(){
+let aiuEditId=null;   // null=新增，有值=编辑该作品
+function openAiUpload(workId){
   if(!currentPeriodId){toast('请先选择期间',true);return}
-  document.getElementById('aiu-title').value='';
-  document.getElementById('aiu-link').value='';
-  document.getElementById('aiu-desc').value='';
+  aiuEditId=(typeof workId==='number')?workId:null;
+  if(aiuEditId&&!aiIsTeacher()){toast('只有老师端可以编辑作品',true);return}
+  const w=aiuEditId?aiWorks.find(x=>x.id===aiuEditId):null;
+  document.getElementById('aiu-head').textContent=w?'编辑作品':'上传 AI 作品';
+  document.getElementById('aiu-save').textContent=w?'保存修改':'送出';
+  document.getElementById('aiu-title').value=w?(w.title||''):'';
+  document.getElementById('aiu-link').value=w?((aiLinks.find(l=>l.work_id===w.id)||{}).link||''):'';
+  document.getElementById('aiu-desc').value=w?(w.description||''):'';
   document.getElementById('aiu-type').innerHTML=Object.entries(AI_TYPES)
     .map(([k,v])=>`<option value="${k}">${v.label}（上限${v.cap}）</option>`).join('');
   const opts=[...staffScores].sort((a,b)=>(a.code||'').localeCompare(b.code||''));
   document.getElementById('aiu-pick').innerHTML='<option value="">＋ 选择制作人…</option>'+
     opts.map(d=>`<option value="${d.staff_id}">${personCode(d)}${d.nickname?' '+d.nickname:''}</option>`).join('');
-  aiuMakers=[];aiuRenderMakers();aiuRenderHint();
+  if(w)document.getElementById('aiu-type').value=w.work_type;
+  aiuMakers=w
+    ? aiMakers.filter(m=>m.work_id===w.id).map(m=>({staff_id:m.staff_id,name:aiStaffName(m.staff_id),pct:Number(m.contrib_pct)}))
+    : [];
+  aiuRenderMakers();aiuRenderHint();
   document.getElementById('ai-upload-modal').classList.add('open');
 }
 function aiuRenderHint(){
@@ -3019,14 +3032,45 @@ async function saveAiWork(btn){
   if(Math.abs(sum-100)>=0.005){toast('贡献百分比加总必须等於 100，目前 '+sum,true);return}
   if(aiuMakers.some(m=>!(m.pct>0))){toast('每位制作人的贡献必须大於 0',true);return}
   btn.disabled=true;
-  const {error}=await sb.rpc('ai_work_submit',{
-    p_period_id:currentPeriodId,p_title:title,p_work_type:type,
-    p_description:desc,p_link:link,
-    p_makers:aiuMakers.map(m=>({staff_id:m.staff_id,pct:m.pct}))
-  });
+  const makers=aiuMakers.map(m=>({staff_id:m.staff_id,pct:m.pct}));
+  const {error}=aiuEditId
+    ? await sb.rpc('ai_work_update',{p_work_id:aiuEditId,p_title:title,p_work_type:type,
+        p_description:desc,p_link:link,p_makers:makers})
+    : await sb.rpc('ai_work_submit',{p_period_id:currentPeriodId,p_title:title,p_work_type:type,
+        p_description:desc,p_link:link,p_makers:makers});
   btn.disabled=false;
-  if(error){toast('送出失败：'+error.message,true);return}
-  closeModal('ai-upload-modal');toast('作品已送出');loadAiWorks();
+  if(error){toast((aiuEditId?'保存失败：':'送出失败：')+error.message,true);return}
+  closeModal('ai-upload-modal');toast(aiuEditId?'作品已更新':'作品已送出');
+  aiuEditId=null;loadAiWorks();
+}
+
+/* 删除作品：会连带清掉连结、制作人、所有老师的评分（外键 cascade）。
+   ★没有复原。所以确认框要讲清楚会一起消失几笔评分，
+   不能只问「确定删除吗」——那种问法使用者根本不知道自己在删什麽。 */
+async function deleteAiWork(workId){
+  if(!aiIsTeacher()){toast('只有老师端可以删除作品',true);return}
+  const w=aiWorks.find(x=>x.id===workId);if(!w)return;
+  const n=aiScores.filter(x=>x.work_id===workId).length;
+  const mk=aiMakers.filter(m=>m.work_id===workId).length;
+  const msg=`确定删除「${w.title}」？
+
+`+
+    `会一起永久删除：
+`+
+    `· ${n} 笔老师评分与评语
+`+
+    `· ${mk} 位制作人的贡献纪录
+`+
+    `· 作品连结
+
+`+
+    (n?`删掉後这 ${n} 位老师要重评一次，且相关人员的 AI 累计会跟着减少。
+`:'')+
+    `这个动作无法复原。`;
+  if(!confirm(msg))return;
+  const {error}=await sb.from('ai_works').delete().eq('id',workId);
+  if(error){toast('删除失败：'+error.message,true);return}
+  toast('已删除「'+w.title+'」');loadAiWorks();
 }
 
 function openAiScore(workId){
@@ -3058,8 +3102,36 @@ function openAiScore(workId){
   const base=(mine&&mine.contrib_override)||null;
   document.getElementById('ais-pct').innerHTML=mks.map(m=>
     `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px"><span style="flex:1">${aiStaffName(m.staff_id)}</span><span style="font-size:11px;color:var(--ink3)">学生填 ${m.contrib_pct}%</span><input type="number" class="ais-pct-in" data-staff="${m.staff_id}" data-base="${m.contrib_pct}" value="${base?(base[m.staff_id]!==undefined?base[m.staff_id]:m.contrib_pct):m.contrib_pct}" min="0" max="100" step="0.5" oninput="aisRenderPctTotal()" style="width:70px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:12px;text-align:right;font-family:var(--ff);outline:none"><span style="color:var(--ink3);font-size:12px">%</span></div>`).join('');
-  aisRenderPctTotal();aisToggleAbstain();
+  aisRenderPctTotal();aisToggleAbstain();aisNameHint();
   document.getElementById('ai-score-modal').classList.add('open');
+}
+/* 名字换了要提醒：这个名字已经有评分了，存下去会覆盖。
+   ★刻意不自动带入——自动改栏位会在「打完名字直接按储存」时
+   把使用者刚填的分数评语洗掉。改成显示提示＋一颗「载入」让他自己决定。 */
+function aisNameHint(){
+  const el=document.getElementById('ais-name-hint');
+  const name=document.getElementById('ais-name').value.trim();
+  if(!name){el.innerHTML='';return}
+  const mine=aiScores.find(x=>x.work_id===aisWorkId&&x.teacher_name===name);
+  if(!mine){el.innerHTML='<span style="color:var(--ink3)">这是新的一笔评分</span>';return}
+  const v=mine.abstain?'弃权':mine.score+' 分';
+  el.innerHTML=`<span style="color:var(--amber)">「${name}」已经评过 ${v}——储存会覆盖掉它。</span>
+    <button onclick="aisLoadMine()" style="margin-left:6px;background:none;border:1px solid var(--border);border-radius:3px;padding:1px 8px;font-size:11px;color:var(--ink2);cursor:pointer;font-family:var(--ff)">载入原本的</button>`;
+}
+function aisLoadMine(){
+  const name=document.getElementById('ais-name').value.trim();
+  const mine=aiScores.find(x=>x.work_id===aisWorkId&&x.teacher_name===name);
+  if(!mine){toast('找不到这个名字的评分',true);return}
+  document.getElementById('ais-abstain').checked=!!mine.abstain;
+  document.getElementById('ais-score').value=mine.abstain?'':mine.score;
+  document.getElementById('ais-comment').value=mine.comment||'';
+  const base=mine.contrib_override||null;
+  document.querySelectorAll('.ais-pct-in').forEach(inp=>{
+    const k=inp.dataset.staff;
+    inp.value=base&&base[k]!==undefined?base[k]:inp.dataset.base;
+  });
+  aisRenderPctTotal();aisToggleAbstain();
+  toast('已载入「'+name+'」原本的评分');
 }
 function aisRenderPctTotal(){
   const ins=[...document.querySelectorAll('.ais-pct-in')];
