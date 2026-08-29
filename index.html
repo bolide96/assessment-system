@@ -1876,8 +1876,28 @@ async function saveMgrBonus(){
   const oldMgr=d.mgr_bonus||0;
   const mgrOldDesc=oldMgr===0?'无':`${oldMgr>0?'+':''}${oldMgr}分${d.mgr_note?'('+d.mgr_note+')':''}`;
   const mgrNewDesc=mgr_bonus===0?'取消':`${mgr_bonus>0?'+':''}${mgr_bonus}分${mgr_note?'('+mgr_note+')':''}`;
-  logAudit(d.name,'老师加减分',mgrOldDesc,mgrNewDesc);
+  if(oldMgr!==mgr_bonus||(d.mgr_note||'')!==mgr_note)logAudit(d.name,'老师加减分',mgrOldDesc,mgrNewDesc);
+
+  // 报名分析加减分原本完全没有留纪录——六个月份的值存进资料库却查不到是谁改的。
+  // 逐月列出有值的月份，才看得出改了哪一个月、不是只看总数。
+  const mcA=getMonthConfig();
+  const aDesc=vals=>{
+    const parts=[];
+    vals.forEach((v,i)=>{if(v)parts.push(`${mcA.labels[i]}${v>0?'+':''}${v}`)});
+    const tot=vals.reduce((a,b)=>a+b,0);
+    return parts.length?`${parts.join('、')}　合计${tot>0?'+':''}${tot}`:'无';
+  };
+  // loadStaffScores 把 analysis_jun 映射成 analysis_jun_a，读旧值要兼容
+  const oldVals=aKeys.map(k=>Number(d[k]!==undefined?d[k]:d[k+'_a'])||0);
+  const newVals=aKeys.map(k=>analysisData[k]||0);
+  if(oldVals.join()!==newVals.join())logAudit(d.name,'报名分析加减分',aDesc(oldVals),aDesc(newVals));
+
   d.mgr_bonus=mgr_bonus;d.mgr_note=mgr_note;d.score2=score2;
+  // ★原本没更新记忆体里的 analysis_*，导致编辑後台「老师加减」那栏
+  //   （显示 mgr_bonus + analysis_total）会用到旧值，跟「最终分数」对不起来，
+  //   要重新整理才正常。这里补上。
+  aKeys.forEach((k,i)=>{d[k]=newVals[i];if(k==='analysis_jun')d.analysis_jun_a=newVals[i];});
+  d.analysis_total=analysisTotal;
   closeModal('mgr-modal');
   renderEditPage();
   toast('老师加减分已保存');
