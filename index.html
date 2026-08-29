@@ -374,11 +374,12 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
           <th class="c" style="width:60px">班次</th>
           <th class="c" style="width:50px">级别</th>
           <th style="width:140px">总分</th>
+          <th class="c" style="width:60px" title="AI 作品累计（0~40），已计入总分">AI分数</th>
           <th class="c" style="width:76px" title="0分记录累计：失=小失误 析=分析。只记录，不影响分数">记录</th>
           <th class="c" style="width:60px">班内排名</th>
           <th>金损金额</th>
         </tr></thead>
-        <tbody id="tbody"><tr><td colspan="7" class="loading-state">选择期间载入中…</td></tr></tbody>
+        <tbody id="tbody"><tr><td colspan="8" class="loading-state">选择期间载入中…</td></tr></tbody>
       </table>
       <div id="no-results" class="no-results" style="display:none">没有符合条件的人员</div>
     </div>
@@ -402,6 +403,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       </div>
       <button class="btn-add" onclick="openAiUpload()">＋ 上传作品</button>
     </div>
+    <div id="ai-rules"></div>
     <div id="ai-summary" style="font-size:12px;color:var(--ink3);margin-bottom:12px"></div>
     <div id="ai-list"></div>
   </div>
@@ -725,12 +727,12 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
         <div class="form-row"><label>类型</label>
           <select id="aiu-type" onchange="aiuRenderHint()"></select>
         </div>
-        <div class="form-row"><label>连结</label><input id="aiu-link" placeholder="https://..."></div>
+        <div class="form-row"><label id="aiu-link-label">连结</label><input id="aiu-link" placeholder="https://..."></div>
       </div>
       <div id="aiu-hint" style="font-size:11px;color:var(--ink3);margin:-6px 0 12px"></div>
       <div class="form-row"><label>说明</label><textarea id="aiu-desc" placeholder="这个作品做了什么、解决什么问题…"></textarea></div>
       <div style="height:1px;background:var(--border);margin:14px 0"></div>
-      <div class="form-row"><label>加入制作人</label>
+      <div class="form-row"><label id="aiu-maker-label">加入制作人</label>
         <select id="aiu-pick" onchange="aiuAddMaker(this.value);this.value=''"></select>
       </div>
       <div id="aiu-makers"></div>
@@ -1535,11 +1537,12 @@ function renderQuery(){
         <td class="c"><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
         <td><span style="color:var(--ink3);font-size:13px">未结算</span></td>
         <td class="c"><span style="color:var(--ink3)">—</span></td>
+        <td class="c"><span style="color:var(--ink3)">—</span></td>
         <td class="c">${zeroMarkSummary(d)}</td>
         <td class="c"><span style="color:var(--ink3)">—</span></td>
         <td></td>
       </tr>
-      <tr id="qdrawer-${i}" style="display:none"><td colspan="7" style="padding:0"><div class="drawer open" id="qdetail-${i}"></div></td></tr>`;
+      <tr id="qdrawer-${i}" style="display:none"><td colspan="8" style="padding:0"><div class="drawer open" id="qdetail-${i}"></div></td></tr>`;
     }
     const cls=scoreClass(d.score||0);const bc=barColor(d.score||0);
     const pct=Math.round((d.score2||0)/maxS*100);
@@ -1548,11 +1551,12 @@ function renderQuery(){
       <td class="c"><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td class="c">${gradeBadgeHtml(d)}</td>
       <td><div style="display:flex;align-items:center;gap:8px"><span class="score-num ${cls}">${d.score||0}</span><div style="flex:1"><div class="score-bar-bg"><div class="score-bar-fill" style="width:${pct}%;background:${bc}"></div></div></div></div></td>
+      <td class="c" style="font-size:12px;font-weight:500;color:${(Number(d.ai_score)||0)>0?'var(--amber)':'var(--ink3)'}">${(Number(d.ai_score)||0)>0?Number(d.ai_score):'—'}</td>
       <td class="c">${zeroMarkSummary(d)}</td>
       <td class="c">${rankBadge(d.rank2)}</td>
       <td>${js}</td>
     </tr>
-    <tr id="qdrawer-${i}" style="display:none"><td colspan="7" style="padding:0"><div class="drawer open" id="qdetail-${i}"></div></td></tr>`;
+    <tr id="qdrawer-${i}" style="display:none"><td colspan="8" style="padding:0"><div class="drawer open" id="qdetail-${i}"></div></td></tr>`;
   }).join('');
 }
 
@@ -1597,6 +1601,7 @@ function toggleDetail(i,enc){
           <div class="score-item"><span>起始分</span><span>${d.base||80}</span></div>
           ${(Number(baseConfig.perfect_bonus)||0)>0?`<div class="score-item"><span>半年度无失误奖励</span><span style="color:${(d.perfect||0)>0?'var(--green)':'var(--ink3)'}">${(d.perfect||0)>0?'+'+(d.perfect||0):'×'}</span></div>`:''}
           <div class="score-item"><span>半年度出勤正常</span><span style="color:${(d.attendance||0)>0?'var(--green)':'var(--ink3)'}">${(d.attendance||0)>0?'+'+(d.attendance||0):'×'}</span></div>
+          ${(Number(d.ai_score)||0)>0?`<div class="score-item"><span>AI 作品分</span><span style="color:var(--amber)">+${Number(d.ai_score)}</span></div>`:''}
           <div class="score-item" style="border-top:1px solid var(--border);margin-top:2px"><span style="font-weight:500">总分</span><span style="font-size:15px;font-family:var(--ffs);font-weight:600">${calcScore(d).score}</span></div>
           <div class="score-item" style="background:var(--surface2)"><span style="font-weight:500">级别${d.grade_override?'（老师指定）':'（自动）'}</span><span class="grade-badge grade-${getEffectiveGrade(d).grade}">${getEffectiveGrade(d).grade}</span></div>
         </div>
@@ -1643,7 +1648,7 @@ function renderStaffTable(){
   else if(staffSortKey==='shift')list=[...list].sort((a,b)=>a.shift.localeCompare(b.shift,'zh'));
   else list=[...list].sort((a,b)=>(b[staffSortKey]||0)-(a[staffSortKey]||0));
   document.getElementById('staff-count').textContent=`共 ${list.length} 人`;
-  if(!list.length){tb.innerHTML=`<tr><td colspan="7" class="loading-state">此期间暂无人员资料，请新增或汇入</td></tr>`;return}
+  if(!list.length){tb.innerHTML=`<tr><td colspan="8" class="loading-state">此期间暂无人员资料，请新增或汇入</td></tr>`;return}
   tb.innerHTML=list.map(d=>{
     return`<tr>
       <td style="font-weight:500">${d.code||'—'}</td>
@@ -2845,11 +2850,19 @@ document.addEventListener('visibilitychange',()=>{
 });
 /* ════════════ AI 作品 ════════════ */
 const AI_TYPES={
-  hands_on   :{label:'实际动手做', cap:20, hint:'建议区间 5–20，重视效益与完整度'},
-  requirement:{label:'完整需求提出',cap:15, hint:'建议区间 5–15，视需求结构完整度'},
-  non_work   :{label:'非工作项目', cap:10, hint:'建议区间 1–10，只能个人自己完成'},
-  bug        :{label:'回报 AI Bug',cap:3,  hint:'建议区间 1–3'},
-  suggestion :{label:'采纳小建议', cap:3,  hint:'建议区间 1–3'}
+  // kind：work=做出来的成品／report=发现问题或提出建议。
+  // 两类都算进同一个 40 分上限，所以不拆表也不拆清单，
+  // 只在表单用字与卡片底色上区分——硬分成两区块反而暗示是两套制度。
+  hands_on   :{label:'实际动手做', cap:20, kind:'work',   hint:'建议区间 5–20，重视效益与完整度',
+               pick:'工作相关、实际做出成品。重视效益与完整度'},
+  requirement:{label:'完整需求提出',cap:15, kind:'work',   hint:'建议区间 5–15，视需求结构完整度',
+               pick:'提出完整需求（功能规划、介面构想等），未实际制作'},
+  non_work   :{label:'非工作项目', cap:10, kind:'work',   hint:'建议区间 1–10，只能个人自己完成',
+               pick:'非工作用途的作品，只能个人自己完成'},
+  bug        :{label:'回报 AI Bug',cap:3,  kind:'report', hint:'建议区间 1–3',
+               pick:'回报 AI 项目的 Bug'},
+  suggestion :{label:'采纳小建议', cap:3,  kind:'report', hint:'建议区间 1–3',
+               pick:'提出并被采纳的小建议'}
 };
 const AI_PERSON_CAP=40;
 let aiWorks=[],aiMakers=[],aiLinks=[],aiScores=[],aiFilter='all';
@@ -2952,7 +2965,46 @@ function toggleAiScores(id){
   if(aiOpenScores.has(id))aiOpenScores.delete(id);else aiOpenScores.add(id);
   renderAiWorks();
 }
+/* 评分规则面板（只有老师端）。
+   刻意放在 AI 作品页里、而不是另开一个页面——
+   规则是「打分那一刻」需要的东西，另开一页等於要先想到去查，
+   多半就凭印象打了。放同一页收合起来，需要时一键展开。
+   展开状态记在 localStorage，不用每次重开。 */
+function renderAiRules(){
+  const el=document.getElementById('ai-rules');
+  if(!el)return;
+  if(!aiIsTeacher()){el.innerHTML='';return}
+  const open=localStorage.getItem('aiRulesOpen')==='1';
+  const row=(k,v)=>`<div style="display:flex;gap:10px;padding:4px 0;border-bottom:1px solid var(--border)"><span style="width:96px;flex-shrink:0;color:var(--ink2);font-weight:500">${k}</span><span style="flex:1;color:var(--ink3);line-height:1.7">${v}</span></div>`;
+  // 分成「作品」与「回报・建议」两行——五个并排看不出哪些是成品、
+  // 哪些是发现问题，而这两类的评分心态本来就不一样
+  const capLine=k=>Object.values(AI_TYPES).filter(v=>v.kind===k)
+    .map(v=>`${v.label} <b style="color:var(--ink2)">${v.cap}</b>`).join('　/　');
+  const caps=`<span style="color:var(--ink3)">AI 作品</span>　${capLine('work')}`+
+             `<br><span style="color:var(--amber)">回报・建议</span>　${capLine('report')}`;
+  el.innerHTML=`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px;overflow:hidden">
+      <div onclick="toggleAiRules()" style="padding:9px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--surface2)">
+        <span style="font-size:12px;font-weight:500;color:var(--ink2)">评分规则速查 · 老师端</span>
+        <span style="font-size:12px;color:var(--blue)">${open?'收起 ▲':'展开 ▼'}</span>
+      </div>
+      ${open?`<div style="padding:10px 14px 12px;font-size:12px">
+        ${row('类型上限',caps+'<br><span style="opacity:.8">上限是硬性的；下限只是建议区间，认为没有价值时仍可给 0 分。</span>')}
+        ${row('取平均','有效评分总和 ÷ 有效人数 = 作品总分，<b style="color:var(--ink2)">保留 1 位小数</b>。<br>弃权<b style="color:var(--ink2)">不计入人数</b>；给 0 分<b style="color:var(--ink2)">照常算进</b>分母与分子。')}
+        ${row('弃权','实际看过并了解作品才评分，无法判断就弃权。<br><b style="color:var(--red)">弃权不得以 0 分代替</b>——看过觉得没价值给 0，没看过／无法判断才弃权。<br>与作品有利害关系者回避。')}
+        ${row('归零条件','<b style="color:var(--ink2)">严格超过半数</b>给 0 → 整件 0 分，不看平均（刚好一半不成立）。<br>有评分纪录但<b style="color:var(--ink2)">全数弃权</b> → 视为 0 分。<br>尚未有人评过 → <b style="color:var(--ink2)">待评分</b>，不是 0 分，暂不计入累加。')}
+        ${row('评语','<b style="color:var(--red)">必填</b>。给分要写理由，弃权也要写一句（回避／未看过／无法判断）。<br>老师之间不匿名；主任亦以老师帐号检视是否有失公平。')}
+        ${row('协作拆分','学生上传时填的贡献百分比是<b style="color:var(--ink2)">预设值</b>，你可以调整。<br>最终比例 = 所有<b style="color:var(--ink2)">参与（未弃权）</b>老师的平均；没调整的视为同意学生提案。<br>四舍五入误差塞给贡献最高的人，保证各人加总 = 作品总分。')}
+        ${row('累加','个人多件累计，<b style="color:var(--ink2)">上限 40</b>，超过以 40 计。<br>绑定当期半年度，换期归零重算。<b style="color:var(--ink2)">已计入学生看得到的总分。</b>')}
+      </div>`:''}
+    </div>`;
+}
+function toggleAiRules(){
+  localStorage.setItem('aiRulesOpen',localStorage.getItem('aiRulesOpen')==='1'?'0':'1');
+  renderAiRules();
+}
 function renderAiWorks(){
+  renderAiRules();
   const box=document.getElementById('ai-list');
   const teacher=aiIsTeacher();
   const list=aiWorks.filter(w=>aiFilter==='all'||w.status===aiFilter);
@@ -3004,7 +3056,8 @@ function renderAiWorks(){
           <button class="filter-btn" style="padding:5px 12px;margin-left:6px;border-color:var(--red-bd);color:var(--red)" onclick="deleteAiWork(${w.id})">删除</button></div>`;
     }
 
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span style="font-weight:500;font-size:14px">${(w.title||'').replace(/</g,'&lt;')}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue)">${t.label} · 上限${t.cap}</span>${statusTag}</div>${w.description?`<div style="font-size:12px;color:var(--ink3);margin-bottom:6px;line-height:1.6">${w.description.replace(/</g,'&lt;')}</div>`:''}<div>${makerHtml}</div>${(()=>{const ns=aiMakers.filter(m=>m.work_id===w.id&&m.note);return ns.length?`<div style="margin-top:6px;font-size:11px;color:var(--ink3);line-height:1.7">${ns.map(m=>`<div>${aiStaffName(m.staff_id)}：${(m.note||'').replace(/</g,'&lt;')}</div>`).join('')}</div>`:'';})()}${teacherBlock}</div>`;
+    const isReport=t.kind==='report';
+    return `<div style="background:${isReport?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);${isReport?'border-left:3px solid var(--amber-bd);':''}border-radius:var(--r);padding:14px 16px;margin-bottom:10px"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span style="font-weight:500;font-size:14px">${(w.title||'').replace(/</g,'&lt;')}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:${isReport?'var(--amber-bg)':'var(--surface2)'};color:${isReport?'var(--amber)':'var(--ink3)'};border:1px solid ${isReport?'var(--amber-bd)':'var(--border)'}">${isReport?'回报・建议':'AI 作品'}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue)">${t.label}${teacher?` · 上限${t.cap}`:''}</span>${statusTag}</div>${w.description?`<div style="font-size:12px;color:var(--ink3);margin-bottom:6px;line-height:1.6">${w.description.replace(/</g,'&lt;')}</div>`:''}<div>${makerHtml}</div>${(()=>{const ns=aiMakers.filter(m=>m.work_id===w.id&&m.note);return ns.length?`<div style="margin-top:6px;font-size:11px;color:var(--ink3);line-height:1.7">${ns.map(m=>`<div>${aiStaffName(m.staff_id)}：${(m.note||'').replace(/</g,'&lt;')}</div>`).join('')}</div>`:'';})()}${teacherBlock}</div>`;
   }).join('');
 }
 
@@ -3019,8 +3072,11 @@ function openAiUpload(workId){
   document.getElementById('aiu-title').value=w?(w.title||''):'';
   document.getElementById('aiu-link').value=w?((aiLinks.find(l=>l.work_id===w.id)||{}).link||''):'';
   document.getElementById('aiu-desc').value=w?(w.description||''):'';
+  // 学生看不到各类型的上限分数——知道哪个类型分数高，
+  // 就会倾向全部都选「实际动手做」，类型分级会失去意义。
+  const showCap=aiIsTeacher();
   document.getElementById('aiu-type').innerHTML=Object.entries(AI_TYPES)
-    .map(([k,v])=>`<option value="${k}">${v.label}（上限${v.cap}）</option>`).join('');
+    .map(([k,v])=>`<option value="${k}">${v.label}${showCap?`（上限${v.cap}）`:''}</option>`).join('');
   const opts=[...staffScores].sort((a,b)=>(a.code||'').localeCompare(b.code||''));
   document.getElementById('aiu-pick').innerHTML='<option value="">＋ 选择制作人…</option>'+
     opts.map(d=>`<option value="${d.staff_id}">${personCode(d)}${d.nickname?' '+d.nickname:''}</option>`).join('');
@@ -3033,7 +3089,21 @@ function openAiUpload(workId){
 }
 function aiuRenderHint(){
   const t=AI_TYPES[document.getElementById('aiu-type').value];
-  document.getElementById('aiu-hint').textContent=t?t.hint+'　（下限只是参考，实际由老师判断）':'';
+  const el=document.getElementById('aiu-hint');
+  // 回报 Bug／建议常常没有「作品连结」，但还是要留下轨迹，
+  // 所以栏位保留必填、改成接受自由文字（截图连结或「已向 XX 反应」都行）
+  const isReport=t&&t.kind==='report';
+  const lab=document.getElementById('aiu-link-label');
+  const inp=document.getElementById('aiu-link');
+  if(lab)lab.textContent=isReport?'连结或向谁反应':'连结';
+  if(inp)inp.placeholder=isReport?'截图连结，或写「已向 OOO 反应」':'https://...';
+  const mkLab=document.getElementById('aiu-maker-label');
+  if(mkLab)mkLab.textContent=isReport?'加入提出人':'加入制作人';
+  if(!t){el.textContent='';return}
+  // 老师看得到建议区间；学生只看到该怎麽选，不看到值多少分
+  el.textContent=aiIsTeacher()
+    ? t.hint+'　（下限只是参考，实际由老师判断）'
+    : (t.pick||'');
 }
 function aiuEvenSplit(){
   if(!aiuMakers.length)return;
@@ -3083,6 +3153,16 @@ async function saveAiWork(btn){
         p_description:desc,p_link:link,p_makers:makers});
   btn.disabled=false;
   if(error){toast((aiuEditId?'保存失败：':'送出失败：')+error.message,true);return}
+  const tl=(AI_TYPES[type]||{}).label||type;
+  const who=aiuMakers.map(m=>m.name+' '+m.pct+'%').join('、');
+  if(aiuEditId){
+    const before=aiWorks.find(x=>x.id===aiuEditId)||{};
+    const beforeMk=aiMakers.filter(m=>m.work_id===aiuEditId)
+      .map(m=>aiStaffName(m.staff_id)+' '+Number(m.contrib_pct)+'%').join('、');
+    logAudit(title,'AI作品·编辑',`${(AI_TYPES[before.work_type]||{}).label||before.work_type}｜${beforeMk}`,`${tl}｜${who}`);
+  }else{
+    logAudit(title,'AI作品·上传','—',`${tl}｜${who}`);
+  }
   closeModal('ai-upload-modal');toast(aiuEditId?'作品已更新':'作品已送出');
   aiuEditId=null;loadAiWorks();
 }
@@ -3113,6 +3193,8 @@ async function deleteAiWork(workId){
   if(!confirm(msg))return;
   const {error}=await sb.from('ai_works').delete().eq('id',workId);
   if(error){toast('删除失败：'+error.message,true);return}
+  logAudit(w.title,'AI作品·删除',
+    `${(AI_TYPES[w.work_type]||{}).label||w.work_type}｜${n} 笔评分｜${mk} 位制作人`,'已删除');
   toast('已删除「'+w.title+'」');loadAiWorks();
 }
 
@@ -3198,6 +3280,10 @@ async function deleteAiScore(scoreId){
     `删掉後作品总分会重算（目前 ${before==null?'待评分':before}）。这个动作无法复原。`))return;
   const {error}=await sb.from('ai_work_scores').delete().eq('id',scoreId);
   if(error){toast('删除失败：'+error.message,true);return}
+  const wk2=aiWorks.find(x=>x.id===row.work_id);
+  logAudit(wk2?wk2.title:'#'+row.work_id,`AI评分·删除 ${row.teacher_name}`,
+    (row.abstain?'弃权':row.score+'分')+'｜'+(row.comment||''),
+    `已删除（作品总分 ${before==null?'—':before} → 重算）`);
   await loadAiData().catch(()=>{});
   aisRenderExisting();aisNameHint();renderAiWorks();
   const after=aiCalcWork(row.work_id).score;
@@ -3268,6 +3354,11 @@ async function saveAiScore(btn){
   },{onConflict:'work_id,teacher_name'});
   btn.disabled=false;
   if(error){toast('保存失败：'+error.message,true);return}
+  const wk=aiWorks.find(x=>x.id===aisWorkId);
+  const prev=aiScores.find(x=>x.work_id===aisWorkId&&x.teacher_name===name);
+  const desc=v=>v?(v.abstain?'弃权':v.score+'分')+'｜'+(v.comment||''):'未评';
+  logAudit(wk?wk.title:'#'+aisWorkId,`AI评分·${name}`,
+    desc(prev),(abstain?'弃权':parseFloat(scoreRaw)+'分')+'｜'+comment);
   localStorage.setItem('aiTeacherName',name);
   closeModal('ai-score-modal');toast('评分已保存');loadAiWorks();
 }
