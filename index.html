@@ -64,7 +64,10 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
 .btn-new-period:hover{border-color:var(--ink2);color:var(--ink)}
 
 /* Pages */
-.page{display:none;max-width:1040px;margin:0 auto;padding:20px 16px 60px}
+/* 2026-08-29：全站页面从 1040 放宽到 1400。
+   原因是编辑後台多了「累计」与「AI分数」两栏会挤到出现横向捲轴，
+   而一般萤幕两侧留白本来就很多。 */
+.page{display:none;max-width:1400px;margin:0 auto;padding:20px 16px 60px}
 .page.active{display:block}
 
 /* Section header */
@@ -101,7 +104,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
 .tbl tbody tr.selected{background:#eeedf8}
 .tbl td{padding:8px 12px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis}
 .tbl td.c{text-align:center}
-.unit-tag{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:500;margin-left:5px}
+.unit-tag{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:500;margin-left:5px;white-space:nowrap}
 .tag-BB{background:#e8f0fe;color:#1a4fa0}.tag-四方{background:#e8f7ee;color:#1a6a3a}
 .tag-财务{background:#fef3e8;color:#9a5200}.tag-总管{background:#f3eefe;color:#5a3aa0}
 .tag-TB钱包{background:#fde8f0;color:#a0164f}
@@ -371,10 +374,11 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
           <th class="c" style="width:60px">班次</th>
           <th class="c" style="width:50px">级别</th>
           <th style="width:140px">总分</th>
+          <th class="c" style="width:76px" title="0分记录累计：失=小失误 析=分析。只记录，不影响分数">记录</th>
           <th class="c" style="width:60px">班内排名</th>
           <th>金损金额</th>
         </tr></thead>
-        <tbody id="tbody"><tr><td colspan="6" class="loading-state">选择期间载入中…</td></tr></tbody>
+        <tbody id="tbody"><tr><td colspan="7" class="loading-state">选择期间载入中…</td></tr></tbody>
       </table>
       <div id="no-results" class="no-results" style="display:none">没有符合条件的人员</div>
     </div>
@@ -418,7 +422,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <button class="sort-btn" onclick="setEditSort('name',this)">姓名</button>
     </div>
     <div class="tbl-wrap" style="overflow-x:auto">
-      <table class="tbl" style="table-layout:auto;min-width:800px">
+      <table class="tbl" style="table-layout:auto;min-width:1000px">
         <thead id="edit-thead"><tr><th colspan="12" class="loading-state">载入中…</th></tr></thead>
         <tbody id="edit-tbody"></tbody>
       </table>
@@ -1300,7 +1304,7 @@ function renderEditPage(){
 
   const mc=getMonthConfig();
   document.getElementById('edit-thead').innerHTML=`<tr>
-    <th>人员</th><th style="width:60px">班别</th><th style="width:60px">总分</th>
+    <th style="min-width:150px">人员</th><th style="width:60px">班别</th><th style="width:60px">总分</th>
     ${mc.labels.map(m=>`<th style="width:52px">${m}</th>`).join('')}
     <th style="width:62px" title="整期0分记录累计次数：失=小失误 析=分析">累计</th>
     <th style="width:52px">无失误</th><th style="width:52px">出勤</th><th style="width:80px">综合评语</th><th style="width:80px">老师加减</th>
@@ -1400,7 +1404,30 @@ function zeroMarksHtml(entries){
   const h=zeroMarkPill('失',c.f,'var(--red-bg)','var(--red)')
          +zeroMarkPill('析',c.a,'var(--green-bg)','var(--green)')
          +zeroMarkPill('记',c.o,'var(--surface2)','var(--ink3)');
-  return h?`<div style="margin-top:2px;line-height:1">${h}</div>`:'';
+  return h?`<div style="margin-top:2px;line-height:1;white-space:nowrap">${h}</div>`:'';
+}
+/* 学生端主表格用：一行简短的「失N / 析N」，0 转灰不抢视线 */
+function zeroMarkSummary(d){
+  const t=zeroMarkTotals(d),g='var(--ink3)';
+  if(!t.f&&!t.a&&!t.o)return`<span style="color:${g};font-size:11px;white-space:nowrap">失0 / 析0</span>`;
+  return`<span style="font-size:11px;white-space:nowrap">`+
+    `<span style="color:${t.f?'var(--red)':g}">失${t.f}</span>`+
+    `<span style="color:${g}"> / </span>`+
+    `<span style="color:${t.a?'var(--green)':g}">析${t.a}</span>`+
+    (t.o?`<span style="color:${g}"> / 记${t.o}</span>`:'')+`</span>`;
+}
+/* 学生端抽屉用：标题右边的本期小结。
+   刻意放在「月度加扣分明细」这一区，因为这区没有成绩公布闸门——
+   跟下面每个月的「记」标记一起出现、一起消失，不会出现
+   「看得到记号却看不到累计」的断裂。 */
+function zeroMarkChips(d){
+  const t=zeroMarkTotals(d);
+  if(!t.f&&!t.a&&!t.o)return'';
+  const chip=(txt,n,bg,fg)=>n?`<span style="background:${bg};color:${fg};border-radius:3px;padding:1px 7px;margin-left:4px;font-weight:400">${txt} ${n}</span>`:'';
+  return`<span style="font-size:11px;white-space:nowrap;letter-spacing:0"><span style="color:var(--ink3)">本期记录</span>`+
+    chip('小失误',t.f,'var(--red-bg)','var(--red)')+
+    chip('分析',t.a,'var(--green-bg)','var(--green)')+
+    chip('其他',t.o,'var(--surface2)','var(--ink3)')+`</span>`;
 }
 /* 整期累计（半年度老师看次数用）*/
 function zeroMarkTotals(d){
@@ -1495,9 +1522,11 @@ function renderQuery(){
         <td class="c"><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
         <td><span style="color:var(--ink3);font-size:13px">未结算</span></td>
         <td class="c"><span style="color:var(--ink3)">—</span></td>
-        <td><span style="color:var(--ink3)">—</span></td>
+        <td class="c">${zeroMarkSummary(d)}</td>
+        <td class="c"><span style="color:var(--ink3)">—</span></td>
+        <td></td>
       </tr>
-      <tr id="qdrawer-${i}" style="display:none"><td colspan="5" style="padding:0"><div class="drawer open" id="qdetail-${i}"></div></td></tr>`;
+      <tr id="qdrawer-${i}" style="display:none"><td colspan="7" style="padding:0"><div class="drawer open" id="qdetail-${i}"></div></td></tr>`;
     }
     const cls=scoreClass(d.score||0);const bc=barColor(d.score||0);
     const pct=Math.round((d.score2||0)/maxS*100);
@@ -1506,10 +1535,11 @@ function renderQuery(){
       <td class="c"><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td class="c">${gradeBadgeHtml(d)}</td>
       <td><div style="display:flex;align-items:center;gap:8px"><span class="score-num ${cls}">${d.score||0}</span><div style="flex:1"><div class="score-bar-bg"><div class="score-bar-fill" style="width:${pct}%;background:${bc}"></div></div></div></div></td>
+      <td class="c">${zeroMarkSummary(d)}</td>
       <td class="c">${rankBadge(d.rank2)}</td>
       <td>${js}</td>
     </tr>
-    <tr id="qdrawer-${i}" style="display:none"><td colspan="6" style="padding:0"><div class="drawer open" id="qdetail-${i}"></div></td></tr>`;
+    <tr id="qdrawer-${i}" style="display:none"><td colspan="7" style="padding:0"><div class="drawer open" id="qdetail-${i}"></div></td></tr>`;
   }).join('');
 }
 
@@ -1572,7 +1602,7 @@ function toggleDetail(i,enc){
     </div>`:`<div><div class="drawer-section"><p style="color:var(--ink3);font-size:13px;padding:8px 0">成绩尚未公布</p></div></div>`;
   document.getElementById(`qdetail-${i}`).innerHTML=`
     <div class="drawer-grid">
-      <div><div class="drawer-section"><h4>月度加扣分明细</h4>
+      <div><div class="drawer-section"><h4 style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">月度加扣分明细${zeroMarkChips(d)}</h4>
         <div class="score-breakdown">${mb}</div>
         ${jb}
       </div></div>
@@ -1600,7 +1630,7 @@ function renderStaffTable(){
   else if(staffSortKey==='shift')list=[...list].sort((a,b)=>a.shift.localeCompare(b.shift,'zh'));
   else list=[...list].sort((a,b)=>(b[staffSortKey]||0)-(a[staffSortKey]||0));
   document.getElementById('staff-count').textContent=`共 ${list.length} 人`;
-  if(!list.length){tb.innerHTML=`<tr><td colspan="6" class="loading-state">此期间暂无人员资料，请新增或汇入</td></tr>`;return}
+  if(!list.length){tb.innerHTML=`<tr><td colspan="7" class="loading-state">此期间暂无人员资料，请新增或汇入</td></tr>`;return}
   tb.innerHTML=list.map(d=>{
     return`<tr>
       <td style="font-weight:500">${d.code||'—'}</td>
