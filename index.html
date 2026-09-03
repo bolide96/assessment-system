@@ -634,8 +634,8 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <div class="form-row" style="margin-top:10px"><label>适用范围</label>
         <select id="rm-scope">
           <option value="all">全体人员</option>
-          <option value="BB">BB 单位</option><option value="四方">四方 单位</option>
-          <option value="财务">财务 单位</option><option value="总管">总管 单位</option>
+          <option value="BB">BB 单位</option><option value="四方">四四 单位</option>
+          <option value="财务">金银财宝 单位</option><option value="总管">管家 单位</option>
           <option value="TB钱包">TB 单位</option><option value="AI小队">AI小队 单位</option>
           <option value="早">早班</option><option value="中">中班</option><option value="晚">晚班</option>
         </select>
@@ -1302,7 +1302,7 @@ function renderEditPage(){
       <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">
         ${shifts.map(s=>`<button class="filter-btn ef-shift${s==='全部'?' active':''}" onclick="setEditFilter('shift','${s}',this)">${s==='全部'?'全部班别':s}</button>`).join('')}
         <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
-        ${units.map(u=>`<button class="filter-btn ef-unit${u==='全部'?' active':''}" onclick="setEditFilter('unit','${u}',this)">${u==='全部'?'全部班组':u}</button>`).join('')}
+        ${units.map(u=>`<button class="filter-btn ef-unit${u==='全部'?' active':''}" onclick="setEditFilter('unit','${u}',this)">${u==='全部'?'全部班组':unitLabel(u)}</button>`).join('')}
       </div>`;
   }
 
@@ -2128,7 +2128,7 @@ function renderGradeConfigPane(){
     el.innerHTML='<div class="empty-rules">尚未设定级别区间，点击右上角「新增组别设定」，或使用预设（90+=A, 80-89=B, 70-79=C, 0-69=D）</div>';
     return;
   }
-  const unitLabels={all:'全体（预设）',BB:'BB',四方:'四方',财务:'财务',总管:'管家','TB钱包':'TB','AI小队':'AI小队'};
+  const unitLabels={all:'全体（预设）',BB:'BB',四方:'四四',财务:'金银财宝',总管:'管家','TB钱包':'TB','AI小队':'AI小队'};
   const grouped={};
   gradeConfigs.forEach(g=>{if(!grouped[g.unit])grouped[g.unit]=[];grouped[g.unit].push(g)});
   el.innerHTML=Object.entries(grouped).map(([unit,configs])=>`
