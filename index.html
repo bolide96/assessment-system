@@ -233,6 +233,15 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
 .preview-total{display:flex;justify-content:space-between;font-size:13px;font-weight:500;padding:5px 8px;margin-top:4px;border-top:1px solid var(--border)}
 
 /* Toast */
+.ai-pop{position:fixed;z-index:150;display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 8px 28px rgba(20,20,40,.16);padding:10px 12px;font-size:12px;min-width:230px;max-width:360px;color:var(--ink);pointer-events:none;font-family:var(--ff)}
+.ai-pop.show{display:block}
+.ai-pop .ap-title{font-weight:600;color:var(--ink2);margin-bottom:5px}
+.ai-pop .ap-row{display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px dashed var(--border)}
+.ai-pop .ap-row>span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ai-pop .ap-num{font-family:var(--ffs);white-space:nowrap;color:var(--ink3)}
+.ai-pop .ap-got{font-family:var(--ffs);white-space:nowrap;font-weight:600;width:36px;text-align:right}
+.ai-pop .ap-foot{display:flex;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);font-weight:600;color:var(--amber)}
+.ai-pop .ap-note{color:var(--ink3);font-size:11px;margin-top:5px;line-height:1.5}
 .toast{position:fixed;bottom:22px;right:22px;background:var(--ink);color:#fff;padding:10px 16px;font-size:13px;border-radius:var(--r);opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:200;font-family:var(--ff)}
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.err{background:var(--red)}
@@ -877,6 +886,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
 </div>
 
 
+<div class="ai-pop" id="ai-pop"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1341,15 +1351,8 @@ function renderEditPage(){
   // 无失误奖励是 0 的期间（新制就是），那一栏按了也不会加分，
   // 留着只会让人以为自己漏按。整栏藏起来。
   const showPerfect=(Number(baseConfig.perfect_bonus)||0)>0;
-  let aiEditTotals={},aiEditNotes={};
-  try{
-    aiEditTotals=aiPersonTotals();
-    aiWorks.forEach(w=>aiPersonScores(w.id).forEach(r=>{
-      if(r.score==null)return;
-      aiEditNotes[r.staff_id]=(aiEditNotes[r.staff_id]||'AI 作品明细：')+`
-· ${w.title} ${r.pct}% → ${r.score}`;
-    }));
-  }catch(e){console.warn('AI 分数计算失败，该栏显示为空',e);aiEditTotals={};aiEditNotes={};}
+  // AI 分数明细改成滑鼠悬浮框（showAiPop），不再塞进 title 属性——
+  // 原生 title 要停一秒才出现、不能排版，老师几乎不会发现它存在。
 
   const tb=document.getElementById('edit-tbody');
   if(!list.length){tb.innerHTML=`<tr><td colspan="${3+mc.keys.length+(showPerfect?8:7)}" class="loading-state">无可编辑的人员</td></tr>`;return}
@@ -1383,8 +1386,9 @@ function renderEditPage(){
       <td class="c" style="cursor:pointer;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:${d.comment?'var(--ink2)':'var(--ink3)'}" onclick="openCommentModal(${d.id})" title="${d.comment||'点击填写评语'}">${d.comment?'✎ '+d.comment.slice(0,6)+(d.comment.length>6?'…':''):'✎ 填写'}</td>
       <td class="c" style="cursor:pointer;font-size:12px;font-weight:500;color:${(d.mgr_bonus||0)>0?'var(--green)':(d.mgr_bonus||0)<0?'var(--red)':'var(--ink3)'}" onclick="openMgrModal(${d.id})" title="${d.mgr_note||'点击编辑老师加减分'}">${ (()=>{ const total=(d.mgr_bonus||0)+(d.analysis_total||0); return total>0?'+'+total:total<0?total:'✎ —'; })() }</td>
       ${(()=>{const t=Number(d.ai_score)||0;
-        if(!t)return`<td class="c" style="font-size:12px;color:var(--ink3)">—</td>`;
-        return`<td class="c" style="font-size:12px;font-weight:500;color:var(--amber)" title="${(aiEditNotes[d.staff_id]||'已计入总分').replace(/"/g,'&quot;')}">${t}</td>`;})()}
+        const hv=`onmouseenter="showAiPop(event,${d.staff_id})" onmouseleave="hideAiPop()"`;
+        if(!t)return`<td class="c" style="font-size:12px;color:var(--ink3);cursor:help" ${hv}>—</td>`;
+        return`<td class="c" style="font-size:12px;font-weight:500;color:var(--amber);cursor:help" ${hv}>${t}</td>`;})()}
       <td class="c"><span class="score-num ${scoreClass(d.score2||0)}">${d.score2||0}</span></td>
       <td class="c">${rankBadge(finalRankMap[d.id]||'—')}</td>
     </tr>`;
@@ -1554,7 +1558,7 @@ function renderQuery(){
       <td class="c"><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td class="c">${gradeBadgeHtml(d)}</td>
       <td><div style="display:flex;align-items:center;gap:8px"><span class="score-num ${cls}">${d.score||0}</span><div style="flex:1"><div class="score-bar-bg"><div class="score-bar-fill" style="width:${pct}%;background:${bc}"></div></div></div></div></td>
-      <td class="c" style="font-size:12px;font-weight:500;color:${(Number(d.ai_score)||0)>0?'var(--amber)':'var(--ink3)'}">${(Number(d.ai_score)||0)>0?Number(d.ai_score):'—'}</td>
+      <td class="c" style="font-size:12px;font-weight:500;cursor:help;color:${(Number(d.ai_score)||0)>0?'var(--amber)':'var(--ink3)'}" onmouseenter="showAiPop(event,${d.staff_id})" onmouseleave="hideAiPop()">${(Number(d.ai_score)||0)>0?Number(d.ai_score):'—'}</td>
       <td class="c">${zeroMarkSummary(d)}</td>
       <td class="c">${rankBadge(d.rank2)}</td>
       <td>${js}</td>
@@ -2889,6 +2893,7 @@ const AI_TYPES={
 };
 const AI_PERSON_CAP=40;
 let aiWorks=[],aiMakers=[],aiLinks=[],aiScores=[],aiFilter='all';
+let aiDataPeriod=null,aiPopStaff=null; // aiDataPeriod：目前 aiWorks 等阵列属於哪个期间（悬浮框 lazy 载入用）
 let aiuMakers=[];
 let aisWorkId=null;
 let aiOpenScores=new Set();   // 哪几件作品的评分明细被展开了
@@ -2903,10 +2908,10 @@ function aiStaffName(id){
 
 /* 只抓资料、不碰画面——编辑页要拿 AI 分数，但不该去动 #ai-list */
 async function loadAiData(){
-  if(!currentPeriodId){aiWorks=[];aiMakers=[];aiLinks=[];aiScores=[];return}
+  if(!currentPeriodId){aiWorks=[];aiMakers=[];aiLinks=[];aiScores=[];aiDataPeriod=null;return}
   const {data:w,error}=await sb.from('ai_works').select('*').eq('period_id',currentPeriodId).order('id',{ascending:false});
-  if(error){aiWorks=[];aiMakers=[];aiLinks=[];aiScores=[];return error}
-  aiWorks=w||[];
+  if(error){aiWorks=[];aiMakers=[];aiLinks=[];aiScores=[];aiDataPeriod=null;return error}
+  aiWorks=w||[];aiDataPeriod=currentPeriodId;
   const ids=aiWorks.map(x=>x.id);
   if(ids.length){
     const [mk,lk,sc]=await Promise.all([
@@ -2987,6 +2992,95 @@ function aiPersonTotals(){
 function toggleAiScores(id){
   if(aiOpenScores.has(id))aiOpenScores.delete(id);else aiOpenScores.add(id);
   renderAiWorks();
+}
+
+/* ── AI 分数明细悬浮框（编辑後台 ＋ 查询页的「AI分数」格）──
+   老师：每件作品的 作品分 × 最终比例 = 得分，加总与 40 上限。
+   学生：只列「参与了哪些作品、已评/待评」与合计。
+   ★学生端不列单件分数——不是画面上藏起来，是根本算不出来：
+     ai_work_scores 被 RLS 挡住，aiScores 在学生端永远是空阵列。
+     就算哪天算得出来也不该给：定案规则是「各件分数与评语只有老师看得到」，
+     给了单件得分，除以比例就反推出作品分了。
+   资料是 lazy 抓的：查询页本身不载入 AI 资料，第一次滑到才抓，
+   而且跟着 currentPeriodId 走，换期间後不会拿上一期的明细。 */
+function aiBreakdownHtml(staffId){
+  const isAdmin=currentProfile?.role==='admin';
+  const d=staffScores.find(x=>x.staff_id===staffId);
+  const dbTotal=Number(d?.ai_score)||0;
+  const mine=aiWorks.filter(w=>aiMakers.some(m=>m.work_id===w.id&&m.staff_id===staffId));
+  const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  let html=`<div class="ap-title">AI 作品明细${d?' · '+esc(personCode(d)):''}</div>`;
+  if(!mine.length){
+    return html+`<div class="ap-note">这一期没有参与任何 AI 作品</div>`;
+  }
+  let raw=0,pending=0;
+  mine.forEach(w=>{
+    const title=esc(w.title);
+    const typ=AI_TYPES[w.work_type]?.label||w.work_type||'';
+    if(isAdmin){
+      const {score,note}=aiCalcWork(w.id);
+      const r=aiPersonScores(w.id).find(x=>x.staff_id===staffId);
+      if(score==null||!r){
+        pending++;
+        html+=`<div class="ap-row"><span>${title}</span><span class="ap-num">待评分</span></div>`;
+        return;
+      }
+      raw=r1(raw+r.score);
+      html+=`<div class="ap-row" title="${esc(typ)}｜${esc(note)}"><span>${title}</span><span class="ap-num">${score} × ${r.pct}%</span><span class="ap-got">${r.score}</span></div>`;
+    }else{
+      const done=w.status==='scored';
+      if(!done)pending++;
+      html+=`<div class="ap-row"><span>${title}</span><span class="ap-num">${done?'已评分':'待评分'}</span></div>`;
+    }
+  });
+  if(isAdmin){
+    const capped=Math.min(AI_PERSON_CAP,raw);
+    html+=`<div class="ap-foot"><span>合计</span><span>${capped}</span></div>`;
+    const notes=[];
+    if(raw>AI_PERSON_CAP)notes.push(`原始累计 ${raw}，已达上限 ${AI_PERSON_CAP}`);
+    if(pending)notes.push(`另有 ${pending} 件待评分，评完会自动加进来`);
+    if(Math.abs(capped-dbTotal)>=0.05)notes.push(`资料库目前记 ${dbTotal}，与画面计算不同，重新整理看看`);
+    if(notes.length)html+=`<div class="ap-note">${notes.join('<br>')}</div>`;
+  }else{
+    html+=`<div class="ap-foot"><span>合计（已计入总分）</span><span>${dbTotal}</span></div>`;
+    const notes=['各件分数与评语仅老师可见'];
+    if(pending)notes.push(`另有 ${pending} 件待评分`);
+    html+=`<div class="ap-note">${notes.join('<br>')}</div>`;
+  }
+  return html;
+}
+function positionAiPop(anchor){
+  const pop=document.getElementById('ai-pop');
+  const rc=anchor.getBoundingClientRect();
+  pop.classList.add('show');
+  const pw=pop.offsetWidth,ph=pop.offsetHeight;
+  let left=rc.left+rc.width/2-pw/2;
+  left=Math.max(8,Math.min(left,window.innerWidth-pw-8));
+  let top=rc.bottom+6;
+  if(top+ph>window.innerHeight-8)top=rc.top-ph-6;
+  pop.style.left=left+'px';pop.style.top=Math.max(8,top)+'px';
+}
+function showAiPop(ev,staffId){
+  const anchor=ev.currentTarget;
+  const pop=document.getElementById('ai-pop');
+  if(!pop||!anchor)return;
+  aiPopStaff=staffId;
+  if(aiDataPeriod!==currentPeriodId){
+    pop.innerHTML='<div class="ap-title">AI 作品明细</div><div class="ap-note">载入中…</div>';
+    positionAiPop(anchor);
+    loadAiData().then(()=>{
+      if(aiPopStaff!==staffId||!document.body.contains(anchor))return;
+      pop.innerHTML=aiBreakdownHtml(staffId);positionAiPop(anchor);
+    }).catch(()=>{});
+    return;
+  }
+  pop.innerHTML=aiBreakdownHtml(staffId);
+  positionAiPop(anchor);
+}
+function hideAiPop(){
+  aiPopStaff=null;
+  const pop=document.getElementById('ai-pop');
+  if(pop)pop.classList.remove('show');
 }
 /* 评分规则面板（只有老师端）。
    刻意放在 AI 作品页里、而不是另开一个页面——
