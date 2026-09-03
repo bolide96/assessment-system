@@ -108,6 +108,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
 .tag-BB{background:#e8f0fe;color:#1a4fa0}.tag-四方{background:#e8f7ee;color:#1a6a3a}
 .tag-财务{background:#fef3e8;color:#9a5200}.tag-总管{background:#f3eefe;color:#5a3aa0}
 .tag-TB钱包{background:#fde8f0;color:#a0164f}
+.tag-AI小队{background:#e6f6f4;color:#0b6b5f}
 .shift-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px}
 .dot-早{background:#e8a020}.dot-中{background:#1a8a6a}.dot-晚{background:#5a3aa0}.dot-总管{background:#888}
 .score-bar-bg{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:3px}
@@ -358,6 +359,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <button class="filter-btn" onclick="setFilter('unit','财务',this)">金银财宝</button>
       <button class="filter-btn" onclick="setFilter('unit','总管',this)">管家</button>
       <button class="filter-btn" onclick="setFilter('unit','TB钱包',this)">TB</button>
+      <button class="filter-btn" onclick="setFilter('unit','AI小队',this)">AI小队</button>
       <div class="search-wrap"><span class="search-icon">🔍</span><input id="search" placeholder="搜索代号…" oninput="renderQuery()"></div>
     </div>
     <div class="sort-row">
@@ -455,6 +457,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
         <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','财务',this)">金银财宝</button>
         <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','总管',this)">管家</button>
         <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','TB钱包',this)">TB</button>
+        <button class="filter-btn sf-unit" onclick="setStaffFilter('unit','AI小队',this)">AI小队</button>
       </div>
     </div>
     <div class="tbl-wrap" style="overflow-x:auto">
@@ -633,7 +636,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
           <option value="all">全体人员</option>
           <option value="BB">BB 单位</option><option value="四方">四方 单位</option>
           <option value="财务">财务 单位</option><option value="总管">总管 单位</option>
-          <option value="TB钱包">TB 单位</option>
+          <option value="TB钱包">TB 单位</option><option value="AI小队">AI小队 单位</option>
           <option value="早">早班</option><option value="中">中班</option><option value="晚">晚班</option>
         </select>
       </div>
@@ -655,7 +658,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <input type="hidden" id="sm-name">
       <div class="form-grid">
         <div class="form-row" style="margin:0"><label>单位</label>
-          <select id="sm-unit"><option value="BB">BB</option><option value="四方">四四</option><option value="财务">金银财宝</option><option value="总管">管家</option><option value="TB钱包">TB</option></select>
+          <select id="sm-unit"><option value="BB">BB</option><option value="四方">四四</option><option value="财务">金银财宝</option><option value="总管">管家</option><option value="TB钱包">TB</option><option value="AI小队">AI小队</option></select>
         </div>
       </div>
       <div class="form-grid" style="margin-top:10px">
@@ -906,7 +909,7 @@ async function saveNickname(staffId, val, el){
 }
 
 function unitLabel(unit){
-  const map={'四方':'四四','财务':'金银财宝','总管':'管家','BB':'BB','TB钱包':'TB'};
+  const map={'四方':'四四','财务':'金银财宝','总管':'管家','BB':'BB','TB钱包':'TB','AI小队':'AI小队'};
   return map[unit]||unit;
 }
 function personCode(d){
@@ -1291,7 +1294,7 @@ function renderEditPage(){
   document.getElementById('edit-title').textContent=`编辑后台 · ${p?.name||''}`;
 
   const shifts=['全部','早','中','晚'];
-  const units=['全部','BB','四方','财务','总管','TB钱包'];
+  const units=['全部','BB','四方','财务','总管','TB钱包','AI小队'];
   const fEl=document.getElementById('edit-filters');
   if(!fEl.dataset.init){
     fEl.dataset.init='1';
@@ -2007,7 +2010,7 @@ async function importExcel(input){
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
       if(!rows.length){toast('档案没有资料',true);return}
-      const UNIT_VALS=['BB','四方','财务','总管','TB钱包'];
+      const UNIT_VALS=['BB','四方','财务','总管','TB钱包','AI小队'];
       const SHIFT_VALS=['早','中','晚','总管'];
       let ok=0,fail=[];
       for(const row of rows){
@@ -2077,8 +2080,8 @@ function renderGradeView(){
   const el=document.getElementById('grade-view-content');
   if(!el)return;
   if(!staffScores.length){el.innerHTML='<div class="no-results">此期间暂无人员资料</div>';return}
-  const units=['BB','四方','财务','总管','TB钱包'];
-  const unitNames={'BB':'BB','四方':'四四','财务':'金银财宝','总管':'管家','TB钱包':'TB'};
+  const units=['BB','四方','财务','总管','TB钱包','AI小队'];
+  const unitNames={'BB':'BB','四方':'四四','财务':'金银财宝','总管':'管家','TB钱包':'TB','AI小队':'AI小队'};
   const shifts=['早','中','晚','总管'];
   let html='';
   if(gradeViewMode==='split'){
@@ -2125,7 +2128,7 @@ function renderGradeConfigPane(){
     el.innerHTML='<div class="empty-rules">尚未设定级别区间，点击右上角「新增组别设定」，或使用预设（90+=A, 80-89=B, 70-79=C, 0-69=D）</div>';
     return;
   }
-  const unitLabels={all:'全体（预设）',BB:'BB',四方:'四方',财务:'财务',总管:'管家','TB钱包':'TB'};
+  const unitLabels={all:'全体（预设）',BB:'BB',四方:'四方',财务:'财务',总管:'管家','TB钱包':'TB','AI小队':'AI小队'};
   const grouped={};
   gradeConfigs.forEach(g=>{if(!grouped[g.unit])grouped[g.unit]=[];grouped[g.unit].push(g)});
   el.innerHTML=Object.entries(grouped).map(([unit,configs])=>`
@@ -2156,7 +2159,7 @@ function renderGradeConfigPane(){
 }
 
 function addGradeUnitSection(){
-  const units=['all','BB','四方','财务','总管','TB钱包'];
+  const units=['all','BB','四方','财务','总管','TB钱包','AI小队'];
   const existing=new Set(gradeConfigs.map(g=>g.unit));
   const available=units.filter(u=>!existing.has(u));
   if(!available.length){toast('所有组别都已设定');return}
@@ -2802,7 +2805,7 @@ function logAudit(staffName,fieldName,oldVal,newVal){
 }
 function getLogDisplayName(staffName){
   if(!staffName) return '—';
-  const prefixes=['BB-总馆-','BB-四外-','BB-总管-','TB钱包-','TB-','BB-','四方-','财务-','总管-','总馆-'];
+  const prefixes=['BB-总馆-','BB-四外-','BB-总管-','TB钱包-','TB-','AI小队-','BB-','四方-','财务-','总管-','总馆-'];
   let pureName=staffName;
   for(const p of prefixes){if(pureName.startsWith(p)){pureName=pureName.slice(p.length);break;}}
   const d=staffScores.find(x=>{
