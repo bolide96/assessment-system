@@ -3854,6 +3854,100 @@ renderGradeView=function(){if(UP.options.simplified){document.getElementById('gr
   upSyncRoleControls();
 })();
 
+/* Annual settings: one year, shared periods, every unit in one atomic upsert. */
+const UPB={seq:0,units:[],saved:new Set(),year:null,loading:false,saving:false,dirty:false};
+const upSingleAnnual=upOpenAnnual;
+upOpenAnnual=function(config=false){
+  if(!config)return upSingleAnnual(false);
+  if(!upAdmin()){toast('仅老师端可设置',true);return}
+  switchPage('up-annual-config');
+  const year=Number(periods.find(p=>p.id===currentPeriodId)?.year||new Date().getFullYear());
+  const years=[...new Set(periods.map(p=>Number(p.year)))].sort((a,b)=>b-a);
+  UPB.dirty=false;
+  document.getElementById('up-annual-content').innerHTML=`<div class="page-hd"><h1>全年级别比例</h1><p>同年度各岗位一起设置 · 每行合计100% · 同分同级</p></div>
+  <div class="preview-card"><fieldset id="up-bulk-fields" style="border:0;padding:0;margin:0;min-width:0"><div class="up-fields">
+  <label>年度<select id="up-bulk-year" onchange="upBulkYearChange(this)">${years.map(y=>`<option ${y===year?'selected':''}>${y}</option>`).join('')}</select></label>
+  <label>上半年<select id="up-bulk-first" onchange="UPB.dirty=true"></select></label>
+  <label>下半年<select id="up-bulk-second" onchange="UPB.dirty=true"></select></label></div>
+  <p class="up-help">上下半年各占50%。所选期间统一用于下方已填写的岗位；未设置的岗位可暂时留空。</p>
+  <div style="overflow-x:auto"><table class="grade-config-table"><thead><tr><th>岗位</th><th>A级 %</th><th>B级 %</th><th>C级 %</th><th>D级 %</th><th>合计</th></tr></thead><tbody id="up-bulk-rows"></tbody></table></div>
+  <div class="up-actions" style="margin-top:18px"><button id="up-bulk-save" class="btn-primary" onclick="upBulkSave()">保存全部岗位</button><button class="btn-cancel" onclick="upOpenAnnual(false)">前往全年结果</button></div></fieldset>
+  <p id="up-bulk-message" class="up-help" role="status" aria-live="polite"></p></div>`;
+  upBulkLoadYear();
+};
+function upBulkYearChange(select){
+  if(UPB.dirty&&!confirm('当前年度有未保存修改，确定切换年度并放弃这些修改？')){select.value=UPB.year;return}
+  upBulkLoadYear();
+}
+function upBulkMessage(text,error=false){const el=document.getElementById('up-bulk-message');if(el){el.textContent=text;el.style.color=error?'var(--red)':'var(--ink2)'}}
+async function upBulkLoadYear(){
+  const seq=++UPB.seq,year=Number(document.getElementById('up-bulk-year').value);
+  UPB.year=year;UPB.loading=true;UPB.dirty=false;UPB.saved=new Set();
+  document.getElementById('up-bulk-save').disabled=true;
+  document.getElementById('up-bulk-rows').innerHTML='';
+  for(const [id,half] of [['up-bulk-first','上半年'],['up-bulk-second','下半年']]){
+    const options=periods.filter(p=>Number(p.year)===year&&p.half===half);
+    document.getElementById(id).innerHTML='<option value="">请选择期间</option>'+options.map(p=>`<option value="${p.id}">${upEsc(p.name)}</option>`).join('');
+    if(options.length===1)document.getElementById(id).value=options[0].id;
+  }
+  upBulkMessage('正在载入各岗位设置…');
+  try{
+    if(!UP.ready)throw new Error('升级资料表尚未就绪，请先完成12号SQL');
+    const {data,error}=await sb.from('assessment_annual_config').select('*').eq('year',year);
+    if(error)throw error;
+    if(seq!==UPB.seq||!document.getElementById('up-bulk-year'))return;
+    const configs=data||[];
+    UPB.units=[...new Set(['BB','四方','财务','总管','TB钱包','AI小队',...configs.map(c=>c.unit),...staffScores.map(s=>s.unit).filter(Boolean)])];
+    UPB.saved=new Set(configs.map(c=>c.unit));
+    const pairs=[...new Set(configs.map(c=>c.first_period+'|'+c.second_period))];
+    if(pairs.length===1){document.getElementById('up-bulk-first').value=configs[0].first_period;document.getElementById('up-bulk-second').value=configs[0].second_period;}
+    else if(pairs.length>1){document.getElementById('up-bulk-first').value='';document.getElementById('up-bulk-second').value='';}
+    document.getElementById('up-bulk-rows').innerHTML=UPB.units.map((unit,i)=>{const cfg=configs.find(c=>c.unit===unit);return `<tr><td style="white-space:nowrap">${upEsc(unitLabel(unit)||unit)}</td>${['a','b','c','d'].map(g=>`<td><input id="up-bulk-${i}-${g}" aria-label="${upEsc(unitLabel(unit)||unit)} ${g.toUpperCase()}级百分比" type="number" min="0" max="100" step="0.01" value="${cfg?Number(cfg[g]):''}" placeholder="未设置" oninput="upBulkRowTotal(${i});UPB.dirty=true"></td>`).join('')}<td id="up-bulk-total-${i}" style="white-space:nowrap"></td></tr>`}).join('');
+    UPB.units.forEach((_,i)=>upBulkRowTotal(i));
+    upBulkMessage(pairs.length>1?'原有岗位使用不同的上下半年期间，请在上方明确选择统一期间后再保存。':`已载入 ${year} 年，${configs.length} 个岗位已有设置；空白岗位不会套用默认比例。`);
+    document.getElementById('up-bulk-save').disabled=false;
+  }catch(e){if(seq===UPB.seq)upBulkMessage('载入失败：'+e.message,true);}
+  finally{if(seq===UPB.seq)UPB.loading=false;}
+}
+function upBulkValues(i){return ['a','b','c','d'].map(g=>document.getElementById(`up-bulk-${i}-${g}`).value);}
+function upBulkRowTotal(i){
+  const values=upBulkValues(i),total=values.reduce((s,v)=>s+Number(v),0),el=document.getElementById('up-bulk-total-'+i);
+  const valid=values.every(v=>v!==''&&Number.isFinite(Number(v))&&Number(v)>=0&&Number(v)<=100)&&Math.abs(total-100)<1e-7;
+  el.textContent=values.every(v=>v==='')?(UPB.saved.has(UPB.units[i])?'请填写比例':'未设置'):Number.isFinite(total)?`${Math.round(total*100)/100}%${valid?' ✓':' · 须100%'}`:'数字无效';
+  el.style.color=valid?'var(--green)':values.every(v=>v==='')?'var(--ink3)':'var(--red)';
+}
+function upBulkPayload(year,first,second,rows,saved,availablePeriods){
+  if(!availablePeriods.some(p=>Number(p.id)===first&&Number(p.year)===year&&p.half==='上半年')||!availablePeriods.some(p=>Number(p.id)===second&&Number(p.year)===year&&p.half==='下半年'))throw new Error('请选择同一年度的上下半年期间');
+  const payload=[];
+  for(const row of rows){
+    const name=unitLabel(row.unit)||row.unit;
+    if(row.badInput)throw new Error(name+'：请输入有效数字');
+    if(row.values.every(v=>v==='')){if(saved.has(row.unit))throw new Error(name+'已有设置，不能用空白覆盖；请填写完整比例');continue}
+    if(row.values.some(v=>v===''||!Number.isFinite(Number(v))||Number(v)<0||Number(v)>100||Math.abs(Number(v)*100-Math.round(Number(v)*100))>1e-7)||row.badInput)throw new Error(name+'：请填写0～100的百分比，最多两位小数');
+    const values=row.values.map(Number);if(Math.abs(values.reduce((s,v)=>s+v,0)-100)>1e-7)throw new Error(name+'：比例合计必须为100%');
+    payload.push({year,unit:row.unit,first_period:first,second_period:second,a:values[0],b:values[1],c:values[2],d:values[3]});
+  }
+  if(!payload.length)throw new Error('请至少填写一个岗位的完整比例');
+  return payload;
+}
+async function upBulkSave(){
+  if(UPB.loading||UPB.saving)return;
+  const fields=document.getElementById('up-bulk-fields');
+  try{
+    if(!upAdmin()||!UP.ready)throw new Error('请使用老师帐号，并确认升级资料表已就绪');
+    const rows=UPB.units.map((unit,i)=>({unit,values:upBulkValues(i),badInput:['a','b','c','d'].some(g=>document.getElementById(`up-bulk-${i}-${g}`).validity.badInput)}));
+    const payload=upBulkPayload(Number(document.getElementById('up-bulk-year').value),Number(document.getElementById('up-bulk-first').value),Number(document.getElementById('up-bulk-second').value),rows,UPB.saved,periods);
+    UPB.saving=true;fields.disabled=true;upBulkMessage('正在保存全部岗位…');
+    // One PostgREST request: all rows commit or all roll back under the existing constraints/RLS.
+    const {data,error}=await sb.from('assessment_annual_config').upsert(payload,{onConflict:'year,unit'}).select('year,unit');
+    if(error)throw error;
+    if(!data||data.length!==payload.length)throw new Error('返回资料数量不符，请重新载入确认保存结果');
+    payload.forEach(r=>UPB.saved.add(r.unit));UPB.dirty=false;
+    upBulkMessage(`${UPB.year}年 ${payload.length} 个岗位已一次保存完成。`);toast('全部岗位设置已保存');
+  }catch(e){upBulkMessage('未完成保存：'+e.message,true);toast(e.message,true);}
+  finally{UPB.saving=false;if(fields)fields.disabled=false;}
+}
+
 const _savedLocal=sessionStorage.getItem('localProfile');
 if(_savedLocal){
   currentProfile=JSON.parse(_savedLocal);
