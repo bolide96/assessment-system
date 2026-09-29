@@ -1539,7 +1539,7 @@ function renderQuery(){
   const tb=document.getElementById('tbody');
   if(!list.length){tb.innerHTML='';document.getElementById('no-results').style.display='';renderScoreChart([]);return}
   document.getElementById('no-results').style.display='none';
-  const maxS=Math.max(...list.map(d=>d.score2||0),1);
+  const maxS=Math.max(...list.map(d=>(upAdmin()?d.score2:d.score)||0),1);
   tb.innerHTML=list.map((d,i)=>{
     const shortName=personCode(d);
     const uTag=`<span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span>`;
@@ -1559,7 +1559,7 @@ function renderQuery(){
       <tr id="qdrawer-${i}" style="display:none"><td colspan="8" style="padding:0"><div class="drawer open" id="qdetail-${i}"></div></td></tr>`;
     }
     const cls=scoreClass(d.score||0);const bc=barColor(d.score||0);
-    const pct=Math.round((d.score2||0)/maxS*100);
+    const pct=Math.round(((upAdmin()?d.score2:d.score)||0)/maxS*100);
     return`<tr onclick="toggleDetail(${i},'${dEncoded}')" id="qrow-${i}">
       <td><div style="display:flex;flex-direction:column;gap:1px"><span style="font-weight:500">${shortName}${uTag}</span>${d.nickname?`<span style="font-size:11px;color:var(--ink3)">${d.nickname}</span>`:''}</div></td>
       <td class="c"><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
@@ -4084,10 +4084,32 @@ function upQueryDetailData(d){
 }
 const upAccessGradeEffective=getEffectiveGrade;
 getEffectiveGrade=function(d){return !upAdmin()&&d.public_grade?{grade:d.public_grade,override:false}:upAccessGradeEffective(d);};
+// Student rows come from a server-side projection, never select('*') from staff_scores.
+const upTeacherStaffLoader=loadStaffScores;
+let upStudentLoadSeq=0;
+loadStaffScores=async function(){
+  const seq=++upStudentLoadSeq,pid=currentPeriodId,uid=currentProfile?.id;
+  if(upAdmin()){
+    await upTeacherStaffLoader();
+    if(!upAdmin()){staffScores=[];await loadStaffScores();}
+    return;
+  }
+  if(!pid){staffScores=[];return;}
+  const {data,error}=await sb.rpc('assessment_student_scores',{p_period:pid});
+  if(seq!==upStudentLoadSeq||pid!==currentPeriodId||uid!==currentProfile?.id||upAdmin())return;
+  if(error){staffScores=[];renderQuery();toast('学生资料载入失败，请确认已执行17号权限修补：'+error.message,true);return;}
+  staffScores=(Array.isArray(data)?data:[]).map(r=>({...r,
+    name:r.staff?.name||'',unit:r.staff?.unit||'',code:r.staff?.code||'',nickname:r.staff?.nickname||'',
+    base:r.base_score,month_detail:r.month_detail||{},ai_score:r.ai_score??null
+  }));
+  const groups={};staffScores.forEach(d=>(groups[d.shift+'|'+d.unit]??=[]).push(d));
+  Object.values(groups).forEach(rows=>{const ranks=calcGroupRank(rows,'score');rows.forEach(d=>d.rank2=ranks[d.id]);});
+};
 const upAccessSync=upSyncRoleControls;
 let upWasAdmin=upAdmin();
 upSyncRoleControls=function(){
   const lostTeacher=upWasAdmin&&!upAdmin();upWasAdmin=upAdmin();
+  if(lostTeacher)staffScores=[];
   upAccessSync();
   for(const id of ['month-modal','mgr-modal','comment-modal','staff-modal','rule-modal','period-modal','adduser-modal','ai-score-modal']){
     const el=document.getElementById(id);if(el){el.hidden=!upAdmin();if(!upAdmin())el.classList.remove('open');}
