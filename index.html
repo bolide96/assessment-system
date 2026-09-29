@@ -429,8 +429,8 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     <div class="filters" id="edit-filters" style="margin-bottom:8px"></div>
     <div class="sort-row">
       <span class="sort-label">排序</span>
-      <button class="sort-btn active" onclick="setEditSort('score2',this)">含老师分↓</button>
-      <button class="sort-btn" onclick="setEditSort('score',this)">基础分↓</button>
+      <button class="sort-btn active" onclick="setEditSort('score2',this)">最终分↓</button>
+      <button class="sort-btn" onclick="setEditSort('score',this)">公开分↓</button>
       <button class="sort-btn" onclick="setEditSort('jinsun',this)">金损↓</button>
       <button class="sort-btn" onclick="setEditSort('name',this)">姓名</button>
     </div>
@@ -638,7 +638,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <div class="form-row"><label>项目名称</label><input id="rm-name" placeholder="例：操作失误"></div>
       <div class="form-grid">
         <div class="form-row" style="margin:0"><label>分值</label><input id="rm-pts" type="number"></div>
-        <div class="form-row" style="margin:0"><label>上限次数（留空不限）</label><input id="rm-max" type="number" placeholder="不限"></div>
+        <div class="form-row" style="margin:0"><label>当期上限次数（留空不限）</label><input id="rm-max" type="number" placeholder="不限"></div>
       </div>
       <div class="form-row" style="margin-top:10px"><label>适用范围</label>
         <select id="rm-scope">
@@ -838,7 +838,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
 
 <!-- Month modal -->
 <div class="modal-bg" id="month-modal">
-  <div class="modal" style="max-width:540px">
+  <div class="modal" style="max-width:640px">
     <div class="modal-head"><h3 id="mm-title">加扣分记录</h3><button onclick="closeModal('month-modal')">×</button></div>
     <div class="modal-body">
       <input type="hidden" id="mm-staff-id">
@@ -849,19 +849,22 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
         <span id="mm-current" style="font-family:var(--ffs);font-size:22px;font-weight:700">0</span>
       </div>
       <!-- Entry list -->
+      <div style="font-size:12px;color:var(--ink3);margin-bottom:10px">当月损失金额：<strong id="mm-loss-total">¥0.00</strong> · 金额独立记录，不自动换算扣分</div>
+      <div id="mm-legacy-loss" style="font-size:12px;color:var(--amber);margin-bottom:10px"></div>
       <div id="mm-entries" style="margin-bottom:10px;max-height:180px;overflow-y:auto"></div>
       <!-- Inline remark prompt (appears after clicking a rule) -->
       <div id="mm-note-prompt" style="display:none;margin-bottom:10px;padding:10px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
         <div id="mm-note-label" style="font-size:12px;color:var(--ink3);margin-bottom:6px;font-weight:500"></div>
-        <div style="display:flex;gap:6px">
-          <input id="mm-note-input" placeholder="备注（可留空）" style="flex:1" onkeydown="if(event.key==='Enter')confirmRuleEntry()">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
+          <label style="flex:1;min-width:120px;font-size:12px">备注<input id="mm-note-input" placeholder="备注（可留空）" style="display:block;width:100%" onkeydown="if(event.key==='Enter')confirmRuleEntry()"></label>
+          <label style="font-size:12px">损失金额（¥）<input id="mm-note-loss" type="number" min="0" step="0.01" placeholder="0.00" style="display:block;width:110px" onkeydown="if(event.key==='Enter')confirmRuleEntry()"></label>
           <button onclick="confirmRuleEntry()" style="padding:0 12px;background:var(--blue);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px">确认</button>
           <button onclick="cancelRuleEntry()" style="padding:0 8px;background:none;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:13px">取消</button>
         </div>
       </div>
       <!-- Custom entry row -->
-      <div style="display:flex;gap:6px;align-items:flex-end;margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:6px">
-        <div style="flex:2">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:6px">
+        <div style="flex:2;min-width:120px">
           <div style="font-size:11px;color:var(--ink3);margin-bottom:3px">自定义项目</div>
           <input id="mm-custom-item" placeholder="项目名称" style="width:100%;box-sizing:border-box">
         </div>
@@ -869,7 +872,11 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
           <div style="font-size:11px;color:var(--ink3);margin-bottom:3px">分值</div>
           <input id="mm-custom-pts" type="number" placeholder="±0" style="width:100%;box-sizing:border-box">
         </div>
-        <div style="flex:2">
+        <div style="width:110px">
+          <label for="mm-custom-loss" style="font-size:11px;color:var(--ink3);display:block;margin-bottom:3px">损失金额（¥）</label>
+          <input id="mm-custom-loss" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%">
+        </div>
+        <div style="flex:2;min-width:120px">
           <div style="font-size:11px;color:var(--ink3);margin-bottom:3px">备注</div>
           <input id="mm-custom-note" placeholder="可留空" style="width:100%;box-sizing:border-box">
         </div>
@@ -1282,7 +1289,7 @@ function switchPage(id,el){
 }
 
 let editFShift='全部',editFUnit='全部',editSortKey='score2';
-function setEditSort(k,el){editSortKey=k;document.querySelectorAll('.edit-sort-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderEditPage();}
+function setEditSort(k,el){editSortKey=k;document.querySelectorAll('#page-edit .sort-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderEditPage();}
 function setEditFilter(type,val,el){
   if(type==='shift'){editFShift=val;document.querySelectorAll('#edit-filters .ef-shift').forEach(b=>b.classList.toggle('active',b===el))}
   else{editFUnit=val;document.querySelectorAll('#edit-filters .ef-unit').forEach(b=>b.classList.toggle('active',b===el))}
@@ -1329,7 +1336,7 @@ function renderEditPage(){
 
   const mc=getMonthConfig();
   document.getElementById('edit-thead').innerHTML=`<tr>
-    <th style="min-width:150px">人员</th><th style="width:60px">班别</th><th style="width:60px">总分</th>
+    <th style="min-width:150px">人员</th><th style="width:60px">班别</th><th style="width:60px">公开分数</th>
     ${mc.labels.map(m=>`<th style="width:52px">${m}</th>`).join('')}
     <th style="width:62px" title="整期0分记录累计次数：失=小失误 析=分析">累计</th>
     ${(Number(baseConfig.perfect_bonus)||0)>0?'<th style="width:52px">无失误</th>':''}<th style="width:52px">出勤</th><th style="width:80px">综合评语</th><th style="width:80px">老师加减</th>
@@ -1518,7 +1525,7 @@ function renderQuery(){
     // 原本写死 >=60 与 >=100，是照旧制（起始80+无失误10+出勤10=100、及格60）算的。
     // 新制及格线改成 50、无失误奖励归 0，写死的话达标率会永远显示 0%。
     // 改成读该期间的实际设定；旧期间 pass=60、天花板=80+10+10=100，结果完全不变。
-    const passLine=Number(baseConfig.pass_score)||60;
+    const passLine=Number(baseConfig.pass_score??60);
     const baseCeil=(Number(baseConfig.base_score)||80)
                   +(Number(baseConfig.perfect_bonus)||0)
                   +(Number(baseConfig.attend_bonus)||0);
@@ -1605,7 +1612,7 @@ function toggleDetail(i,enc){
     <div>
       <div class="drawer-section"><h4>分数构成</h4>
         <div class="score-items">
-          <div class="score-item"><span>起始分</span><span>${d.base||80}</span></div>
+          <div class="score-item"><span>起始分</span><span>${d.base??80}</span></div>
           ${(Number(baseConfig.perfect_bonus)||0)>0?`<div class="score-item"><span>半年度无失误奖励</span><span style="color:${(d.perfect||0)>0?'var(--green)':'var(--ink3)'}">${(d.perfect||0)>0?'+'+(d.perfect||0):'×'}</span></div>`:''}
           <div class="score-item"><span>半年度出勤正常</span><span style="color:${(d.attendance||0)>0?'var(--green)':'var(--ink3)'}">${(d.attendance||0)>0?'+'+(d.attendance||0):'×'}</span></div>
           ${(Number(d.ai_score)||0)>0?`<div class="score-item"><span>AI 作品分</span><span style="color:var(--amber)">+${Number(d.ai_score)}</span></div>`:''}
@@ -1662,7 +1669,7 @@ function renderStaffTable(){
       <td><input value="${d.nickname||''}" placeholder="—" style="border:none;background:none;font-size:13px;color:var(--ink3);width:100%;font-family:var(--ff);outline:none;cursor:pointer" onclick="this.style.border='1px solid var(--border)';this.style.background='var(--surface)';this.style.borderRadius='4px';this.style.padding='2px 6px'" onblur="saveNickname(${d.staff_id},this.value,this)" onfocus="this.select()"></td>
       <td><span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span></td>
       <td><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
-      <td>${d.base||80}</td>
+      <td>${d.base??80}</td>
       <td style="display:flex;gap:4px">
         <button class="btn-icon" onclick="editStaff(${d.id})">✎</button>
         <button class="btn-icon del" onclick="deleteStaff(${d.id})">🗑</button>
@@ -1684,12 +1691,37 @@ function calcScore(d){
   //   分数照样会被加进去，而画面上看不到那一栏，对不上帐时根本查不出来。
   //   「看不见的加分」比「看得见的加分」危险得多。
   const perfect=(Number(baseConfig.perfect_bonus)||0)>0?(d.perfect||0):0;
-  const base=(d.base||80)+perfect+(d.attendance||0)+monthTotal+ai;
+  const base=(d.base??80)+perfect+(d.attendance||0)+monthTotal+ai;
   return{score:base,score2:base+(d.mgr_bonus||0)+(d.analysis_total||0)};
 }
 
 let mmEntries=[];
 let mmPendingPts=0,mmPendingItem='';
+let mmSaving=false;
+
+// Store loss amounts on each existing month_detail entry; old entries imply zero.
+function mmLossCents(value){
+  if(value==null||value==='')return 0;
+  const text=String(value).trim();
+  if(!/^\d+(?:\.\d{1,2})?$/.test(text))throw new Error('损失金额须为非负数字，最多两位小数');
+  const amount=Number(text);
+  if(!Number.isFinite(amount)||amount>999999999999)throw new Error('损失金额过大');
+  return Math.round(amount*100);
+}
+function mmEntryLoss(entries){
+  return (Array.isArray(entries)?entries:[]).reduce((sum,e)=>sum+mmLossCents(e.loss_amount),0);
+}
+function mmDetailLoss(detail){
+  return ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec']
+    .reduce((sum,k)=>sum+mmEntryLoss((detail||{})[k]),0);
+}
+function mmLegacyLoss(d){
+  return Math.max(0,mmLossCents(d.jinsun)-mmDetailLoss(d.month_detail));
+}
+function mmRenderLossTotal(){
+  try{document.getElementById('mm-loss-total').textContent='¥'+(mmEntryLoss(mmEntries)/100).toFixed(2);}
+  catch(e){document.getElementById('mm-loss-total').textContent='请检查金额';}
+}
 
 function openMonthModal(staffScoreId,monthKey,monthLabel){
   const d=staffScores.find(x=>x.id===staffScoreId);if(!d)return;
@@ -1702,6 +1734,10 @@ function openMonthModal(staffScoreId,monthKey,monthLabel){
   document.getElementById('mm-custom-item').value='';
   document.getElementById('mm-custom-pts').value='';
   document.getElementById('mm-custom-note').value='';
+  document.getElementById('mm-custom-loss').value='';
+  document.getElementById('mm-note-loss').value='';
+  const legacy=mmLegacyLoss(d);
+  document.getElementById('mm-legacy-loss').textContent=legacy>0?`原有未分月金损 ¥${(legacy/100).toFixed(2)} 将保留，新增金额另外累计。`:'';
   const detail=d.month_detail||{};
   mmEntries=JSON.parse(JSON.stringify(detail[monthKey]||[]));
   if(mmEntries.length===0&&(d[monthKey]||0)!==0){
@@ -1713,17 +1749,18 @@ function openMonthModal(staffScoreId,monthKey,monthLabel){
   document.getElementById('mm-deduct-section').innerHTML=dRules.length?`
     <div style="font-size:11px;color:var(--ink3);letter-spacing:.5px;margin:12px 0 6px">扣分项目 · 点击套用</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px">
-      ${dRules.map(r=>`<button class="filter-btn" style="border-color:var(--red-bd);color:var(--red)" onclick="applyRuleToMonth(${r.pts},'${r.name}')">${r.name}&nbsp;${r.pts}分</button>`).join('')}
+      ${dRules.map(r=>`<button class="filter-btn" style="border-color:var(--red-bd);color:var(--red)" onclick="applyRuleToMonth(${r.pts},'${r.name}',${r.id})">${r.name}&nbsp;${r.pts}分</button>`).join('')}
     </div>`:'';
   document.getElementById('mm-bonus-section').innerHTML=bRules.length?`
     <div style="font-size:11px;color:var(--ink3);letter-spacing:.5px;margin:12px 0 6px">加分项目 · 点击套用</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px">
-      ${bRules.map(r=>`<button class="filter-btn" style="border-color:var(--green-bd);color:var(--green)" onclick="applyRuleToMonth(${r.pts},'${r.name}')">+${r.pts} ${r.name}</button>`).join('')}
+      ${bRules.map(r=>`<button class="filter-btn" style="border-color:var(--green-bd);color:var(--green)" onclick="applyRuleToMonth(${r.pts},'${r.name}',${r.id})">+${r.pts} ${r.name}</button>`).join('')}
     </div>`:'';
   document.getElementById('month-modal').classList.add('open');
 }
 
 function mmRenderEntries(){
+  mmRenderLossTotal();
   const total=mmEntries.reduce((s,e)=>s+e.pts,0);
   const el=document.getElementById('mm-current');
   el.textContent=total>0?`+${total}`:total===0?'0':`${total}`;
@@ -1734,9 +1771,10 @@ function mmRenderEntries(){
     return;
   }
   list.innerHTML=`<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">${
-    mmEntries.map((e,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border);font-size:13px;background:#fff">
+    mmEntries.map((e,i)=>`<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border);font-size:13px;background:var(--surface)">
       <span style="color:${e.pts>=0?'var(--green)':'var(--red)'};font-weight:700;font-family:var(--ffs);width:42px;flex-shrink:0">${e.pts>=0?'+'+e.pts:e.pts}</span>
-      <span style="flex:1">${e.item}</span>
+      <span style="flex:1;min-width:100px">${String(e.item).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
+      <label style="font-size:12px">损失 ¥ <input type="number" min="0" step="0.01" value="${String(e.loss_amount??0).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" oninput="mmEntries[${i}].loss_amount=this.validity.badInput?'invalid':this.value;mmRenderLossTotal()" style="width:95px;border:1px solid var(--border);border-radius:3px;padding:3px"></label>
       <input value="${(e.note||'').replace(/"/g,'&quot;')}" placeholder="备注（可留空）" oninput="mmEntries[${i}].note=this.value" style="font-size:12px;color:var(--ink3);border:1px solid var(--border);border-radius:3px;padding:2px 6px;width:130px;font-family:var(--ff);background:var(--surface2)">
       <button onclick="mmRemoveEntry(${i})" style="color:var(--red);background:none;border:none;cursor:pointer;padding:2px 6px;font-size:16px;line-height:1;flex-shrink:0">×</button>
     </div>`).join('')
@@ -1753,13 +1791,17 @@ function applyRuleToMonth(pts,itemName){
   mmPendingItem=itemName;
   document.getElementById('mm-note-label').textContent=`${itemName}（${pts>0?'+':''}${pts}分）· 填写备注`;
   document.getElementById('mm-note-input').value='';
+  document.getElementById('mm-note-loss').value='';
   document.getElementById('mm-note-prompt').style.display='block';
   setTimeout(()=>document.getElementById('mm-note-input').focus(),50);
 }
 
 function confirmRuleEntry(){
   const note=document.getElementById('mm-note-input').value.trim();
-  mmEntries.push({item:mmPendingItem,pts:mmPendingPts,note});
+  let loss_amount;
+  try{const input=document.getElementById('mm-note-loss');loss_amount=mmLossCents(input.validity.badInput?'invalid':input.value)/100;}
+  catch(e){toast(e.message,true);return}
+  mmEntries.push({item:mmPendingItem,pts:mmPendingPts,note,loss_amount});
   document.getElementById('mm-note-prompt').style.display='none';
   mmRenderEntries();
 }
@@ -1776,7 +1818,11 @@ function addCustomEntry(){
   if(!item){toast('请填写项目名称',true);return}
   // 原本写 if(!pts)，0 是 falsy 会被挡掉，导致自订的 0 分记录存不进去
   if(ptsRaw===''||isNaN(pts)){toast('请填写分值（填 0 = 只记录、不计分）',true);return}
-  mmEntries.push({item,pts,note});
+  let loss_amount;
+  try{const input=document.getElementById('mm-custom-loss');loss_amount=mmLossCents(input.validity.badInput?'invalid':input.value)/100;}
+  catch(e){toast(e.message,true);return}
+  mmEntries.push({item,pts,note,loss_amount});
+  document.getElementById('mm-custom-loss').value='';
   document.getElementById('mm-custom-item').value='';
   document.getElementById('mm-custom-pts').value='';
   document.getElementById('mm-custom-note').value='';
@@ -1784,21 +1830,32 @@ function addCustomEntry(){
 }
 
 async function saveMonthScore(){
+  if(mmSaving)return;
   const id=parseInt(document.getElementById('mm-staff-id').value);
   const key=document.getElementById('mm-month-key').value;
   const d=staffScores.find(x=>x.id===id);if(!d)return;
   const val=mmEntries.reduce((s,e)=>s+e.pts,0);
   const detail=JSON.parse(JSON.stringify(d.month_detail||{}));
-  detail[key]=mmEntries;
+  let jinsun;
+  try{
+    detail[key]=mmEntries.map(e=>({...e,loss_amount:mmLossCents(e.loss_amount)/100}));
+    jinsun=(mmLegacyLoss(d)+mmDetailLoss(detail))/100;
+    mmLossCents(jinsun);
+  }catch(e){toast(e.message,true);return}
   const {score,score2}=calcScore({...d,[key]:val});
-  const {error}=await sb.from('staff_scores').update({[key]:val,month_detail:detail,score,score2}).eq('id',id);
+  mmSaving=true;
+  let error;
+  try{({error}=await sb.from('staff_scores').update({[key]:val,month_detail:detail,jinsun,score,score2}).eq('id',id));}
+  catch(e){error=e;}
+  finally{mmSaving=false;}
   if(error){toast('保存失败：'+error.message,true);return}
   const monthLabel=document.getElementById('mm-month-label').value||key;
   const oldVal=d[key]||0;
   const oldEntries=(d.month_detail||{})[key]||[];
-  const oldDesc=oldEntries.length?oldEntries.map(e=>`${e.item}(${e.pts>0?'+':''}${e.pts})`).join('、'):`${oldVal}分`;
-  const newDesc=mmEntries.length?mmEntries.map(e=>`${e.item}(${e.pts>0?'+':''}${e.pts})${e.note?'['+e.note+']':''}`).join('、'):`${val}分`;
-  d[key]=val;d.month_detail=detail;d.score=score;d.score2=score2;
+  const describe=e=>`${e.item}(${e.pts>0?'+':''}${e.pts}) 金损¥${(mmLossCents(e.loss_amount)/100).toFixed(2)}${e.note?'['+e.note+']':''}`;
+  const oldDesc=(oldEntries.length?oldEntries.map(describe).join('、'):`${oldVal}分`)+`；当期金损¥${d.jinsun||0}`;
+  const newDesc=(detail[key].length?detail[key].map(describe).join('、'):`${val}分`)+`；当期金损¥${jinsun}`;
+  d[key]=val;d.month_detail=detail;d.jinsun=jinsun;d.score=score;d.score2=score2;
   logAudit(d.name,`${monthLabel}月度`,oldDesc,newDesc);
   closeModal('month-modal');
   renderStaffTable();renderQuery();
@@ -1935,7 +1992,7 @@ function openAddStaffModal(){
   document.getElementById('staff-modal-title').textContent='新增人员';
   document.getElementById('sm-edit-id').value='';
   ['sm-name'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('sm-base').value='80';
+  document.getElementById('sm-base').value=baseConfig.base_score??80;
   document.getElementById('staff-modal').classList.add('open');
 }
 
@@ -1946,7 +2003,7 @@ function editStaff(id){
   document.getElementById('sm-name').value=d.name;
   document.getElementById('sm-unit').value=d.unit;
   document.getElementById('sm-shift').value=d.shift;
-  document.getElementById('sm-base').value=d.base||80;
+  document.getElementById('sm-base').value=d.base??80;
   document.getElementById('staff-modal').classList.add('open');
 }
 
@@ -1956,15 +2013,16 @@ async function saveStaff(){
   if(!name){alert('请填写姓名');return}
   const unit=document.getElementById('sm-unit').value;
   const shift=document.getElementById('sm-shift').value;
-  const base_score=+document.getElementById('sm-base').value||80;
+  const baseRaw=document.getElementById('sm-base').value;
+  if(baseRaw===''||!Number.isFinite(Number(baseRaw))){toast('请填写有效起始分',true);return}
+  const base_score=Number(baseRaw);
 
   if(editId){
     const d=staffScores.find(x=>x.id===parseInt(editId));
     if(d){
       const mc=getMonthConfig();
       const monthTotal=mc.keys.reduce((s,k)=>s+(d[k]||0),0);
-      const score=base_score+(d.perfect||0)+(d.attendance||0)+monthTotal;
-      const score2=score+(d.mgr_bonus||0);
+      const {score,score2}=calcScore({...d,base:base_score});
       const {error:serr}=await sb.from('staff').update({name,unit}).eq('id',d.staff_id);
       const {error:scerr}=await sb.from('staff_scores').update({shift,base_score,score,score2,updated_at:new Date().toISOString()}).eq('id',parseInt(editId));
       if(serr||scerr){toast('保存失败',true);return}
@@ -2065,7 +2123,7 @@ function getGrade(score,unit){
 
 function getEffectiveGrade(d){
   if(d.grade_override&&d.grade)return{grade:d.grade,override:true};
-  return{grade:getGrade(d.score2||d.score||0,d.unit),override:false};
+  return{grade:getGrade(d.score2??d.score??0,d.unit),override:false};
 }
 
 function gradeBadgeHtml(d){
@@ -2115,7 +2173,7 @@ function renderGradeBlock(title,list){
     return`<div class="grade-col">
       <div class="grade-col-head g${g}"><span>${g} 级</span><span style="font-size:11px;opacity:.7">${people.length} 人</span></div>
       <div class="grade-col-body">
-        ${people.length?people.map(d=>`<div class="grade-person"><div style="display:flex;flex-direction:column;gap:1px"><span style="font-weight:500">${personCode(d)}</span>${d.nickname?`<span style="font-size:10px;color:var(--ink3)">${d.nickname}</span>`:''}</div><span style="font-family:var(--ffs);font-size:12px;color:var(--ink3)">${d.score2||d.score||0}分</span></div>`).join(''):'<div style="padding:8px;font-size:12px;color:var(--ink3);text-align:center">—</div>'}
+        ${people.length?people.map(d=>`<div class="grade-person"><div style="display:flex;flex-direction:column;gap:1px"><span style="font-weight:500">${personCode(d)}</span>${d.nickname?`<span style="font-size:10px;color:var(--ink3)">${d.nickname}</span>`:''}</div><span style="font-family:var(--ffs);font-size:12px;color:var(--ink3)">${d.score2??d.score??0}分</span></div>`).join(''):'<div style="padding:8px;font-size:12px;color:var(--ink3);text-align:center">—</div>'}
       </div>
     </div>`;
   }).join('');
@@ -2739,8 +2797,8 @@ async function changePassword(){
 function exportToExcel(){
   const p=periods.find(x=>x.id===currentPeriodId);
   const rows=staffScores.map((d,i)=>({
-    '固定代号':personCode(d),'单位':d.unit,'班次':d.shift,
-    '总分':d.score2,'原始分':d.score,'起始分':d.base||80,
+    '固定代号':personCode(d),'绰号':d.nickname||'','单位':d.unit,'班次':d.shift,
+    '总分':d.score2,'原始分':d.score,'起始分':d.base??80,
     // 无失误奖励为 0 的期间不输出这一栏——不然汇出的表会有一个
     // 「无失误奖励 10」但总分没加它的栏位，看的人一定对不上帐
     ...((Number(baseConfig.perfect_bonus)||0)>0?{'无失误奖励':d.perfect||0}:{}),
@@ -3168,13 +3226,13 @@ function renderAiWorks(){
       const toggle=ss.length
         ? `<button onclick="toggleAiScores(${w.id})" style="background:none;border:none;padding:0;cursor:pointer;font-size:12px;color:var(--blue);font-family:var(--ff)">${open?'收起明细 ▲':'展开明细 ▼'}</button>`
         : '';
-      teacherBlock=`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"><div style="font-size:12px;margin-bottom:8px">${scoreLine}</div>${link?`<div style="font-size:12px;margin-bottom:8px"><a href="${link.link}" target="_blank" rel="noopener" style="color:var(--blue)">${link.link}</a></div>`:''}${summary?`<div style="display:flex;align-items:baseline;gap:10px;font-size:12px;color:var(--ink3);margin-bottom:${open?'8px':'10px'}"><span>${summary}</span>${toggle}</div>`:''}${open&&rows?`<div style="margin-bottom:8px">${rows}</div>`:''}<button class="btn-add" style="padding:5px 12px" onclick="openAiScore(${w.id})">评分 / 修改我的评分</button>
+      teacherBlock=`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"><div style="font-size:12px;margin-bottom:8px">${scoreLine}</div>${summary?`<div style="display:flex;align-items:baseline;gap:10px;font-size:12px;color:var(--ink3);margin-bottom:${open?'8px':'10px'}"><span>${summary}</span>${toggle}</div>`:''}${open&&rows?`<div style="margin-bottom:8px">${rows}</div>`:''}<button class="btn-add" style="padding:5px 12px" onclick="openAiScore(${w.id})">评分 / 修改我的评分</button>
           <button class="filter-btn" style="padding:5px 12px;margin-left:6px" onclick="openAiUpload(${w.id})">编辑作品</button>
           <button class="filter-btn" style="padding:5px 12px;margin-left:6px;border-color:var(--red-bd);color:var(--red)" onclick="deleteAiWork(${w.id})">删除</button></div>`;
     }
 
     const isReport=t.kind==='report';
-    return `<div style="background:${isReport?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);${isReport?'border-left:3px solid var(--amber-bd);':''}border-radius:var(--r);padding:14px 16px;margin-bottom:10px"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span style="font-weight:500;font-size:14px">${(w.title||'').replace(/</g,'&lt;')}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:${isReport?'var(--amber-bg)':'var(--surface2)'};color:${isReport?'var(--amber)':'var(--ink3)'};border:1px solid ${isReport?'var(--amber-bd)':'var(--border)'}">${isReport?'回报・建议':'AI 作品'}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue)">${t.label}${teacher?` · 上限${t.cap}`:''}</span>${statusTag}</div>${w.description?`<div style="font-size:12px;color:var(--ink3);margin-bottom:6px;line-height:1.6">${w.description.replace(/</g,'&lt;')}</div>`:''}<div>${makerHtml}</div>${(()=>{const ns=aiMakers.filter(m=>m.work_id===w.id&&m.note);return ns.length?`<div style="margin-top:6px;font-size:11px;color:var(--ink3);line-height:1.7">${ns.map(m=>`<div>${aiStaffName(m.staff_id)}：${(m.note||'').replace(/</g,'&lt;')}</div>`).join('')}</div>`:'';})()}${teacherBlock}</div>`;
+    return `<div style="background:${isReport?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);${isReport?'border-left:3px solid var(--amber-bd);':''}border-radius:var(--r);padding:14px 16px;margin-bottom:10px"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span style="font-weight:500;font-size:14px">${(w.title||'').replace(/</g,'&lt;')}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:${isReport?'var(--amber-bg)':'var(--surface2)'};color:${isReport?'var(--amber)':'var(--ink3)'};border:1px solid ${isReport?'var(--amber-bd)':'var(--border)'}">${isReport?'回报・建议':'AI 作品'}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue)">${t.label}${teacher?` · 上限${t.cap}`:''}</span>${statusTag}</div>${w.description?`<div style="font-size:12px;color:var(--ink3);margin-bottom:6px;line-height:1.6">${w.description.replace(/</g,'&lt;')}</div>`:''}<div>${makerHtml}</div>${upWorkLink(link)}${(()=>{const ns=aiMakers.filter(m=>m.work_id===w.id&&m.note);return ns.length?`<div style="margin-top:6px;font-size:11px;color:var(--ink3);line-height:1.7">${ns.map(m=>`<div>${aiStaffName(m.staff_id)}：${(m.note||'').replace(/</g,'&lt;')}</div>`).join('')}</div>`:'';})()}${teacherBlock}</div>`;
   }).join('');
 }
 
@@ -3479,6 +3537,320 @@ async function saveAiScore(btn){
   localStorage.setItem('aiTeacherName',name);
   closeModal('ai-score-modal');toast('评分已保存');loadAiWorks();
 }
+
+
+/* Assessment upgrade 2026-09-29. Embedded in the delivered single HTML file. */
+const UP={ready:false,options:{},teachers:[],busy:false,section:'rules',annualRows:[],annualExcluded:[],detail:false};
+const upEsc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+function upWorkLink(record){
+  const value=String(record?.link??'').trim();if(!value)return '';
+  let url=null;
+  try{const parsed=new URL(value);if(['http:','https:'].includes(parsed.protocol))url=parsed.href;}catch(e){}
+  const content=url?`<a href="${upEsc(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--blue);overflow-wrap:anywhere">${upEsc(value)}</a>`:`<span style="white-space:pre-wrap;overflow-wrap:anywhere">${upEsc(value)}</span>`;
+  return `<div class="up-work-link" style="font-size:12px;margin:10px 0;overflow-wrap:anywhere"><span style="color:var(--ink3)">${url?'作品连结':'连结／回报说明'}：</span>${content}</div>`;
+}
+const upNum=(v,fallback=0)=>v==null||v===''?fallback:Number(v);
+const upAdmin=()=>currentProfile?.role==='admin';
+const upDefault=()=>({base_score:80,max_score:120,perfect_bonus:10,attend_bonus:10,pass_score:60,rank_cutoff:0});
+const upUnitOptions=()=>['BB','四方','财务','总管','TB钱包','AI小队'].map(u=>`<option value="${u}">${unitLabel(u)}</option>`).join('');
+function upTotals(d,cfg,keys){
+  const monthly=keys.reduce((s,k)=>s+upNum(d[k]),0);
+  const score=upNum(d.base??d.base_score,cfg.base_score)+((upNum(cfg.perfect_bonus)>0)?upNum(d.perfect):0)+upNum(d.attendance)+monthly+upNum(d.ai_score);
+  return {score:Math.round(score*100)/100,score2:Math.round((score+upNum(d.mgr_bonus)+upNum(d.analysis_total))*100)/100};
+}
+calcScore=d=>upTotals(d,baseConfig,getMonthConfig().keys);
+getGrade=function(score,unit){
+  const own=gradeConfigs.filter(g=>g.unit===unit), all=gradeConfigs.filter(g=>g.unit==='all');
+  const rows=(own.length?own:all).slice().sort((a,b)=>b.min_score-a.min_score);
+  if(!rows.length)return score>=90?'A':score>=80?'B':score>=70?'C':'D';
+  return rows.find(g=>score>=Number(g.min_score))?.grade||'D';
+};
+getEffectiveGrade=d=>d.grade_override&&d.grade?{grade:d.grade,override:true}:{grade:getGrade(d.score2??d.score??0,d.unit),override:false};
+const upOldBadge=gradeBadgeHtml;
+gradeBadgeHtml=d=>UP.options.simplified?`<span style="font-size:11px;color:${upNum(d.score)>=upNum(baseConfig.pass_score)?'var(--green)':'var(--red)'}">${upNum(d.score)>=upNum(baseConfig.pass_score)?'达标':'未达标'}</span>`:upOldBadge(d);
+_scoreCeil=()=>Math.max(1,upNum(baseConfig.max_score,100));
+loadBaseConfig=async function(){
+  baseConfig=upDefault();
+  const {data,error}=await sb.from('period_base_config').select('*').eq('period_id',currentPeriodId).maybeSingle();
+  if(error)throw new Error('计分设定载入失败：'+error.message);
+  if(data)baseConfig={...baseConfig,...data};
+  for(const [id,key] of [['base-score','base_score'],['max-score','max_score'],['perfect-bonus','perfect_bonus'],['attend-bonus','attend_bonus'],['pass-score','pass_score'],['rank-cutoff','rank_cutoff']])document.getElementById(id).value=baseConfig[key];
+};
+const upOldRank=calcGroupRank;
+calcGroupRank=(rows,key)=>{const cutoff=upNum(baseConfig.rank_cutoff);const map=upOldRank(rows.filter(d=>upNum(d[key])>=cutoff),key);rows.forEach(d=>{if(map[d.id]==null)map[d.id]='—'});return map};
+async function upLoadOptions(){
+  UP.options={};UP.teachers=[];UP.ready=false;
+  const result=await sb.from('assessment_period_options').select('*').eq('period_id',currentPeriodId).maybeSingle();
+  if(result.error){UP.error=result.error.message;return}
+  UP.ready=true;UP.error='';UP.options=result.data||{};
+  if(upAdmin()){
+    const t=await sb.from('assessment_teachers').select('*').eq('period_id',currentPeriodId).eq('active',true).order('id');
+    if(t.error){UP.ready=false;UP.error=t.error.message;return}UP.teachers=t.data||[];
+  }
+}
+renderPeriodTabs=function(){
+  const visible=periods.filter(p=>upAdmin()||p.status!=='closed');
+  document.getElementById('period-tabs').innerHTML=`<select id="up-period" aria-label="考核期间" onchange="selectPeriod(Number(this.value))">${visible.map(p=>`<option value="${p.id}" ${p.id===currentPeriodId?'selected':''}>${upEsc(p.name)} · ${p.status==='active'?'进行中':p.status==='closed'?'已结束':'草稿'}</option>`).join('')}</select>`;
+};
+selectPeriod=async function(id){
+  if(UP.busy)return;UP.busy=true;
+  document.querySelectorAll('.modal-bg.open').forEach(m=>m.classList.remove('open'));
+  currentPeriodId=id;const p=periods.find(x=>x.id===id);renderPeriodTabs();
+  document.getElementById('up-period').disabled=true;
+  try{
+    staffScores=[];aiWorks=[];aiScores=[];aiMakers=[];aiDataPeriod=null;
+    await loadBaseConfig();await upLoadOptions();
+    await Promise.all([loadRules(),loadGradeConfigs()]);await loadStaffScores();
+    for(const [el,text] of [['query-title',`${p?.name||''} · 成绩查询`],['staff-period-label',`当前期间：${p?.name||''}`],['settings-period-label',`当前期间：${p?.name||''}`],['grade-view-title',`${p?.name||''} · 级别总览`]])document.getElementById(el).textContent=text;
+    renderQuery();updateGradeTabVisibility();
+    if(document.getElementById('page-edit').classList.contains('active')){await loadAiData();renderEditPage()}
+    if(document.getElementById('page-ai').classList.contains('active'))await loadAiWorks();
+    if(document.getElementById('page-grade-view').classList.contains('active'))renderGradeView();
+    if(document.getElementById('page-settings').classList.contains('active')){renderList('deduct');renderList('bonus');renderGradeConfigPane()}
+    if(document.getElementById('page-up-manage').classList.contains('active'))upRenderManage();
+  }catch(e){toast(e.message,true);staffScores=[];document.getElementById('tbody').innerHTML='<tr><td colspan="8">载入失败，请重新选择期间。</td></tr>';}
+  finally{UP.busy=false;document.getElementById('up-period').disabled=false;}
+};
+const upOldSwitch=switchPage;
+switchPage=function(id,el){
+  if(id==='up-manage'){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-up-manage').classList.add('active');document.querySelector('.period-bar').style.display='';upRenderManage();}
+  else upOldSwitch(id,el);
+  const managed=['settings','periods','staff','users','logs','up-manage','up-teachers','up-annual-config'];
+  document.getElementById('up-back').hidden=!managed.includes(id)||id==='up-manage';
+  document.querySelectorAll('.topnav-tab').forEach(b=>b.classList.remove('active'));
+  const target=managed.includes(id)?document.getElementById('up-manage-tab'):document.querySelector(`.topnav-tab[data-up-page="${id}"]`);
+  (target||el)?.classList.add('active');
+  if(id==='settings')upSettingsLabels();
+};
+function upSettingsLabels(){
+  document.querySelectorAll('#pane-grade-config .grade-config-table tr').forEach(tr=>{if(tr.cells?.[2])tr.cells[2].style.display='none'});
+  const description=document.querySelector('#pane-grade-config > div > div > div:nth-child(2)');if(description)description.textContent='历史半年度级别：只设置各级最低分，自动衔接区间，支持小数。';
+}
+const upOldConfigPane=renderGradeConfigPane;
+renderGradeConfigPane=function(){upOldConfigPane();upSettingsLabels()};
+const upOldPane=switchPane;
+switchPane=function(id){upOldPane(id);upSettingsLabels();};
+function upOpenRule(pane){switchPage('settings');switchPane(pane)}
+function upRenderManage(){
+  const p=periods.find(x=>x.id===currentPeriodId);
+  document.getElementById('up-manage-content').innerHTML=`<div class="page-hd"><h1>管理设置</h1><p>先选一项，再调整该项内容 · ${upEsc(p?.name||'请先选择期间')}</p></div>
+    ${!UP.ready?'<div class="inherit-banner">升级资料表尚未就绪。请先执行随附的 12_考核功能升级.sql；原有功能仍可使用。</div>':''}
+    <div class="up-menu-grid"><section><h3>考核分数与级别</h3>
+    <button onclick="upOpenRule('base')">考核分数 <small>起始分、奖励与达标线</small></button>
+    <button onclick="upOpenRule('deduct')">扣分项目</button><button onclick="upOpenRule('bonus')">加分项目</button>
+    <button onclick="upOpenAnnual(true)">全年级别比例 <small>按年度、岗位分别设置</small></button>
+    ${!UP.options.simplified?'<button onclick="upOpenRule(\'grade-config\')">历史半年度级别</button>':''}
+    <label class="up-option"><input type="checkbox" ${UP.options.simplified?'checked':''} ${!UP.ready?'disabled':''} onchange="upSaveSimple(this)"> 本期仅显示分数与达标，ABCD留到全年</label></section>
+    <section><h3>名单与权限</h3><button onclick="switchPage('staff')">学生名单</button><button onclick="upOpenTeachers()">应评老师 <small>本期 ${UP.teachers.length} 位</small></button><button onclick="switchPage('users')">帐号与权限</button></section>
+    <section><h3>期间与记录</h3><button onclick="switchPage('periods')">期间与成绩公布</button><button onclick="switchPage('logs')">操作记录</button><button onclick="switchPage('account')">我的帐号与安全</button></section></div>`;
+}
+async function upSaveSimple(input){
+  if(!upAdmin()||!UP.ready)return;
+  const {error}=await sb.from('assessment_period_options').upsert({period_id:currentPeriodId,simplified:input.checked},{onConflict:'period_id'});
+  if(error){input.checked=!input.checked;toast(error.message,true);return}
+  UP.options.simplified=input.checked;renderQuery();upRenderManage();toast('本期显示方式已保存');
+}
+saveBaseConfig=async function(){
+  const values={};
+  for(const [id,key] of [['base-score','base_score'],['max-score','max_score'],['perfect-bonus','perfect_bonus'],['attend-bonus','attend_bonus'],['pass-score','pass_score'],['rank-cutoff','rank_cutoff']]){
+    const raw=document.getElementById(id).value;if(raw===''||!Number.isFinite(Number(raw))){toast('请填写有效数字',true);return}values[key]=Number(raw);
+  }
+  if(values.max_score<=0||values.perfect_bonus<0||values.attend_bonus<0){toast('满分参考须大于0，奖励不能为负数',true);return}
+  const {error}=await sb.from('period_base_config').upsert({period_id:currentPeriodId,...values},{onConflict:'period_id'});
+  if(error){toast(error.message,true);return}Object.assign(baseConfig,values);
+  await loadStaffScores();renderQuery();toast('计分设置已保存（个人起始分在学生名单调整）');
+};
+saveGradeConfig=async function(unit){
+  if(!UP.ready){toast('请先执行升级 SQL，再保存级别设置',true);return}
+  const rows=['A','B','C','D'].map((grade,i)=>({grade,min_score:Number(document.getElementById(`gc-min-${unit}-${grade}`).value),max_score:999999,sort_order:i}));
+  if(rows.some((r,i)=>!Number.isFinite(r.min_score)||(i>0&&r.min_score>=rows[i-1].min_score))){toast('最低分须为有效数字，且 A > B > C > D',true);return}
+  const {error}=await sb.rpc('assessment_save_grade',{p_period:currentPeriodId,p_unit:unit,p_rows:rows});
+  if(error){toast(error.message,true);return}await loadGradeConfigs();renderGradeConfigPane();renderQuery();toast('已保存');
+};
+const upOldRenderQuery=renderQuery;
+renderQuery=function(){
+  upOldRenderQuery();
+  const gradeHeader=document.querySelector('#page-query table thead th:nth-child(3)');if(gradeHeader)gradeHeader.textContent=UP.options.simplified?'达标':'级别';
+  const visible=upAdmin()||isScorePublished();
+  document.querySelector('#page-query .hd-stats').hidden=!visible;
+  document.getElementById('score-chart-panel')?.classList.toggle('up-hidden',!visible);
+  document.querySelector('#page-query [onclick="exportToExcel()"]')?.classList.toggle('up-hidden',!visible);
+  if(!staffScores.length){['stat-avg','stat-pass','stat-top'].forEach(id=>document.getElementById(id).textContent='—')}
+  const list=upQueryRows();if(list.length&&visible)document.getElementById('stat-top').textContent=list.filter(d=>upNum(d.score)>=_scoreCeil()).length;
+};
+const upOldDetail=toggleDetail;
+toggleDetail=function(i,enc){upOldDetail(i,enc);if(!UP.options.simplified)return;const drawer=document.getElementById('qdetail-'+i);if(!drawer)return;drawer.querySelector('[id^="grade-override-sel-"]')?.parentElement.remove();const badge=drawer.querySelector('.grade-badge');if(badge){const d=JSON.parse(decodeURIComponent(enc));badge.parentElement.innerHTML='<span>半年度达标</span>'+gradeBadgeHtml(d);}};
+function upQueryRows(){const q=(document.getElementById('search')?.value||'').trim().toLowerCase();return staffScores.filter(d=>(fShift==='全部'||d.shift===fShift)&&(fUnit==='全部'||d.unit===fUnit)&&matchesPersonQuery(d,q));}
+exportToExcel=function(){
+  if(!upAdmin()&&!isScorePublished()){toast('成绩尚未公布，不能汇出',true);return}
+  const list=upQueryRows(),finalRanks={};const groups={};staffScores.forEach(d=>(groups[d.shift+'|'+d.unit]??=[]).push(d));Object.values(groups).forEach(g=>Object.assign(finalRanks,calcGroupRank(g,'score2')));
+  const rows=list.map(d=>({'固定代号':personCode(d),'绰号':d.nickname||'','单位':unitLabel(d.unit),'班次':d.shift,'公开分数':d.score,...(upAdmin()?{'最终考核分':d.score2,'最终组内排名':finalRanks[d.id]}:{}),'公开分排名':d.rank2,'是否达标':d.score>=upNum(baseConfig.pass_score)?'达标':'未达标','AI作品分':d.ai_score||0,'金损金额':d.jinsun||0,...(upAdmin()?{'老师加减分':d.mgr_bonus||0,'分析加减分':d.analysis_total||0,'备注':d.comment||''}:{})}));
+  if(!rows.length){toast('当前筛选没有资料',true);return}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'成绩');XLSX.writeFile(wb,`${periods.find(p=>p.id===currentPeriodId)?.name||'考核'}_筛选成绩.xlsx`);
+};
+isScorePublished=function(){const p=periods.find(x=>x.id===currentPeriodId);const now=new Date();const today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');return !!(p?.publish_from&&p?.publish_to&&today>=p.publish_from&&today<=p.publish_to)};
+const upOldEdit=renderEditPage;
+renderEditPage=function(){upOldEdit();document.getElementById('edit-title').textContent='月度考核 · '+(periods.find(x=>x.id===currentPeriodId)?.name||'');const table=document.querySelector('#page-edit table');table.classList.toggle('up-condensed',!UP.detail);};
+function upToggleDetail(input){UP.detail=input.checked;renderEditPage()}
+const upOldMonthOpen=openMonthModal;
+openMonthModal=function(id,key,label){upOldMonthOpen(id,key,label);UP.pendingRule=null;};
+const upOldApplyRule=applyRuleToMonth;
+applyRuleToMonth=function(pts,item,id){
+  const rule=[...rules.deduct,...rules.bonus].find(r=>String(r.id)===String(id));
+  const d=staffScores.find(r=>r.id===Number(document.getElementById('mm-staff-id').value));
+  if(rule&&d){
+    if(rule.scope&&rule.scope!=='all'&&rule.scope!==d.unit&&rule.scope!==d.shift){toast('该项目不适用于这位学生',true);return}
+    const key=document.getElementById('mm-month-key').value;
+    const entries=getMonthConfig().keys.flatMap(k=>k===key?mmEntries:(d.month_detail?.[k]||[]));
+    const count=entries.filter(e=>String(e.rule_id)===String(rule.id)||(!e.rule_id&&e.item===rule.name)).length;
+    if(rule.max_times!=null&&count>=Number(rule.max_times)){toast(`本期最多 ${rule.max_times} 次，已达到上限`,true);return}
+  }
+  UP.pendingRule=rule?.id??null;upOldApplyRule(pts,item);
+};
+const upOldConfirmRule=confirmRuleEntry;
+confirmRuleEntry=function(){const before=mmEntries.length;upOldConfirmRule();if(mmEntries.length>before&&UP.pendingRule!=null)mmEntries[mmEntries.length-1].rule_id=UP.pendingRule;};
+const upOldSaveRule=saveRule;
+saveRule=async function(){const raw=document.getElementById('rm-max').value;if(raw!==''&&(!Number.isInteger(Number(raw))||Number(raw)<1)){toast('上限次数须为正整数，或留空不限',true);return}return upOldSaveRule();};
+function upOpenTeachers(){switchPage('up-teachers');upRenderTeachers()}
+function upRenderTeachers(){
+  document.getElementById('up-teachers-content').innerHTML=`<div class="page-hd"><h1>应评老师</h1><p>适用：${upEsc(periods.find(p=>p.id===currentPeriodId)?.name||'')} · 每行一位</p></div>
+  <div class="preview-card"><div class="form-row"><label for="up-teacher-names">老师名单</label><textarea id="up-teacher-names" style="min-height:170px" placeholder="王老师&#10;李老师">${UP.teachers.map(t=>upEsc(t.name)).join('\n')}</textarea></div>
+  <p class="up-help">保存后启用全员评分：名单内全部提交才列已评；0分计入平均，严格超过半数给0则整件归零。未完成作品暂不计入AI累计。</p>
+  <p class="up-help">同名旧评分继续使用；旧弃权需重新评分。移除老师会重算本期作品。共用帐号时请从名单选择自己的名字。</p>
+  <button class="btn-primary" ${!UP.ready?'disabled':''} onclick="upSaveTeachers(this)">保存名单并启用本期规则</button>${!UP.ready?'<p>请先执行升级 SQL。</p>':''}</div>`;
+}
+async function upSaveTeachers(btn){
+  const names=document.getElementById('up-teacher-names').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  if(!names.length||new Set(names).size!==names.length){toast('至少一位老师，名称不能重复',true);return}
+  btn.disabled=true;try{const {error}=await sb.rpc('assessment_save_teachers',{p_period:currentPeriodId,p_names:names});if(error)throw error;await upLoadOptions();await loadStaffScores();await loadAiData();upRenderTeachers();toast('名单已保存，本期作品已重新判断完成状态');}catch(e){toast(e.message,true)}finally{btn.disabled=false}
+}
+const upOldAiCalc=aiCalcWork;
+function upReview(id){const records=aiScores.filter(s=>s.work_id===id);const completed=UP.teachers.filter(t=>records.some(s=>s.teacher_id===t.id&&!s.abstain&&s.score!=null));return {completed,missing:UP.teachers.filter(t=>!completed.includes(t)),scores:records.filter(s=>UP.teachers.some(t=>t.id===s.teacher_id)&&!s.abstain&&s.score!=null)}}
+aiCalcWork=function(id){
+  if(!UP.options.full_review)return upOldAiCalc(id);
+  const {completed,missing,scores}=upReview(id),n=UP.teachers.length;
+  if(!n||missing.length)return{score:null,note:n?`待评 ${completed.length}/${n} 位；尚缺：${missing.map(t=>t.name).join('、')}`:'请先设置应评老师',valid:completed.length,zero:0};
+  const zero=scores.filter(s=>Number(s.score)===0).length;
+  return{score:zero*2>n?0:r1(scores.reduce((s,x)=>s+Number(x.score),0)/n),valid:n,zero,note:zero*2>n?`超过半数给0（${zero}/${n}），整件归零`:`全体 ${n} 位取平均（含0分）`};
+};
+const upOldPct=aiFinalPct;
+aiFinalPct=function(id){if(!UP.options.full_review)return upOldPct(id);const records=aiScores;try{aiScores=upReview(id).scores;return upOldPct(id)}finally{aiScores=records}};
+const upOldPerson=aiPersonScores;
+aiPersonScores=function(id){const makers=aiMakers;try{aiMakers=[...makers].sort((a,b)=>a.staff_id-b.staff_id);return upOldPerson(id)}finally{aiMakers=makers}};
+const upOldAiRender=renderAiWorks;
+renderAiWorks=function(){
+  const all=aiWorks;try{
+    if(aiFilter==='mine'&&UP.options.full_review){const selected=localStorage.getItem('aiTeacherName')||'';const t=UP.teachers.find(t=>t.name===selected);aiWorks=all.filter(w=>!t||!upReview(w.id).completed.includes(t));aiFilter='all';upOldAiRender();aiFilter='mine';}
+    else upOldAiRender();
+  }finally{aiWorks=all}
+  document.getElementById('up-ai-manage').hidden=!upAdmin();
+  document.getElementById('up-ai-status').textContent=UP.options.full_review?`本期应评 ${UP.teachers.length} 位 · 全员提交后结算`:'本期沿用历史规则；设置应评老师后启用全员评审';
+  if(UP.options.full_review&&upAdmin()){
+    document.getElementById('ai-rules').innerHTML='<details class="preview-card"><summary>评分规则</summary><p class="up-help">全部应评老师提交后列为已评；0分纳入平均；严格超过半数给0则整件归零。尚未提交不视为0分。个人AI累计上限40。</p></details>';
+    document.querySelectorAll('#ai-list [onclick^="openAiScore("]').forEach(btn=>{const id=Number(btn.getAttribute('onclick').match(/\d+/)[0]);const r=upReview(id);const p=document.createElement('p');p.className='up-help';p.textContent=`完成 ${r.completed.length}/${UP.teachers.length}`+(r.missing.length?' · 尚缺：'+r.missing.map(t=>t.name).join('、'):'');btn.before(p)});
+  }
+};
+const upOldOpenAi=openAiScore;
+openAiScore=function(id){
+  if(UP.options.full_review&&!UP.teachers.length){toast('请先设置应评老师',true);return}
+  const old=document.getElementById('ais-name');
+  if(UP.options.full_review&&old.tagName!=='SELECT'){const select=document.createElement('select');select.id='ais-name';select.onchange=()=>{localStorage.setItem('aiTeacherName',select.value);aisLoadMine();};old.replaceWith(select)}
+  else if(!UP.options.full_review&&old.tagName!=='INPUT'){const input=document.createElement('input');input.id='ais-name';input.oninput=aisNameHint;old.replaceWith(input)}
+  if(UP.options.full_review)document.getElementById('ais-name').innerHTML='<option value="">请选择你的名字</option>'+UP.teachers.map(t=>`<option value="${upEsc(t.name)}">${upEsc(t.name)}</option>`).join('');
+  upOldOpenAi(id);
+  document.getElementById('ais-abstain').closest('.form-row').style.display=UP.options.full_review?'none':'';
+  if(UP.options.full_review){document.getElementById('ais-abstain').checked=false;aisToggleAbstain();document.getElementById('ais-comment').placeholder='请说明给分理由（0分也要填写）'}
+};
+const upOldLoadMine=aisLoadMine;
+aisLoadMine=function(){const name=document.getElementById('ais-name').value;if(!aiScores.some(s=>s.work_id===aisWorkId&&s.teacher_name===name)){document.getElementById('ais-score').value='';document.getElementById('ais-comment').value='';document.querySelectorAll('.ais-pct-in').forEach(i=>i.value=i.dataset.base);aisRenderPctTotal();aisNameHint();return}upOldLoadMine();if(UP.options.full_review){document.getElementById('ais-abstain').checked=false;aisToggleAbstain()}};
+const upOldSaveAi=saveAiScore;
+saveAiScore=async function(btn){
+  const score=document.getElementById('ais-score'),work=aiWorks.find(w=>w.id===aisWorkId),name=document.getElementById('ais-name').value;
+  if(UP.options.full_review){if(!UP.teachers.some(t=>t.name===name)){toast('请选择应评老师',true);return}document.getElementById('ais-abstain').checked=false;}
+  if(!document.getElementById('ais-abstain').checked&&(score.value===''||!score.checkValidity()||!Number.isFinite(Number(score.value))||Number(score.value)<0||Number(score.value)>(AI_TYPES[work?.work_type]?.cap??0))){toast('分数须介于0与类型上限之间',true);return}
+  const inputs=[...document.querySelectorAll('.ais-pct-in')];if(inputs.some(i=>i.value===''||!i.checkValidity())){toast('贡献比例须为0至100',true);return}
+  await upOldSaveAi(btn);await loadStaffScores();
+};
+/* Whole-year grading: largest remainders, then stable original cumulative boundaries.
+   Identical scores share the grade at the first position of the tied block. */
+function upAllocate(rows,percentages){
+  const n=rows.length,raw=percentages.map(p=>n*p/100),quota=raw.map(Math.floor);
+  const order=raw.map((x,i)=>({i,rem:x-quota[i]})).sort((a,b)=>b.rem-a.rem||a.i-b.i);
+  const remainder=n-quota.reduce((s,x)=>s+x,0);for(let k=0;k<remainder;k++)quota[order[k].i]++;
+  const bounds=quota.map((_,i)=>quota.slice(0,i+1).reduce((s,x)=>s+x,0));
+  let first=0;const sorted=[...rows].sort((a,b)=>b.total-a.total||a.staff_id-b.staff_id);
+  return{quota,rows:sorted.map((r,i)=>{if(i===0||r.total!==sorted[i-1].total)first=i;const grade=['A','B','C','D'][bounds.findIndex(x=>first<x)];return{...r,rank:first+1,grade}})};
+}
+function upOpenAnnual(config=false){
+  if(!upAdmin()){toast('年度跨期分级目前仅开放老师端',true);return}
+  switchPage('up-annual-config');
+  const year=periods.find(p=>p.id===currentPeriodId)?.year||new Date().getFullYear();
+  document.getElementById('up-annual-content').innerHTML=`<div class="page-hd"><h1>${config?'全年级别比例':'全年级别总览'}</h1><p>上下半年各占50% · 同岗位合并班次 · 分界同分归较高级</p></div><div class="preview-card"><div class="up-fields"><label>年度<select id="up-year" onchange="upAnnualPeriods()">${[...new Set(periods.map(p=>p.year))].sort((a,b)=>b-a).map(y=>`<option ${y===year?'selected':''}>${y}</option>`).join('')}</select></label><label>岗位<select id="up-unit" onchange="upLoadAnnualConfig()">${upUnitOptions()}</select></label><label>上半年<select id="up-first"></select></label><label>下半年<select id="up-second"></select></label></div><div class="up-fields">${['A','B','C','D'].map(g=>`<label>${g}级 %<input id="up-pct-${g}" type="number" min="0" max="100" step="0.01" oninput="upPctTotal()"></label>`).join('')}</div><p id="up-pct-total" class="up-help">请填写比例，合计须为100%</p><div class="up-actions"><button class="btn-primary" onclick="upSaveAnnual(this)">保存设置</button><button class="btn-cancel" onclick="upAnnualResults()">计算全年结果</button><button class="btn-cancel" onclick="upExportAnnual()">汇出全年结果</button></div><p class="up-help">缺少一期或分数缺值者列为资料不足，不计入分配。岗位按当前学生名单；调岗请先确认归属。多人同分可能使某级无人。人数余数相同时按A、B、C、D顺序分配名额。</p><p id="up-annual-message" role="status"></p></div><div id="up-annual-results"></div>`;
+  upAnnualPeriods();
+}
+function upAnnualPeriods(){const y=Number(document.getElementById('up-year').value);for(const [id,half] of [['up-first','上半年'],['up-second','下半年']]){const list=periods.filter(p=>p.year===y&&p.half===half);document.getElementById(id).innerHTML='<option value="">请选择期间</option>'+list.map(p=>`<option value="${p.id}">${upEsc(p.name)}</option>`).join('');if(list.length===1)document.getElementById(id).value=list[0].id}upLoadAnnualConfig()}
+let upAnnualSeq=0;
+async function upLoadAnnualConfig(){
+  const seq=++upAnnualSeq;UP.annualRows=[];document.getElementById('up-annual-results').innerHTML='';
+  ['A','B','C','D'].forEach(g=>document.getElementById('up-pct-'+g).value='');
+  if(!UP.ready){document.getElementById('up-annual-message').textContent='请先执行升级SQL';return}
+  const {data,error}=await sb.from('assessment_annual_config').select('*').eq('year',Number(document.getElementById('up-year').value)).eq('unit',document.getElementById('up-unit').value).maybeSingle();
+  if(seq!==upAnnualSeq||!document.getElementById('up-pct-A'))return;
+  if(error){toast(error.message,true);return}if(data){document.getElementById('up-first').value=data.first_period;document.getElementById('up-second').value=data.second_period;['A','B','C','D'].forEach(g=>document.getElementById('up-pct-'+g).value=data[g.toLowerCase()]);}
+  document.getElementById('up-annual-message').textContent=data?'已载入保存设置':'尚未设置；比例不会自动套用范例';upPctTotal();
+}
+function upPctTotal(){const values=['A','B','C','D'].map(g=>Number(document.getElementById('up-pct-'+g).value));document.getElementById('up-pct-total').textContent='合计 '+Math.round(values.reduce((s,x)=>s+x,0)*100)/100+'%（须为100%）';UP.annualRows=[];}
+function upAnnualInput(){const fields=['A','B','C','D'].map(g=>document.getElementById('up-pct-'+g));const pct=fields.map(i=>Number(i.value));if(fields.some(i=>i.value===''||!i.checkValidity())||Math.abs(pct.reduce((s,x)=>s+x,0)-100)>0.00001)throw new Error('各级比例须为0至100，合计100%');const first=Number(document.getElementById('up-first').value),second=Number(document.getElementById('up-second').value);if(!first||!second)throw new Error('请选择上下半年期间');return{year:Number(document.getElementById('up-year').value),unit:document.getElementById('up-unit').value,first_period:first,second_period:second,a:pct[0],b:pct[1],c:pct[2],d:pct[3]}}
+async function upSaveAnnual(btn){try{if(!UP.ready)throw new Error('请先执行升级SQL');const config=upAnnualInput();btn.disabled=true;const {error}=await sb.from('assessment_annual_config').upsert(config,{onConflict:'year,unit'});if(error)throw error;toast('年度岗位比例已保存');document.getElementById('up-annual-message').textContent='设置已保存';}catch(e){toast(e.message,true)}finally{btn.disabled=false}}
+async function upAnnualResults(){
+  const seq=++upAnnualSeq;
+  try{
+    const config=upAnnualInput();if(!upAdmin())throw new Error('仅老师端可跨期计算');
+    document.getElementById('up-annual-message').textContent='计算中…';
+    const ids=[config.first_period,config.second_period];
+    const [scores,cfgs]=await Promise.all([sb.from('staff_scores').select('*,staff(id,unit,code,name,nickname)').in('period_id',ids),sb.from('period_base_config').select('*').in('period_id',ids)]);
+    if(scores.error||cfgs.error)throw scores.error||cfgs.error;
+    if(seq!==upAnnualSeq||!document.getElementById('up-annual-results'))return;
+  const by={};for(const row of scores.data||[]){if(row.staff?.unit!==config.unit)continue;const person=by[row.staff_id]??={staff_id:row.staff_id,code:row.staff.code||row.staff.name,nickname:row.staff.nickname||''};if(person[row.period_id])throw new Error('同一学生在同一期出现重复成绩，请先整理名单');person[row.period_id]=row;}
+    const eligible=[],excluded=[];
+    for(const person of Object.values(by)){
+      const h=ids.map(id=>person[id]);if(h.some(r=>!r||r.score==null||r.score2==null)){excluded.push(person);continue}
+      const totals=h.map((r,i)=>{const cfg=cfgs.data.find(c=>c.period_id===ids[i]);if(!cfg)throw new Error('期间缺少计分设置，请先保存基本计分');return upTotals(r,cfg,i===0?['jan','feb','mar','apr','may','jun']:['jul','aug','sep','oct','nov','dec']).score2});
+      eligible.push({...person,first:totals[0],second:totals[1],total:Math.round((totals[0]+totals[1])*50)/100});
+    }
+    const percentages=[config.a,config.b,config.c,config.d],result=upAllocate(eligible,percentages);UP.annualRows=result.rows;UP.annualExcluded=excluded;UP.annualConfig=config;
+    document.getElementById('up-annual-message').textContent=`参评 ${eligible.length} 人 · 资料不足 ${excluded.length} 人 · 按目前输入比例预览（修改比例请另按保存）`;
+    document.getElementById('up-annual-results').innerHTML=`<div class="grade-grid">${['A','B','C','D'].map((g,i)=>{const n=result.rows.filter(r=>r.grade===g).length;return `<div class="preview-card"><h3>${g}级 · 目标${percentages[i]}%</h3><p>${n}人 · 实际${eligible.length?(100*n/eligible.length).toFixed(1):0}%</p><p class="up-help">原始名额 ${result.quota[i]}人${n!==result.quota[i]?' · 同分调整':''}</p></div>`}).join('')}</div><div class="tbl-wrap" style="overflow:auto"><table class="users-table"><thead><tr><th>排名</th><th>代号</th><th>绰号</th><th>上半年</th><th>下半年</th><th>全年</th><th>级别</th></tr></thead><tbody>${result.rows.map(r=>`<tr><td>${r.rank}</td><td>${upEsc(r.code)}</td><td>${upEsc(r.nickname)}</td><td>${r.first}</td><td>${r.second}</td><td>${r.total}</td><td>${r.grade}</td></tr>`).join('')}</tbody></table></div>${excluded.length?'<p class="up-help">资料不足：'+excluded.map(p=>upEsc(p.code+' '+p.nickname)).join('、')+'</p>':''}`;
+  }catch(e){toast(e.message,true);if(document.getElementById('up-annual-message'))document.getElementById('up-annual-message').textContent='计算未完成：'+e.message}
+}
+function upExportAnnual(){if(!UP.annualRows.length){toast('请先计算全年结果',true);return}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(UP.annualRows.map(r=>({'排名':r.rank,'代号':r.code,'绰号':r.nickname,'上半年':r.first,'下半年':r.second,'全年平均':r.total,'全年级别':r.grade}))),'全年级别');if(UP.annualExcluded.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(UP.annualExcluded.map(r=>({'代号':r.code,'绰号':r.nickname,'状态':'资料不足'}))),'资料不足');XLSX.writeFile(wb,`${UP.annualConfig.year}_${UP.annualConfig.unit}_全年级别.xlsx`)}
+document.addEventListener('change',event=>{if(['up-first','up-second'].includes(event.target.id)){upAnnualSeq++;UP.annualRows=[];const el=document.getElementById('up-annual-results');if(el)el.innerHTML='';const message=document.getElementById('up-annual-message');if(message)message.textContent='期间已改变，请重新计算并保存设置';}});
+const upOldGradeView=renderGradeView;
+renderGradeView=function(){if(UP.options.simplified){document.getElementById('grade-view-content').innerHTML='<div class="preview-card">本期不再按分数划分ABCD。请在成绩查询查看分数与达标，全年按岗位比例评定。</div>'}else upOldGradeView()};
+
+// UI setup: original features remain accessible; one authoritative settings screen each.
+(()=>{
+  const style=document.createElement('style');style.textContent=`
+  .up-hidden,.up-legacy-nav,.admin-only.hidden{display:none!important}.topnav{height:auto;min-height:50px;flex-wrap:wrap}.topnav-tabs{flex-wrap:wrap}.topnav-tab{min-height:46px}.nav-right{padding:6px 0}.period-tabs select{padding:7px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--ink);max-width:100%}.page{max-width:1400px}.up-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.up-menu-grid section{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px}.up-menu-grid h3{font-size:14px;margin-bottom:12px}.up-menu-grid button{display:block;width:100%;padding:13px 8px;text-align:left;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--ink);font:inherit;cursor:pointer}.up-menu-grid small{display:block;color:var(--ink3);margin-top:4px}.up-option{display:block;font-size:12px;line-height:1.8;margin-top:16px}.up-help{font-size:12px;color:var(--ink2);line-height:1.8;margin:10px 0}.up-fields{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0}.up-fields label{display:flex;flex-direction:column;gap:6px;color:var(--ink2);font-size:12px}.up-fields input,.up-fields select{padding:8px;border:1px solid var(--border);border-radius:4px;color:var(--ink);background:var(--surface);max-width:100%}.up-fields input{width:100px}.up-actions{display:flex;gap:8px;flex-wrap:wrap}#up-back{max-width:1400px;margin:14px auto 0;padding:0 16px}#page-settings .nav-tabs{display:none}.up-condensed{min-width:850px!important}.up-condensed tr>*:nth-child(n+10):nth-last-child(n+3){display:none}#edit-tbody tr td:first-child{cursor:pointer}#page-edit .up-person-help{font-size:12px;color:var(--ink3);margin:8px 0}@media(max-width:800px){.up-menu-grid{grid-template-columns:1fr}.grade-grid{grid-template-columns:repeat(2,1fr)}.topnav-brand{margin-right:5px}.topnav-tab{padding:0 8px}.up-fields{gap:10px}}`;
+  document.head.append(style);
+  const labels={query:'成绩查询',edit:'月度考核',ai:'AI评分','grade-view':'级别总览'};
+  document.querySelectorAll('.topnav-tab').forEach(b=>{const id=(b.getAttribute('onclick')||'').match(/switchPage\('([^']+)'/)?.[1];b.dataset.upPage=id;if(labels[id])b.textContent=labels[id];else b.classList.add('up-legacy-nav')});
+  const menu=document.createElement('button');menu.id='up-manage-tab';menu.className='topnav-tab admin-only hidden';menu.textContent='管理设置';menu.onclick=()=>switchPage('up-manage');document.querySelector('.topnav-tabs').append(menu);
+  const account=document.createElement('button');account.className='btn-sm';account.textContent='我的帐号';account.onclick=()=>switchPage('account',account);document.querySelector('.nav-right').append(account);
+  const nav=document.querySelector('.topnav-tabs');const edit=document.querySelector('[data-up-page="edit"]');nav.insertBefore(edit,document.querySelector('[data-up-page="ai"]'));
+  const wrap=document.getElementById('app-wrap');const back=document.createElement('div');back.id='up-back';back.hidden=true;back.innerHTML='<button class="btn-cancel" onclick="switchPage(\'up-manage\')">← 管理设置</button>';document.querySelector('.period-bar').after(back);
+  for(const id of ['manage','teachers','annual-config']){const page=document.createElement('div');page.id='page-up-'+id;page.className='page';page.innerHTML=`<div id="up-${id==='annual-config'?'annual':id}-content"></div>`;wrap.append(page)}
+  document.querySelector('#page-settings .page-hd h1').textContent='考核设置';
+  document.getElementById('max-score').previousElementSibling.textContent='满分参考（统计用，不自动截断成绩）';
+  document.getElementById('pass-score').previousElementSibling.textContent='达标分数';
+  document.getElementById('rank-cutoff').previousElementSibling.textContent='低于此分数不列入排名';
+  const note=document.createElement('p');note.className='up-help';note.textContent='起始分是新增人员的默认值；已有人员可在学生名单单独调整。填0可停用奖励。';document.getElementById('pane-base').prepend(note);
+  const detail=document.createElement('label');detail.className='up-person-help';detail.innerHTML='<input type="checkbox" onchange="upToggleDetail(this)"> 显示详细分数与评语栏位（点月份填写加扣分及金损）';document.querySelector('#page-edit .tbl-wrap').before(detail);
+  const yearBtn=document.createElement('button');yearBtn.className='filter-btn admin-only hidden';yearBtn.textContent='全年比例总览';yearBtn.onclick=()=>upOpenAnnual(false);document.querySelector('#page-grade-view .sec-hd').append(yearBtn);
+  const teacher=document.createElement('div');teacher.id='up-ai-manage';teacher.hidden=true;teacher.className='up-actions';teacher.innerHTML='<button class="filter-btn" onclick="upOpenTeachers()">应评老师设置</button><span id="up-ai-status" class="up-help"></span>';document.getElementById('ai-filters').before(teacher);
+  const mine=document.createElement('button');mine.className='filter-btn admin-only hidden';mine.textContent='我的待评';mine.onclick=()=>{if(!UP.options.full_review){toast('请先设置应评老师',true);return}if(!localStorage.getItem('aiTeacherName')){toast('请先打开一件作品并选择老师姓名',true);return}setAiFilter('mine',mine)};document.getElementById('ai-filters').append(mine);
+  for(const id of ['ais-existing','ais-pct-wrap']){const el=document.getElementById(id),details=document.createElement('details');details.style.margin='12px 0';const summary=document.createElement('summary');summary.textContent=id==='ais-existing'?'其他老师评分明细':'贡献比例（需要调整再展开）';el.before(details);details.append(summary,el)}
+  const custom=document.getElementById('mm-custom-item').parentElement.parentElement;const fold=document.createElement('details');const summary=document.createElement('summary');summary.textContent='＋ 自定义项目';custom.before(fold);fold.append(summary,custom);
+})();
 
 </script>
 </body>
