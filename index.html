@@ -3223,7 +3223,7 @@ function renderAiWorks(){
     }
 
     const isReport=t.kind==='report';
-    return `<div style="background:${isReport?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);${isReport?'border-left:3px solid var(--amber-bd);':''}border-radius:var(--r);padding:14px 16px;margin-bottom:10px"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span style="font-weight:500;font-size:14px">${(w.title||'').replace(/</g,'&lt;')}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:${isReport?'var(--amber-bg)':'var(--surface2)'};color:${isReport?'var(--amber)':'var(--ink3)'};border:1px solid ${isReport?'var(--amber-bd)':'var(--border)'}">${isReport?'回报・建议':'AI 作品'}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue)">${t.label}${teacher?` · 上限${t.cap}`:''}</span>${statusTag}</div>${w.description?`<div style="font-size:12px;color:var(--ink3);margin-bottom:6px;line-height:1.6">${w.description.replace(/</g,'&lt;')}</div>`:''}<div>${makerHtml}</div>${upWorkLink(link)}${(()=>{const ns=aiMakers.filter(m=>m.work_id===w.id&&m.note);return ns.length?`<div style="margin-top:6px;font-size:11px;color:var(--ink3);line-height:1.7">${ns.map(m=>`<div>${aiStaffName(m.staff_id)}：${(m.note||'').replace(/</g,'&lt;')}</div>`).join('')}</div>`:'';})()}${teacherBlock}</div>`;
+    return `<div style="background:${isReport?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);${isReport?'border-left:3px solid var(--amber-bd);':''}border-radius:var(--r);padding:14px 16px;margin-bottom:10px"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span style="font-weight:500;font-size:14px">${(w.title||'').replace(/</g,'&lt;')}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:${isReport?'var(--amber-bg)':'var(--surface2)'};color:${isReport?'var(--amber)':'var(--ink3)'};border:1px solid ${isReport?'var(--amber-bd)':'var(--border)'}">${isReport?'回报・建议':'AI 作品'}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue)">${t.label}${teacher?` · 上限${t.cap}`:''}</span>${statusTag}</div>${upAiUploadedAt(w.created_at)}${w.description?`<div style="font-size:12px;color:var(--ink3);margin-bottom:6px;line-height:1.6">${w.description.replace(/</g,'&lt;')}</div>`:''}<div>${makerHtml}</div>${upWorkLink(link)}${(()=>{const ns=aiMakers.filter(m=>m.work_id===w.id&&m.note);return ns.length?`<div style="margin-top:6px;font-size:11px;color:var(--ink3);line-height:1.7">${ns.map(m=>`<div>${aiStaffName(m.staff_id)}：${(m.note||'').replace(/</g,'&lt;')}</div>`).join('')}</div>`:'';})()}${teacherBlock}</div>`;
   }).join('');
 }
 
@@ -3533,6 +3533,13 @@ async function saveAiScore(btn){
 /* Assessment upgrade 2026-09-29. Embedded in the delivered single HTML file. */
 const UP={ready:false,options:{},teachers:[],busy:false,section:'rules',annualRows:[],annualExcluded:[],detail:false};
 const upEsc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+function upAiUploadedAt(value){
+  if(!value)return '<div class="up-upload-time up-help">上传时间：未记录</div>';
+  const date=new Date(value);
+  if(!Number.isFinite(date.getTime()))return '<div class="up-upload-time up-help">上传时间：未记录</div>';
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date).map(p=>[p.type,p.value]));
+  return `<div class="up-upload-time" style="font-size:11px;color:var(--ink3);margin:4px 0 8px">上传时间：<time datetime="${date.toISOString()}">${parts.year}/${parts.month}/${parts.day} ${parts.hour}:${parts.minute}</time>（台北时间）</div>`;
+}
 function upWorkLink(record){
   const value=String(record?.link??'').trim();if(!value)return '';
   let url=null;
@@ -3855,6 +3862,7 @@ renderGradeView=function(){if(UP.options.simplified){document.getElementById('gr
   document.querySelectorAll('.topnav-tab').forEach(b=>{const id=(b.getAttribute('onclick')||'').match(/switchPage\('([^']+)'/)?.[1];b.dataset.upPage=id;if(labels[id])b.textContent=labels[id];else b.classList.add('up-legacy-nav')});
   const menu=document.createElement('button');menu.id='up-manage-tab';menu.className='topnav-tab admin-only hidden';menu.textContent='管理设置';menu.onclick=()=>switchPage('up-manage');document.querySelector('.topnav-tabs').append(menu);
   const account=document.createElement('button');account.className='btn-sm';account.textContent='我的帐号';account.onclick=()=>switchPage('account',account);document.querySelector('.nav-right').append(account);
+  const version=document.createElement('span');version.id='up-build-version';version.textContent='v0929-21';version.title='页面版本 2026.09.29-21';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
   const nav=document.querySelector('.topnav-tabs');const edit=document.querySelector('[data-up-page="edit"]');nav.insertBefore(edit,document.querySelector('[data-up-page="ai"]'));
   const wrap=document.getElementById('app-wrap');const back=document.createElement('div');back.id='up-back';back.hidden=true;back.innerHTML='<button class="btn-cancel" onclick="switchPage(\'up-manage\')">← 管理设置</button>';document.querySelector('.period-bar').after(back);
   for(const id of ['manage','teachers','annual-config']){const page=document.createElement('div');page.id='page-up-'+id;page.className='page';page.innerHTML=`<div id="up-${id==='annual-config'?'annual':id}-content"></div>`;wrap.append(page)}
@@ -4116,7 +4124,9 @@ upSyncRoleControls=function(){
   }
   if(!upAdmin()){
     aiScores=[];aiOpenScores.clear();
-    for(const id of ['ais-existing','ais-pct-wrap','ai-rules']){const el=document.getElementById(id);if(el)el.innerHTML='';}
+    // Clear generated review content, never the structural wrapper containing required IDs.
+    for(const id of ['ais-existing','ais-pct','ais-pct-total','ai-rules']){const el=document.getElementById(id);if(el)el.innerHTML='';}
+    for(const id of ['ais-name','ais-score','ais-comment']){const el=document.getElementById(id);if(el)el.value='';}
     hideAiPop();
     if(lostTeacher){
       document.querySelectorAll('.modal-bg.open').forEach(el=>el.classList.remove('open'));
