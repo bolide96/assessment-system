@@ -1216,7 +1216,7 @@ async function loadStaffScores(){
     analysis_jul:r.analysis_jul||0,analysis_aug:r.analysis_aug||0,analysis_sep:r.analysis_sep||0,
     analysis_oct:r.analysis_oct||0,analysis_nov:r.analysis_nov||0,analysis_dec:r.analysis_dec||0,
     analysis_jan:r.analysis_jan||0,analysis_feb:r.analysis_feb||0,analysis_mar:r.analysis_mar||0,
-    analysis_apr:r.analysis_apr||0,analysis_may:r.analysis_may||0,analysis_jun_a:r.analysis_jun||0,
+    analysis_apr:r.analysis_apr||0,analysis_may:r.analysis_may||0,analysis_jun:r.analysis_jun||0,analysis_jun_a:r.analysis_jun||0,
     analysis_total:r.analysis_total||0,
     ai_score:Number(r.ai_score)||0,
   }));
@@ -1865,7 +1865,7 @@ async function saveMonthScore(){
 
 async function togglePerfect(staffScoreId,current){
   const d=staffScores.find(x=>x.id===staffScoreId);if(!d)return;
-  const newVal=current>0?0:(baseConfig.perfect_bonus||10);
+  const newVal=current>0?0:(baseConfig.perfect_bonus??10);
   const {score,score2}=calcScore({...d,perfect:newVal});
   const {error}=await sb.from('staff_scores').update({perfect:newVal,score,score2}).eq('id',staffScoreId);
   if(error){toast('保存失败',true);return}
@@ -1876,7 +1876,7 @@ async function togglePerfect(staffScoreId,current){
 
 async function toggleAttend(staffScoreId,current){
   const d=staffScores.find(x=>x.id===staffScoreId);if(!d)return;
-  const newVal=current>0?0:(baseConfig.attend_bonus||10);
+  const newVal=current>0?0:(baseConfig.attend_bonus??10);
   const {score,score2}=calcScore({...d,attendance:newVal});
   const {error}=await sb.from('staff_scores').update({attendance:newVal,score,score2}).eq('id',staffScoreId);
   if(error){toast('保存失败',true);return}
@@ -2076,13 +2076,16 @@ async function importExcel(input){
       const SHIFT_VALS=['早','中','晚','总管'];
       let ok=0,fail=[];
       for(const row of rows){
-        const name=(row['姓名']||row['人员']||row['名字']||'').toString().trim();
+        const name=(row['姓名']||row['人员']||row['名字']||row['固定代号']||'').toString().trim();
         const unit=(row['单位']||'BB').toString().trim();
         const shift=(row['班次']||row['班别']||'').toString().trim();
-        const base_score=parseInt(row['起始分']||row['初始分']||row['基础分']||80)||80;
+        const baseRaw=[row['起始分'],row['初始分'],row['基础分']].find(v=>v!=null&&String(v).trim()!=='');
+        const base_score=baseRaw===undefined?Number(baseConfig.base_score??80):Number(baseRaw);
+        if(!Number.isFinite(base_score)){fail.push(`${name}：起始分无效`);continue}
         if(!name){fail.push('空白姓名');continue}
         if(!SHIFT_VALS.includes(shift)){fail.push(`${name}：班别「${shift}」无效`);continue}
-        const finalUnit=UNIT_VALS.includes(unit)?unit:'BB';
+        const finalUnit=UNIT_VALS.find(u=>u===unit||unitLabel(u)===unit);
+        if(!finalUnit){fail.push(`${name}：单位「${unit}」无效`);continue}
         const {data:staffData,error:se}=await sb.from('staff').insert({name,unit:finalUnit}).select().single();
         if(se){fail.push(`${name}：${se.message}`);continue}
         const {error:sce}=await sb.from('staff_scores').insert({period_id:currentPeriodId,staff_id:staffData.id,shift,base_score,score:0,score2:0,mgr_bonus:0,perfect:0,attendance:0,jinsun:0,comment:''});
@@ -2393,23 +2396,23 @@ function renderPreview(){
   const eb=rules.bonus.filter(r=>r.enabled);
   const maxD=ed.reduce((s,r)=>s+(r.pts*(r.max_times||1)),0);
   const maxB=eb.reduce((s,r)=>s+(r.pts*(r.max_times||1)),0);
-  const worst=Math.max(0,baseConfig.base_score+maxD);
-  const best=Math.min(baseConfig.max_score,baseConfig.base_score+baseConfig.perfect_bonus+baseConfig.attend_bonus+maxB);
-  document.getElementById('preview-content').innerHTML=`
+  const worst=Number(baseConfig.base_score)+maxD;
+  const best=Number(baseConfig.base_score)+Number(baseConfig.perfect_bonus)+Number(baseConfig.attend_bonus)+maxB;
+  document.getElementById('preview-content').innerHTML=`<p class="up-help">示例按启用项目的当期上限次数计算；不限次数的项目暂按一次。未套用个人适用范围，不含自定义、AI 与老师加减分；不是实际最高／最低分，满分参考不会截断成绩。</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-      <div class="preview-card" style="margin:0"><h3>最高可得分</h3><div style="font-family:var(--ffs);font-size:34px;font-weight:700;color:var(--green);margin:5px 0">${best}</div><div style="font-size:12px;color:var(--ink3)">起始${baseConfig.base_score}+出勤${baseConfig.attend_bonus}+无失误${baseConfig.perfect_bonus}+加分${maxB}</div></div>
-      <div class="preview-card" style="margin:0"><h3>最低可得分</h3><div style="font-family:var(--ffs);font-size:34px;font-weight:700;color:var(--red);margin:5px 0">${worst}</div><div style="font-size:12px;color:var(--ink3)">起始${baseConfig.base_score}+最大扣分${maxD}</div></div>
+      <div class="preview-card" style="margin:0"><h3>加分情境示例</h3><div style="font-family:var(--ffs);font-size:34px;font-weight:700;color:var(--green);margin:5px 0">${best}</div><div style="font-size:12px;color:var(--ink3)">起始${baseConfig.base_score}+出勤${baseConfig.attend_bonus}+无失误${baseConfig.perfect_bonus}+加分${maxB}</div></div>
+      <div class="preview-card" style="margin:0"><h3>扣分情境示例</h3><div style="font-family:var(--ffs);font-size:34px;font-weight:700;color:var(--red);margin:5px 0">${worst}</div><div style="font-size:12px;color:var(--ink3)">起始${baseConfig.base_score}+最大扣分${maxD}</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="preview-card" style="margin:0"><h3>扣分项（${ed.length}项）</h3>
         ${ed.map(r=>`<div class="preview-item deduct"><span>${r.name}</span><span>${r.pts}分</span></div>`).join('')||'<div style="color:var(--ink3);font-size:12px;padding:5px 0">无启用扣分项</div>'}
-        <div class="preview-total"><span>扣分最多</span><span style="color:var(--red)">${maxD}分</span></div>
+        <div class="preview-total"><span>示例扣分合计</span><span style="color:var(--red)">${maxD}分</span></div>
       </div>
       <div class="preview-card" style="margin:0"><h3>加分项（${eb.length}项）</h3>
         <div class="preview-item bonus"><span>无失误奖励</span><span>+${baseConfig.perfect_bonus}</span></div>
         <div class="preview-item bonus"><span>出勤正常奖励</span><span>+${baseConfig.attend_bonus}</span></div>
         ${eb.map(r=>`<div class="preview-item bonus"><span>${r.name}</span><span>+${r.pts}分</span></div>`).join('')}
-        <div class="preview-total"><span>加分上限</span><span style="color:var(--green)">+${baseConfig.perfect_bonus+baseConfig.attend_bonus+maxB}分</span></div>
+        <div class="preview-total"><span>示例加分合计</span><span style="color:var(--green)">+${baseConfig.perfect_bonus+baseConfig.attend_bonus+maxB}分</span></div>
       </div>
     </div>`;
 }
@@ -3531,7 +3534,7 @@ async function saveAiScore(btn){
 
 
 /* Assessment upgrade 2026-09-29. Embedded in the delivered single HTML file. */
-const UP={ready:false,options:{},teachers:[],busy:false,section:'rules',annualRows:[],annualExcluded:[],detail:false};
+const UP={ready:false,options:{},teachers:[],busy:false,section:'rules',annualRows:[],annualExcluded:[],detail:true};
 const upEsc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 function upAiUploadedAt(value){
   if(!value)return '<div class="up-upload-time up-help">上传时间：未记录</div>';
@@ -3625,7 +3628,8 @@ selectPeriod=async function(id){
     if(document.getElementById('page-edit').classList.contains('active')){await loadAiData();renderEditPage()}
     if(document.getElementById('page-ai').classList.contains('active'))await loadAiWorks();
     if(document.getElementById('page-grade-view').classList.contains('active'))renderGradeView();
-    if(document.getElementById('page-settings').classList.contains('active')){renderList('deduct');renderList('bonus');renderGradeConfigPane()}
+    if(document.getElementById('page-settings').classList.contains('active')){renderList('deduct');renderList('bonus');renderGradeConfigPane();if(document.getElementById('pane-preview').classList.contains('active'))renderPreview()}
+    if(document.getElementById('page-up-teachers').classList.contains('active'))upRenderTeachers();
     if(document.getElementById('page-up-manage').classList.contains('active'))upRenderManage();
   }catch(e){toast(e.message,true);staffScores=[];document.getElementById('tbody').innerHTML='<tr><td colspan="8">载入失败，请重新选择期间。</td></tr>';}
   finally{UP.busy=false;document.getElementById('up-period').disabled=false;}
@@ -3650,7 +3654,13 @@ const upOldConfigPane=renderGradeConfigPane;
 renderGradeConfigPane=function(){upOldConfigPane();upSettingsLabels()};
 const upOldPane=switchPane;
 switchPane=function(id){upOldPane(id);upSettingsLabels();};
-function upOpenRule(pane){if(!upRequireAdmin())return;switchPage('settings');switchPane(pane)}
+async function upOpenRule(pane){
+  if(!upRequireAdmin())return;switchPage('settings');switchPane(pane);
+  if(pane==='preview'){
+    const pid=currentPeriodId;await loadRules();
+    if(upAdmin()&&pid===currentPeriodId&&document.getElementById('pane-preview').classList.contains('active'))renderPreview();
+  }
+}
 function upRenderManage(){
   if(!upAdmin())return;
   const p=periods.find(x=>x.id===currentPeriodId);
@@ -3659,6 +3669,7 @@ function upRenderManage(){
     <div class="up-menu-grid"><section><h3>考核分数与级别</h3>
     <button onclick="upOpenRule('base')">考核分数 <small>起始分、奖励与达标线</small></button>
     <button onclick="upOpenRule('deduct')">扣分项目</button><button onclick="upOpenRule('bonus')">加分项目</button>
+    <button onclick="upOpenRule('preview')">规则预览 <small>查看启用项目与计分示例</small></button>
     <button onclick="upOpenAnnual(true)">全年级别比例 <small>按年度、岗位分别设置</small></button>
     ${!UP.options.simplified?'<button onclick="upOpenRule(\'grade-config\')">历史半年度级别</button>':''}
     <label class="up-option"><input type="checkbox" ${UP.options.simplified?'checked':''} ${!UP.ready?'disabled':''} onchange="upSaveSimple(this)"> 本期仅显示分数与达标，ABCD留到全年</label></section>
@@ -3706,12 +3717,20 @@ function upQueryRows(){const q=(document.getElementById('search')?.value||'').tr
 exportToExcel=function(){
   if(!upAdmin()&&!isScorePublished()){toast('成绩尚未公布，不能汇出',true);return}
   const list=upQueryRows(),finalRanks={};const groups={};staffScores.forEach(d=>(groups[d.shift+'|'+d.unit]??=[]).push(d));Object.values(groups).forEach(g=>Object.assign(finalRanks,calcGroupRank(g,'score2')));
-  const rows=list.map(d=>({'固定代号':personCode(d),'绰号':d.nickname||'','单位':unitLabel(d.unit),'班次':d.shift,'公开分数':d.score,...(upAdmin()?{'最终考核分':d.score2,'最终组内排名':finalRanks[d.id]}:{}),'公开分排名':d.rank2,'是否达标':d.score>=upNum(baseConfig.pass_score)?'达标':'未达标','AI作品分':d.ai_score||0,'金损金额':d.jinsun||0,...(upAdmin()?{'老师加减分':d.mgr_bonus||0,'分析加减分':d.analysis_total||0,'备注':d.comment||''}:{})}));
+  const rows=list.map(d=>({'固定代号':personCode(d),'绰号':d.nickname||'','单位':unitLabel(d.unit),'班次':d.shift,'公开分数':d.score,'起始分':d.base??baseConfig.base_score,...(Number(baseConfig.perfect_bonus)>0?{'无失误奖励':d.perfect||0}:{}),'出勤奖励':d.attendance||0,...(upAdmin()?{'最终考核分':d.score2,'最终组内排名':finalRanks[d.id]}:{}),'公开分排名':d.rank2,'是否达标':d.score>=upNum(baseConfig.pass_score)?'达标':'未达标','AI作品分':d.ai_score||0,'金损金额':d.jinsun||0,...(upAdmin()?{'老师加减分':d.mgr_bonus||0,'分析加减分':d.analysis_total||0,'备注':d.comment||''}:{})}));
   if(!rows.length){toast('当前筛选没有资料',true);return}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'成绩');XLSX.writeFile(wb,`${periods.find(p=>p.id===currentPeriodId)?.name||'考核'}_筛选成绩.xlsx`);
 };
 isScorePublished=function(){const p=periods.find(x=>x.id===currentPeriodId);const now=new Date();const today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');return !!(p?.publish_from&&p?.publish_to&&today>=p.publish_from&&today<=p.publish_to)};
 const upOldEdit=renderEditPage;
-renderEditPage=function(){upOldEdit();document.getElementById('edit-title').textContent='月度考核 · '+(periods.find(x=>x.id===currentPeriodId)?.name||'');const table=document.querySelector('#page-edit table');table.classList.toggle('up-condensed',!UP.detail);};
+renderEditPage=function(){
+  upOldEdit();document.getElementById('edit-title').textContent='月度考核 · '+(periods.find(x=>x.id===currentPeriodId)?.name||'');
+  const table=document.querySelector('#page-edit table');
+  // Collapse only supplementary displays, never editable teacher actions.
+  const headers=[...table.querySelectorAll('thead th')];
+  const optional=headers.map((h,i)=>['累计','AI分数'].includes(h.textContent.trim())?i:-1).filter(i=>i>=0);
+  table.querySelectorAll('tr').forEach(row=>optional.forEach(i=>row.children[i]?.classList.add('up-detail-column')));
+  table.classList.toggle('up-condensed',!UP.detail);
+};
 function upToggleDetail(input){UP.detail=input.checked;renderEditPage()}
 const upOldMonthOpen=openMonthModal;
 openMonthModal=function(id,key,label){upOldMonthOpen(id,key,label);UP.pendingRule=null;};
@@ -3856,13 +3875,13 @@ renderGradeView=function(){if(UP.options.simplified){document.getElementById('gr
 (()=>{
   const style=document.createElement('style');style.textContent=`
   #app-wrap [hidden]{display:none!important}
-  .up-hidden,.up-legacy-nav,.admin-only.hidden{display:none!important}.topnav{height:auto;min-height:50px;flex-wrap:wrap}.topnav-tabs{flex-wrap:wrap}.topnav-tab{min-height:46px}.nav-right{padding:6px 0}.period-tabs select{padding:7px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--ink);max-width:100%}.page{max-width:1400px}.up-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.up-menu-grid section{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px}.up-menu-grid h3{font-size:14px;margin-bottom:12px}.up-menu-grid button{display:block;width:100%;padding:13px 8px;text-align:left;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--ink);font:inherit;cursor:pointer}.up-menu-grid small{display:block;color:var(--ink3);margin-top:4px}.up-option{display:block;font-size:12px;line-height:1.8;margin-top:16px}.up-help{font-size:12px;color:var(--ink2);line-height:1.8;margin:10px 0}.up-fields{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0}.up-fields label{display:flex;flex-direction:column;gap:6px;color:var(--ink2);font-size:12px}.up-fields input,.up-fields select{padding:8px;border:1px solid var(--border);border-radius:4px;color:var(--ink);background:var(--surface);max-width:100%}.up-fields input{width:100px}.up-actions{display:flex;gap:8px;flex-wrap:wrap}#up-back{max-width:1400px;margin:14px auto 0;padding:0 16px}#page-settings .nav-tabs{display:none}.up-condensed{min-width:850px!important}.up-condensed tr>*:nth-child(n+10):nth-last-child(n+3){display:none}#edit-tbody tr td:first-child{cursor:pointer}#page-edit .up-person-help{font-size:12px;color:var(--ink3);margin:8px 0}@media(max-width:800px){.up-menu-grid{grid-template-columns:1fr}.grade-grid{grid-template-columns:repeat(2,1fr)}.topnav-brand{margin-right:5px}.topnav-tab{padding:0 8px}.up-fields{gap:10px}}`;
+  .up-hidden,.up-legacy-nav,.admin-only.hidden{display:none!important}.topnav{height:auto;min-height:50px;flex-wrap:wrap}.topnav-tabs{flex-wrap:wrap}.topnav-tab{min-height:46px}.nav-right{padding:6px 0}.period-tabs select{padding:7px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--ink);max-width:100%}.page{max-width:1400px}.up-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.up-menu-grid section{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px}.up-menu-grid h3{font-size:14px;margin-bottom:12px}.up-menu-grid button{display:block;width:100%;padding:13px 8px;text-align:left;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--ink);font:inherit;cursor:pointer}.up-menu-grid small{display:block;color:var(--ink3);margin-top:4px}.up-option{display:block;font-size:12px;line-height:1.8;margin-top:16px}.up-help{font-size:12px;color:var(--ink2);line-height:1.8;margin:10px 0}.up-fields{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0}.up-fields label{display:flex;flex-direction:column;gap:6px;color:var(--ink2);font-size:12px}.up-fields input,.up-fields select{padding:8px;border:1px solid var(--border);border-radius:4px;color:var(--ink);background:var(--surface);max-width:100%}.up-fields input{width:100px}.up-actions{display:flex;gap:8px;flex-wrap:wrap}#up-back{max-width:1400px;margin:14px auto 0;padding:0 16px}#page-settings .nav-tabs{display:none}.up-condensed{min-width:850px!important}.up-condensed .up-detail-column{display:none}#edit-tbody tr td:first-child{cursor:pointer}#page-edit .up-person-help{font-size:12px;color:var(--ink3);margin:8px 0}@media(max-width:800px){.up-menu-grid{grid-template-columns:1fr}.grade-grid{grid-template-columns:repeat(2,1fr)}.topnav-brand{margin-right:5px}.topnav-tab{padding:0 8px}.up-fields{gap:10px}}`;
   document.head.append(style);
   const labels={query:'成绩查询',edit:'月度考核',ai:'AI评分','grade-view':'级别总览'};
   document.querySelectorAll('.topnav-tab').forEach(b=>{const id=(b.getAttribute('onclick')||'').match(/switchPage\('([^']+)'/)?.[1];b.dataset.upPage=id;if(labels[id])b.textContent=labels[id];else b.classList.add('up-legacy-nav')});
   const menu=document.createElement('button');menu.id='up-manage-tab';menu.className='topnav-tab admin-only hidden';menu.textContent='管理设置';menu.onclick=()=>switchPage('up-manage');document.querySelector('.topnav-tabs').append(menu);
   const account=document.createElement('button');account.className='btn-sm';account.textContent='我的帐号';account.onclick=()=>switchPage('account',account);document.querySelector('.nav-right').append(account);
-  const version=document.createElement('span');version.id='up-build-version';version.textContent='v0929-21';version.title='页面版本 2026.09.29-21';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
+  const version=document.createElement('span');version.id='up-build-version';version.textContent='v0929-22';version.title='页面版本 2026.09.29-22';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
   const nav=document.querySelector('.topnav-tabs');const edit=document.querySelector('[data-up-page="edit"]');nav.insertBefore(edit,document.querySelector('[data-up-page="ai"]'));
   const wrap=document.getElementById('app-wrap');const back=document.createElement('div');back.id='up-back';back.hidden=true;back.innerHTML='<button class="btn-cancel" onclick="switchPage(\'up-manage\')">← 管理设置</button>';document.querySelector('.period-bar').after(back);
   for(const id of ['manage','teachers','annual-config']){const page=document.createElement('div');page.id='page-up-'+id;page.className='page';page.innerHTML=`<div id="up-${id==='annual-config'?'annual':id}-content"></div>`;wrap.append(page)}
@@ -3871,7 +3890,7 @@ renderGradeView=function(){if(UP.options.simplified){document.getElementById('gr
   document.getElementById('pass-score').previousElementSibling.textContent='达标分数';
   document.getElementById('rank-cutoff').previousElementSibling.textContent='低于此分数不列入排名';
   const note=document.createElement('p');note.className='up-help';note.textContent='起始分是新增人员的默认值；已有人员可在学生名单单独调整。填0可停用奖励。';document.getElementById('pane-base').prepend(note);
-  const detail=document.createElement('label');detail.className='up-person-help';detail.innerHTML='<input type="checkbox" onchange="upToggleDetail(this)"> 显示详细分数与评语栏位（点月份填写加扣分及金损）';document.querySelector('#page-edit .tbl-wrap').before(detail);
+  const detail=document.createElement('label');detail.className='up-person-help';detail.innerHTML='<input type="checkbox" checked onchange="upToggleDetail(this)"> 显示累计记录与 AI 分数（老师加减、评语及奖励始终显示；点月份填写加扣分及金损）';document.querySelector('#page-edit .tbl-wrap').before(detail);
   const yearBtn=document.createElement('button');yearBtn.className='filter-btn admin-only hidden';yearBtn.textContent='全年比例总览';yearBtn.onclick=()=>upOpenAnnual(false);document.querySelector('#page-grade-view .sec-hd').append(yearBtn);
   const teacher=document.createElement('div');teacher.id='up-ai-manage';teacher.hidden=true;teacher.className='up-actions';teacher.innerHTML='<button class="filter-btn" onclick="upOpenTeachers()">应评老师设置</button><span id="up-ai-status" class="up-help"></span>';document.getElementById('ai-filters').before(teacher);
   const mine=document.createElement('button');mine.className='filter-btn admin-only hidden';mine.textContent='我的待评';mine.onclick=()=>{if(!UP.options.full_review){toast('请先设置应评老师',true);return}if(!localStorage.getItem('aiTeacherName')){toast('请先打开一件作品并选择老师姓名',true);return}setAiFilter('mine',mine)};document.getElementById('ai-filters').append(mine);
