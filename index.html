@@ -1544,7 +1544,7 @@ function renderQuery(){
     const shortName=personCode(d);
     const uTag=`<span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span>`;
     const js=d.jinsun>0?`<span style="color:var(--red)">¥${d.jinsun.toLocaleString()}</span>`:`<span style="color:var(--ink3)">—</span>`;
-    const dEncoded=encodeURIComponent(JSON.stringify(d));
+    const dEncoded=encodeURIComponent(JSON.stringify(upQueryDetailData(d)));
     if(!scoreVisible){
       return`<tr onclick="toggleDetail(${i},'${dEncoded}')" id="qrow-${i}">
         <td><div style="display:flex;flex-direction:column;gap:1px"><span style="font-weight:500">${shortName}${uTag}</span>${d.nickname?`<span style="font-size:11px;color:var(--ink3)">${d.nickname}</span>`:''}</div></td>
@@ -2173,7 +2173,7 @@ function renderGradeBlock(title,list){
     return`<div class="grade-col">
       <div class="grade-col-head g${g}"><span>${g} 级</span><span style="font-size:11px;opacity:.7">${people.length} 人</span></div>
       <div class="grade-col-body">
-        ${people.length?people.map(d=>`<div class="grade-person"><div style="display:flex;flex-direction:column;gap:1px"><span style="font-weight:500">${personCode(d)}</span>${d.nickname?`<span style="font-size:10px;color:var(--ink3)">${d.nickname}</span>`:''}</div><span style="font-family:var(--ffs);font-size:12px;color:var(--ink3)">${d.score2??d.score??0}分</span></div>`).join(''):'<div style="padding:8px;font-size:12px;color:var(--ink3);text-align:center">—</div>'}
+        ${people.length?people.map(d=>`<div class="grade-person"><div style="display:flex;flex-direction:column;gap:1px"><span style="font-weight:500">${personCode(d)}</span>${d.nickname?`<span style="font-size:10px;color:var(--ink3)">${d.nickname}</span>`:''}</div><span style="font-family:var(--ffs);font-size:12px;color:var(--ink3)">${upGradeScoreText(d)}</span></div>`).join(''):'<div style="padding:8px;font-size:12px;color:var(--ink3);text-align:center">—</div>'}
       </div>
     </div>`;
   }).join('');
@@ -3542,11 +3542,21 @@ function upWorkLink(record){
 }
 const upNum=(v,fallback=0)=>v==null||v===''?fallback:Number(v);
 const upAdmin=()=>currentProfile?.role==='admin';
+const upAdminPages=['edit','settings','periods','staff','users','logs','up-manage','up-teachers','up-annual-config'];
+function upRequireAdmin(){if(upAdmin())return true;toast('此功能仅开放老师端',true);return false;}
 // Dynamic controls need the same role synchronization as initial static controls.
 function upSyncRoleControls(){
   const admin=upAdmin();
   document.querySelectorAll('.admin-only,.editor-tab').forEach(el=>el.classList.toggle('hidden',!admin));
   const aiManage=document.getElementById('up-ai-manage');if(aiManage)aiManage.hidden=!admin;
+  let leavePage=false;
+  upAdminPages.forEach(id=>{const page=document.getElementById('page-'+id);if(!page)return;page.hidden=!admin;if(!admin&&page.classList.contains('active'))leavePage=true;});
+  if(!admin){
+    UP.teachers=[];UP.annualRows=[];UP.annualExcluded=[];UP.annualConfig=null;
+    for(const id of ['up-manage-content','up-teachers-content','up-annual-content']){const el=document.getElementById(id);if(el)el.innerHTML='';}
+    const back=document.getElementById('up-back');if(back)back.hidden=true;
+    if(leavePage){document.querySelectorAll('.modal-bg.open').forEach(m=>m.classList.remove('open'));switchPage('query');}
+  }
 }
 const upOldShowApp=showApp;
 showApp=function(){upOldShowApp();upSyncRoleControls();};
@@ -3586,6 +3596,7 @@ async function upLoadOptions(){
   UP.ready=true;UP.error='';UP.options=result.data||{};
   if(upAdmin()){
     const t=await sb.from('assessment_teachers').select('*').eq('period_id',currentPeriodId).eq('active',true).order('id');
+    if(!upAdmin())return;
     if(t.error){UP.ready=false;UP.error=t.error.message;return}UP.teachers=t.data||[];
   }
 }
@@ -3614,6 +3625,7 @@ selectPeriod=async function(id){
 };
 const upOldSwitch=switchPage;
 switchPage=function(id,el){
+  if(upAdminPages.includes(id)&&!upAdmin()){toast('此功能仅开放老师端',true);id='query';el=null;}
   if(id==='up-manage'){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-up-manage').classList.add('active');document.querySelector('.period-bar').style.display='';upRenderManage();}
   else upOldSwitch(id,el);
   const managed=['settings','periods','staff','users','logs','up-manage','up-teachers','up-annual-config'];
@@ -3631,8 +3643,9 @@ const upOldConfigPane=renderGradeConfigPane;
 renderGradeConfigPane=function(){upOldConfigPane();upSettingsLabels()};
 const upOldPane=switchPane;
 switchPane=function(id){upOldPane(id);upSettingsLabels();};
-function upOpenRule(pane){switchPage('settings');switchPane(pane)}
+function upOpenRule(pane){if(!upRequireAdmin())return;switchPage('settings');switchPane(pane)}
 function upRenderManage(){
+  if(!upAdmin())return;
   const p=periods.find(x=>x.id===currentPeriodId);
   document.getElementById('up-manage-content').innerHTML=`<div class="page-hd"><h1>管理设置</h1><p>先选一项，再调整该项内容 · ${upEsc(p?.name||'请先选择期间')}</p></div>
     ${!UP.ready?'<div class="inherit-banner">升级资料表尚未就绪。请先执行随附的 12_考核功能升级.sql；原有功能仍可使用。</div>':''}
@@ -3652,6 +3665,7 @@ async function upSaveSimple(input){
   UP.options.simplified=input.checked;renderQuery();upRenderManage();toast('本期显示方式已保存');
 }
 saveBaseConfig=async function(){
+  if(!upRequireAdmin())return;
   const values={};
   for(const [id,key] of [['base-score','base_score'],['max-score','max_score'],['perfect-bonus','perfect_bonus'],['attend-bonus','attend_bonus'],['pass-score','pass_score'],['rank-cutoff','rank_cutoff']]){
     const raw=document.getElementById(id).value;if(raw===''||!Number.isFinite(Number(raw))){toast('请填写有效数字',true);return}values[key]=Number(raw);
@@ -3711,8 +3725,9 @@ const upOldConfirmRule=confirmRuleEntry;
 confirmRuleEntry=function(){const before=mmEntries.length;upOldConfirmRule();if(mmEntries.length>before&&UP.pendingRule!=null)mmEntries[mmEntries.length-1].rule_id=UP.pendingRule;};
 const upOldSaveRule=saveRule;
 saveRule=async function(){const raw=document.getElementById('rm-max').value;if(raw!==''&&(!Number.isInteger(Number(raw))||Number(raw)<1)){toast('上限次数须为正整数，或留空不限',true);return}return upOldSaveRule();};
-function upOpenTeachers(){switchPage('up-teachers');upRenderTeachers()}
+function upOpenTeachers(){if(!upRequireAdmin())return;switchPage('up-teachers');upRenderTeachers()}
 function upRenderTeachers(){
+  if(!upAdmin())return;
   document.getElementById('up-teachers-content').innerHTML=`<div class="page-hd"><h1>应评老师</h1><p>适用：${upEsc(periods.find(p=>p.id===currentPeriodId)?.name||'')} · 每行一位</p></div>
   <div class="preview-card"><div class="form-row"><label for="up-teacher-names">老师名单</label><textarea id="up-teacher-names" style="min-height:170px" placeholder="王老师&#10;李老师">${UP.teachers.map(t=>upEsc(t.name)).join('\n')}</textarea></div>
   <p class="up-help">保存后启用全员评分：名单内全部提交才列已评；0分计入平均，严格超过半数给0则整件归零。未完成作品暂不计入AI累计。</p>
@@ -3720,6 +3735,7 @@ function upRenderTeachers(){
   <button class="btn-primary" ${!UP.ready?'disabled':''} onclick="upSaveTeachers(this)">保存名单并启用本期规则</button>${!UP.ready?'<p>请先执行升级 SQL。</p>':''}</div>`;
 }
 async function upSaveTeachers(btn){
+  if(!upRequireAdmin())return;
   const names=document.getElementById('up-teacher-names').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
   if(!names.length||new Set(names).size!==names.length){toast('至少一位老师，名称不能重复',true);return}
   btn.disabled=true;try{const {error}=await sb.rpc('assessment_save_teachers',{p_period:currentPeriodId,p_names:names});if(error)throw error;await upLoadOptions();await loadStaffScores();await loadAiData();upRenderTeachers();toast('名单已保存，本期作品已重新判断完成状态');}catch(e){toast(e.message,true)}finally{btn.disabled=false}
@@ -3791,17 +3807,18 @@ function upOpenAnnual(config=false){
 function upAnnualPeriods(){const y=Number(document.getElementById('up-year').value);for(const [id,half] of [['up-first','上半年'],['up-second','下半年']]){const list=periods.filter(p=>p.year===y&&p.half===half);document.getElementById(id).innerHTML='<option value="">请选择期间</option>'+list.map(p=>`<option value="${p.id}">${upEsc(p.name)}</option>`).join('');if(list.length===1)document.getElementById(id).value=list[0].id}upLoadAnnualConfig()}
 let upAnnualSeq=0;
 async function upLoadAnnualConfig(){
+  if(!upRequireAdmin())return;
   const seq=++upAnnualSeq;UP.annualRows=[];document.getElementById('up-annual-results').innerHTML='';
   ['A','B','C','D'].forEach(g=>document.getElementById('up-pct-'+g).value='');
   if(!UP.ready){document.getElementById('up-annual-message').textContent='请先执行升级SQL';return}
   const {data,error}=await sb.from('assessment_annual_config').select('*').eq('year',Number(document.getElementById('up-year').value)).eq('unit',document.getElementById('up-unit').value).maybeSingle();
-  if(seq!==upAnnualSeq||!document.getElementById('up-pct-A'))return;
+  if(!upAdmin()||seq!==upAnnualSeq||!document.getElementById('up-pct-A'))return;
   if(error){toast(error.message,true);return}if(data){document.getElementById('up-first').value=data.first_period;document.getElementById('up-second').value=data.second_period;['A','B','C','D'].forEach(g=>document.getElementById('up-pct-'+g).value=data[g.toLowerCase()]);}
   document.getElementById('up-annual-message').textContent=data?'已载入保存设置':'尚未设置；比例不会自动套用范例';upPctTotal();
 }
 function upPctTotal(){const values=['A','B','C','D'].map(g=>Number(document.getElementById('up-pct-'+g).value));document.getElementById('up-pct-total').textContent='合计 '+Math.round(values.reduce((s,x)=>s+x,0)*100)/100+'%（须为100%）';UP.annualRows=[];}
 function upAnnualInput(){const fields=['A','B','C','D'].map(g=>document.getElementById('up-pct-'+g));const pct=fields.map(i=>Number(i.value));if(fields.some(i=>i.value===''||!i.checkValidity())||Math.abs(pct.reduce((s,x)=>s+x,0)-100)>0.00001)throw new Error('各级比例须为0至100，合计100%');const first=Number(document.getElementById('up-first').value),second=Number(document.getElementById('up-second').value);if(!first||!second)throw new Error('请选择上下半年期间');return{year:Number(document.getElementById('up-year').value),unit:document.getElementById('up-unit').value,first_period:first,second_period:second,a:pct[0],b:pct[1],c:pct[2],d:pct[3]}}
-async function upSaveAnnual(btn){try{if(!UP.ready)throw new Error('请先执行升级SQL');const config=upAnnualInput();btn.disabled=true;const {error}=await sb.from('assessment_annual_config').upsert(config,{onConflict:'year,unit'});if(error)throw error;toast('年度岗位比例已保存');document.getElementById('up-annual-message').textContent='设置已保存';}catch(e){toast(e.message,true)}finally{btn.disabled=false}}
+async function upSaveAnnual(btn){if(!upRequireAdmin())return;try{if(!UP.ready)throw new Error('请先执行升级SQL');const config=upAnnualInput();btn.disabled=true;const {error}=await sb.from('assessment_annual_config').upsert(config,{onConflict:'year,unit'});if(error)throw error;toast('年度岗位比例已保存');const message=document.getElementById('up-annual-message');if(message&&upAdmin())message.textContent='设置已保存';}catch(e){toast(e.message,true)}finally{btn.disabled=false}}
 async function upAnnualResults(){
   const seq=++upAnnualSeq;
   try{
@@ -3810,7 +3827,7 @@ async function upAnnualResults(){
     const ids=[config.first_period,config.second_period];
     const [scores,cfgs]=await Promise.all([sb.from('staff_scores').select('*,staff(id,unit,code,name,nickname)').in('period_id',ids),sb.from('period_base_config').select('*').in('period_id',ids)]);
     if(scores.error||cfgs.error)throw scores.error||cfgs.error;
-    if(seq!==upAnnualSeq||!document.getElementById('up-annual-results'))return;
+    if(!upAdmin()||seq!==upAnnualSeq||!document.getElementById('up-annual-results'))return;
   const by={};for(const row of scores.data||[]){if(row.staff?.unit!==config.unit)continue;const person=by[row.staff_id]??={staff_id:row.staff_id,code:row.staff.code||row.staff.name,nickname:row.staff.nickname||''};if(person[row.period_id])throw new Error('同一学生在同一期出现重复成绩，请先整理名单');person[row.period_id]=row;}
     const eligible=[],excluded=[];
     for(const person of Object.values(by)){
@@ -3831,6 +3848,7 @@ renderGradeView=function(){if(UP.options.simplified){document.getElementById('gr
 // UI setup: original features remain accessible; one authoritative settings screen each.
 (()=>{
   const style=document.createElement('style');style.textContent=`
+  #app-wrap [hidden]{display:none!important}
   .up-hidden,.up-legacy-nav,.admin-only.hidden{display:none!important}.topnav{height:auto;min-height:50px;flex-wrap:wrap}.topnav-tabs{flex-wrap:wrap}.topnav-tab{min-height:46px}.nav-right{padding:6px 0}.period-tabs select{padding:7px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--ink);max-width:100%}.page{max-width:1400px}.up-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.up-menu-grid section{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px}.up-menu-grid h3{font-size:14px;margin-bottom:12px}.up-menu-grid button{display:block;width:100%;padding:13px 8px;text-align:left;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--ink);font:inherit;cursor:pointer}.up-menu-grid small{display:block;color:var(--ink3);margin-top:4px}.up-option{display:block;font-size:12px;line-height:1.8;margin-top:16px}.up-help{font-size:12px;color:var(--ink2);line-height:1.8;margin:10px 0}.up-fields{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0}.up-fields label{display:flex;flex-direction:column;gap:6px;color:var(--ink2);font-size:12px}.up-fields input,.up-fields select{padding:8px;border:1px solid var(--border);border-radius:4px;color:var(--ink);background:var(--surface);max-width:100%}.up-fields input{width:100px}.up-actions{display:flex;gap:8px;flex-wrap:wrap}#up-back{max-width:1400px;margin:14px auto 0;padding:0 16px}#page-settings .nav-tabs{display:none}.up-condensed{min-width:850px!important}.up-condensed tr>*:nth-child(n+10):nth-last-child(n+3){display:none}#edit-tbody tr td:first-child{cursor:pointer}#page-edit .up-person-help{font-size:12px;color:var(--ink3);margin:8px 0}@media(max-width:800px){.up-menu-grid{grid-template-columns:1fr}.grade-grid{grid-template-columns:repeat(2,1fr)}.topnav-brand{margin-right:5px}.topnav-tab{padding:0 8px}.up-fields{gap:10px}}`;
   document.head.append(style);
   const labels={query:'成绩查询',edit:'月度考核',ai:'AI评分','grade-view':'级别总览'};
@@ -3881,6 +3899,7 @@ function upBulkYearChange(select){
 }
 function upBulkMessage(text,error=false){const el=document.getElementById('up-bulk-message');if(el){el.textContent=text;el.style.color=error?'var(--red)':'var(--ink2)'}}
 async function upBulkLoadYear(){
+  if(!upRequireAdmin())return;
   const seq=++UPB.seq,year=Number(document.getElementById('up-bulk-year').value);
   UPB.year=year;UPB.loading=true;UPB.dirty=false;UPB.saved=new Set();
   document.getElementById('up-bulk-save').disabled=true;
@@ -3895,7 +3914,7 @@ async function upBulkLoadYear(){
     if(!UP.ready)throw new Error('升级资料表尚未就绪，请先完成12号SQL');
     const {data,error}=await sb.from('assessment_annual_config').select('*').eq('year',year);
     if(error)throw error;
-    if(seq!==UPB.seq||!document.getElementById('up-bulk-year'))return;
+    if(!upAdmin()||seq!==UPB.seq||!document.getElementById('up-bulk-year'))return;
     const configs=data||[];
     UPB.units=[...new Set(['BB','四方','财务','总管','TB钱包','AI小队',...configs.map(c=>c.unit),...staffScores.map(s=>s.unit).filter(Boolean)])];
     UPB.saved=new Set(configs.map(c=>c.unit));
@@ -3947,6 +3966,145 @@ async function upBulkSave(){
   }catch(e){upBulkMessage('未完成保存：'+e.message,true);toast(e.message,true);}
   finally{UPB.saving=false;if(fields)fields.disabled=false;}
 }
+
+/* Role boundaries for student UI. Database RLS remains authoritative. */
+function upCanViewGrade(){
+  const period=periods.find(p=>p.id===currentPeriodId);
+  return upAdmin()||(currentProfile?.grade_access===true&&period?.grade_visible===true&&period?.status!=='closed');
+}
+const upAccessSwitch=switchPage;
+switchPage=function(id,el){
+  if(id==='grade-view'&&!upCanViewGrade()){toast('本期未开放级别总览',true);return upAccessSwitch('query');}
+  return upAccessSwitch(id,el);
+};
+const upAccessPeriod=selectPeriod;
+selectPeriod=async function(id){
+  const p=periods.find(p=>p.id===id);
+  if(!p||(!upAdmin()&&p.status==='closed')){toast('此期间尚未开放',true);return;}
+  return upAccessPeriod(id);
+};
+// Central deny check runs before fields are read or a database mutation begins.
+const upTeacherHandlers=[
+  'saveNickname','renderEditPage','renderStaffTable','openMonthModal','mmRemoveEntry',
+  'applyRuleToMonth','confirmRuleEntry','cancelRuleEntry','addCustomEntry','saveMonthScore',
+  'togglePerfect','toggleAttend','openMgrModal','updateAnalysisTotal','saveMgrBonus',
+  'openCommentModal','saveComment','openAddStaffModal','editStaff','saveStaff','deleteStaff',
+  'copyFromLastPeriod','importExcel','renderGradeConfigPane','addGradeUnitSection',
+  'saveGradeConfig','deleteGradeUnit','saveGradeOverride','toggleRule','deleteRule',
+  'openRuleModal','editRule','saveRule','saveBaseConfig','renderPeriodsPage',
+  'toggleGradeVisible','savePublishDate','openNewPeriodModal','createPeriod',
+  'togglePeriodStatus','deletePeriod','inheritRules','inheritFromPrevPeriod',
+  'loadUsers','toggleGradeAccess','toggleUserActive','changeUserRole','changeUserScope',
+  'createUser','loadSiteIps','addSiteIp','deleteSiteIp','detectSiteIp','addCurrentIpToSite',
+  'sendPasswordReset','loadAuditLogs','openAiScore','saveAiScore','deleteAiScore',
+  'deleteAiWork','toggleAiScores','aisRenderExisting','aisLoadMine','aisNameHint',
+  'upOpenTeachers','upRenderTeachers','upSaveTeachers','upRenderManage','upOpenRule',
+  'upOpenAnnual','upSaveAnnual','upAnnualResults','upExportAnnual','upLoadAnnualConfig',
+  'upBulkLoadYear','upBulkSave'
+];
+// These render/load functions are also invoked in shared period loading. Deny silently.
+const upQuietHandlers=new Set(['renderStaffTable','renderPeriodsPage','renderGradeConfigPane','upRenderTeachers','upRenderManage']);
+for(const name of upTeacherHandlers){
+  const original=globalThis[name];
+  if(typeof original!=='function')throw new Error('Missing guarded function: '+name);
+  const permitted=()=>upAdmin()||(upQuietHandlers.has(name)?false:upRequireAdmin());
+  globalThis[name]=original.constructor.name==='AsyncFunction'
+    ?async function(...args){if(!permitted())return;return original.apply(this,args);}
+    :function(...args){if(!permitted())return;return original.apply(this,args);};
+}
+const upAccessGrade=renderGradeView;
+renderGradeView=function(){if(!upCanViewGrade())return;return upAccessGrade();};
+const upAccessAiSave=saveAiWork;
+saveAiWork=async function(btn){
+  if(!currentProfile){toast('请先登入',true);return;}
+  if(aiuEditId&&!upRequireAdmin())return;
+  return upAccessAiSave(btn);
+};
+const upAccessAiFilter=setAiFilter;
+setAiFilter=function(value,el){if(value==='mine'&&!upRequireAdmin())return;return upAccessAiFilter(value,el);};
+// Do not request teacher reviews at all in the student session; discard stale responses.
+let upAiLoadSeq=0;
+loadAiData=async function(){
+  const seq=++upAiLoadSeq,pid=currentPeriodId,uid=currentProfile?.id,teacher=upAdmin();
+  const same=()=>seq===upAiLoadSeq&&pid===currentPeriodId&&uid===currentProfile?.id&&teacher===upAdmin();
+  if(!pid){aiWorks=[];aiMakers=[];aiLinks=[];aiScores=[];aiDataPeriod=null;return;}
+  const {data:works,error}=await sb.from('ai_works').select('*').eq('period_id',pid).order('id',{ascending:false});
+  if(!same())return;
+  if(error){aiWorks=[];aiMakers=[];aiLinks=[];aiScores=[];aiDataPeriod=null;return error;}
+  const ids=(works||[]).map(w=>w.id);
+  let mk={data:[]},lk={data:[]},sc={data:[]};
+  if(ids.length)[mk,lk,sc]=await Promise.all([
+    sb.from('ai_work_makers').select('*').in('work_id',ids),
+    sb.from('ai_work_links').select('*').in('work_id',ids),
+    teacher?sb.from('ai_work_scores').select('*').in('work_id',ids):Promise.resolve({data:[]})
+  ]);
+  if(!same())return;
+  if(mk.error||lk.error||sc.error){aiWorks=[];aiMakers=[];aiLinks=[];aiScores=[];aiDataPeriod=null;return mk.error||lk.error||sc.error;}
+  aiWorks=works||[];aiMakers=mk.data||[];aiLinks=lk.data||[];aiScores=teacher?(sc.data||[]):[];aiDataPeriod=pid;
+};
+const upAccessAiRender=renderAiWorks;
+renderAiWorks=function(){
+  if(!upAdmin()){aiScores=[];aiOpenScores.clear();if(aiFilter==='mine')aiFilter='all';}
+  return upAccessAiRender();
+};
+const upAccessQueryRows=upQueryRows;
+upQueryRows=function(){
+  const rows=upAccessQueryRows(),scope=currentProfile?.edit_scope;
+  return !upAdmin()&&scope&&scope!=='all'&&scope!=='none'?rows.filter(d=>d.shift===scope):rows;
+};
+const upAccessBreakdown=aiBreakdownHtml;
+aiBreakdownHtml=function(id){
+  if(!upAdmin()&&!isScorePublished())return '<div class="ap-note">成绩尚未公布</div>';
+  return upAccessBreakdown(id);
+};
+const upAccessChart=renderScoreChart;
+renderScoreChart=function(rows){
+  if(!upAdmin()&&!isScorePublished()){
+    upAccessChart([]);
+    for(const id of ['score-chart-bars','score-chart-labels','score-chart-stats'])document.getElementById(id).innerHTML='';
+    return;
+  }
+  return upAccessChart(upAdmin()?rows:rows.map(d=>({...d,score2:d.score})));
+};
+const upAccessRenderQuery=renderQuery;
+renderQuery=function(){
+  upAccessRenderQuery();
+  if(!upAdmin()&&!isScorePublished())for(const id of ['stat-avg','stat-pass','stat-top'])document.getElementById(id).textContent='—';
+};
+function upGradeScoreText(d){return upAdmin()?`${d.score2??d.score??0}分`:isScorePublished()?`${d.score??0}分`:'成绩尚未公布';}
+// Never embed teacher notes / final numeric score in a student's expandable row payload.
+function upQueryDetailData(d){
+  if(upAdmin())return d;
+  const fields=['id','staff_id','name','unit','code','nickname','shift','month_detail',
+    'jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec','jinsun'];
+  if(isScorePublished())fields.push('base','perfect','attendance','ai_score','score','rank2');
+  const result=Object.fromEntries(fields.map(k=>[k,d[k]]));
+  if(isScorePublished())result.public_grade=getEffectiveGrade(d).grade;
+  return result;
+}
+const upAccessGradeEffective=getEffectiveGrade;
+getEffectiveGrade=function(d){return !upAdmin()&&d.public_grade?{grade:d.public_grade,override:false}:upAccessGradeEffective(d);};
+const upAccessSync=upSyncRoleControls;
+let upWasAdmin=upAdmin();
+upSyncRoleControls=function(){
+  const lostTeacher=upWasAdmin&&!upAdmin();upWasAdmin=upAdmin();
+  upAccessSync();
+  for(const id of ['month-modal','mgr-modal','comment-modal','staff-modal','rule-modal','period-modal','adduser-modal','ai-score-modal']){
+    const el=document.getElementById(id);if(el){el.hidden=!upAdmin();if(!upAdmin())el.classList.remove('open');}
+  }
+  if(!upAdmin()){
+    aiScores=[];aiOpenScores.clear();
+    for(const id of ['ais-existing','ais-pct-wrap','ai-rules']){const el=document.getElementById(id);if(el)el.innerHTML='';}
+    hideAiPop();
+    if(lostTeacher){
+      document.querySelectorAll('.modal-bg.open').forEach(el=>el.classList.remove('open'));
+      aiuEditId=null;aiFilter='all';openIdx=null;
+      renderQuery();if(document.getElementById('page-ai')?.classList.contains('active'))renderAiWorks();
+    }
+    if(!upCanViewGrade()&&document.getElementById('page-grade-view')?.classList.contains('active'))switchPage('query');
+  }
+};
+upSyncRoleControls();
 
 const _savedLocal=sessionStorage.getItem('localProfile');
 if(_savedLocal){
