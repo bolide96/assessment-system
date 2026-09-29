@@ -2916,15 +2916,6 @@ function toast(msg,isErr=false){
   void t.offsetWidth;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);
 }
 
-const _savedLocal=sessionStorage.getItem('localProfile');
-if(_savedLocal){
-  currentProfile=JSON.parse(_savedLocal);
-  currentUser={id:currentProfile.id,email:currentProfile.email};
-  showApp();
-  refreshCurrentProfile(); // 背景重新确认权限（不阻塞画面显示）
-}else{
-  sb.auth.getSession().then(({data:{session}})=>{if(session?.user)checkAalAndProceed(session.user)});
-}
 // 使用者切回此分页时，顺手重新确认一次权限（例如管理员刚开放了级别权限）
 let _lastProfileRefresh=Date.now();
 document.addEventListener('visibilitychange',()=>{
@@ -3551,6 +3542,16 @@ function upWorkLink(record){
 }
 const upNum=(v,fallback=0)=>v==null||v===''?fallback:Number(v);
 const upAdmin=()=>currentProfile?.role==='admin';
+// Dynamic controls need the same role synchronization as initial static controls.
+function upSyncRoleControls(){
+  const admin=upAdmin();
+  document.querySelectorAll('.admin-only,.editor-tab').forEach(el=>el.classList.toggle('hidden',!admin));
+  const aiManage=document.getElementById('up-ai-manage');if(aiManage)aiManage.hidden=!admin;
+}
+const upOldShowApp=showApp;
+showApp=function(){upOldShowApp();upSyncRoleControls();};
+const upOldRefreshProfile=refreshCurrentProfile;
+refreshCurrentProfile=async function(){try{return await upOldRefreshProfile();}finally{upSyncRoleControls();}};
 const upDefault=()=>({base_score:80,max_score:120,perfect_bonus:10,attend_bonus:10,pass_score:60,rank_cutoff:0});
 const upUnitOptions=()=>['BB','四方','财务','总管','TB钱包','AI小队'].map(u=>`<option value="${u}">${unitLabel(u)}</option>`).join('');
 function upTotals(d,cfg,keys){
@@ -3850,7 +3851,18 @@ renderGradeView=function(){if(UP.options.simplified){document.getElementById('gr
   const mine=document.createElement('button');mine.className='filter-btn admin-only hidden';mine.textContent='我的待评';mine.onclick=()=>{if(!UP.options.full_review){toast('请先设置应评老师',true);return}if(!localStorage.getItem('aiTeacherName')){toast('请先打开一件作品并选择老师姓名',true);return}setAiFilter('mine',mine)};document.getElementById('ai-filters').append(mine);
   for(const id of ['ais-existing','ais-pct-wrap']){const el=document.getElementById(id),details=document.createElement('details');details.style.margin='12px 0';const summary=document.createElement('summary');summary.textContent=id==='ais-existing'?'其他老师评分明细':'贡献比例（需要调整再展开）';el.before(details);details.append(summary,el)}
   const custom=document.getElementById('mm-custom-item').parentElement.parentElement;const fold=document.createElement('details');const summary=document.createElement('summary');summary.textContent='＋ 自定义项目';custom.before(fold);fold.append(summary,custom);
+  upSyncRoleControls();
 })();
+
+const _savedLocal=sessionStorage.getItem('localProfile');
+if(_savedLocal){
+  currentProfile=JSON.parse(_savedLocal);
+  currentUser={id:currentProfile.id,email:currentProfile.email};
+  showApp();
+  refreshCurrentProfile(); // 背景重新确认权限（不阻塞画面显示）
+}else{
+  sb.auth.getSession().then(({data:{session}})=>{if(session?.user)checkAalAndProceed(session.user)});
+}
 
 </script>
 </body>
