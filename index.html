@@ -851,7 +851,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
       <!-- Entry list -->
       <div style="font-size:12px;color:var(--ink3);margin-bottom:10px">当月损失金额：<strong id="mm-loss-total">¥0.00</strong> · 金额独立记录，不自动换算扣分</div>
       <div id="mm-legacy-loss" style="font-size:12px;color:var(--amber);margin-bottom:10px"></div>
-      <div id="mm-entries" style="margin-bottom:10px;max-height:180px;overflow-y:auto"></div>
+      <div id="mm-entries" style="margin-bottom:10px;max-height:45vh;overflow-y:auto"></div>
       <!-- Inline remark prompt (appears after clicking a rule) -->
       <div id="mm-note-prompt" style="display:none;margin-bottom:10px;padding:10px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
         <div id="mm-note-label" style="font-size:12px;color:var(--ink3);margin-bottom:6px;font-weight:500"></div>
@@ -1332,7 +1332,7 @@ function renderEditPage(){
   if(editSortKey==='name')list=[...list].sort((a,b)=>a.name.localeCompare(b.name,'zh'));
   else list=[...list].sort((a,b)=>(b[editSortKey]||0)-(a[editSortKey]||0));
   document.getElementById('edit-count').textContent=list.length;
-  document.getElementById('edit-sub').textContent=scope==='all'?'显示全部人员':`显示范围：${scope}`;
+  document.getElementById('edit-sub').textContent=(scope==='all'?'显示全部人员':`显示范围：${scope}`)+` · 当前筛选 ${list.length} 人 · 本期金损合计 ¥${(list.reduce((sum,d)=>sum+Math.round((Number(d.jinsun)||0)*100),0)/100).toFixed(2)}`;
 
   const mc=getMonthConfig();
   document.getElementById('edit-thead').innerHTML=`<tr>
@@ -1341,7 +1341,7 @@ function renderEditPage(){
     <th style="width:62px" title="整期0分记录累计次数：失=小失误 析=分析">累计</th>
     ${(Number(baseConfig.perfect_bonus)||0)>0?'<th style="width:52px">无失误</th>':''}<th style="width:52px">出勤</th><th style="width:80px">综合评语</th><th style="width:80px">老师加减</th>
     <th style="width:66px" title="AI 作品累计（0~40），已计入总分。由系统从 AI 作品评分自动算出，不需手动填">AI分数</th>
-    <th style="width:75px">最终分数</th><th style="width:65px">最终排名</th>
+    <th style="width:75px">最终分数</th><th style="width:65px">最终排名</th><th style="min-width:95px" title="本期金损，包含原有未分月金额">金损合计（¥）</th>
   </tr>`;
 
   // 计算最终排名（按班次+单位分组，依score2排序）
@@ -1362,7 +1362,7 @@ function renderEditPage(){
   // 原生 title 要停一秒才出现、不能排版，老师几乎不会发现它存在。
 
   const tb=document.getElementById('edit-tbody');
-  if(!list.length){tb.innerHTML=`<tr><td colspan="${3+mc.keys.length+(showPerfect?8:7)}" class="loading-state">无可编辑的人员</td></tr>`;return}
+  if(!list.length){tb.innerHTML=`<tr><td colspan="${3+mc.keys.length+(showPerfect?9:8)}" class="loading-state">无可编辑的人员</td></tr>`;return}
 
   tb.innerHTML=list.map(d=>{
     const monthCells=mc.keys.map((k,i)=>{
@@ -1398,6 +1398,7 @@ function renderEditPage(){
         return`<td class="c" style="font-size:12px;font-weight:500;color:var(--amber);cursor:help" ${hv}>${t}</td>`;})()}
       <td class="c"><span class="score-num ${scoreClass(d.score2||0)}">${d.score2||0}</span></td>
       <td class="c">${rankBadge(finalRankMap[d.id]||'—')}</td>
+      <td class="c" style="white-space:nowrap;color:var(--amber)" title="本期累计金损（含原有未分月金额）">${(Number(d.jinsun)||0).toFixed(2)}</td>
     </tr>`;
   }).join('');
 }
@@ -1757,6 +1758,7 @@ function openMonthModal(staffScoreId,monthKey,monthLabel){
       ${bRules.map(r=>`<button class="filter-btn" style="border-color:var(--green-bd);color:var(--green)" onclick="applyRuleToMonth(${r.pts},'${r.name}',${r.id})">+${r.pts} ${r.name}</button>`).join('')}
     </div>`:'';
   document.getElementById('month-modal').classList.add('open');
+  document.querySelectorAll('.mm-entry-note').forEach(el=>{el.style.height='auto';el.style.height=el.scrollHeight+'px';});
 }
 
 function mmRenderEntries(){
@@ -1775,10 +1777,11 @@ function mmRenderEntries(){
       <span style="color:${e.pts>=0?'var(--green)':'var(--red)'};font-weight:700;font-family:var(--ffs);width:42px;flex-shrink:0">${e.pts>=0?'+'+e.pts:e.pts}</span>
       <span style="flex:1;min-width:100px">${String(e.item).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
       <label style="font-size:12px">损失 ¥ <input type="number" min="0" step="0.01" value="${String(e.loss_amount??0).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" oninput="mmEntries[${i}].loss_amount=this.validity.badInput?'invalid':this.value;mmRenderLossTotal()" style="width:95px;border:1px solid var(--border);border-radius:3px;padding:3px"></label>
-      <input value="${(e.note||'').replace(/"/g,'&quot;')}" placeholder="备注（可留空）" oninput="mmEntries[${i}].note=this.value" style="font-size:12px;color:var(--ink3);border:1px solid var(--border);border-radius:3px;padding:2px 6px;width:130px;font-family:var(--ff);background:var(--surface2)">
+      <label style="order:2;flex:0 0 100%;min-width:0;color:var(--ink3);font-size:12px">备注<textarea class="mm-entry-note" rows="2" placeholder="备注（可留空）" oninput="mmEntries[${i}].note=this.value;this.style.height='auto';this.style.height=this.scrollHeight+'px'" style="display:block;width:100%;box-sizing:border-box;white-space:pre-wrap;overflow-wrap:anywhere;overflow:hidden;resize:vertical;font-size:13px;line-height:1.6;color:var(--ink2);border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--ff);background:var(--surface2)">${String(e.note||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea></label>
       <button onclick="mmRemoveEntry(${i})" style="color:var(--red);background:none;border:none;cursor:pointer;padding:2px 6px;font-size:16px;line-height:1;flex-shrink:0">×</button>
     </div>`).join('')
   }</div>`;
+  list.querySelectorAll('.mm-entry-note').forEach(el=>{el.style.height='auto';el.style.height=el.scrollHeight+'px';});
 }
 
 function mmRemoveEntry(i){
@@ -3881,7 +3884,7 @@ renderGradeView=function(){if(UP.options.simplified){document.getElementById('gr
   document.querySelectorAll('.topnav-tab').forEach(b=>{const id=(b.getAttribute('onclick')||'').match(/switchPage\('([^']+)'/)?.[1];b.dataset.upPage=id;if(labels[id])b.textContent=labels[id];else b.classList.add('up-legacy-nav')});
   const menu=document.createElement('button');menu.id='up-manage-tab';menu.className='topnav-tab admin-only hidden';menu.textContent='管理设置';menu.onclick=()=>switchPage('up-manage');document.querySelector('.topnav-tabs').append(menu);
   const account=document.createElement('button');account.className='btn-sm';account.textContent='我的帐号';account.onclick=()=>switchPage('account',account);document.querySelector('.nav-right').append(account);
-  const version=document.createElement('span');version.id='up-build-version';version.textContent='v0929-22';version.title='页面版本 2026.09.29-22';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
+  const version=document.createElement('span');version.id='up-build-version';version.textContent='v0930-24';version.title='页面版本 2026.09.30-24';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
   const nav=document.querySelector('.topnav-tabs');const edit=document.querySelector('[data-up-page="edit"]');nav.insertBefore(edit,document.querySelector('[data-up-page="ai"]'));
   const wrap=document.getElementById('app-wrap');const back=document.createElement('div');back.id='up-back';back.hidden=true;back.innerHTML='<button class="btn-cancel" onclick="switchPage(\'up-manage\')">← 管理设置</button>';document.querySelector('.period-bar').after(back);
   for(const id of ['manage','teachers','annual-config']){const page=document.createElement('div');page.id='page-up-'+id;page.className='page';page.innerHTML=`<div id="up-${id==='annual-config'?'annual':id}-content"></div>`;wrap.append(page)}
