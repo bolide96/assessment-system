@@ -1198,11 +1198,11 @@ async function selectPeriod(id){
 /* ── STAFF SCORES ── */
 async function loadStaffScores(){
   if(!currentPeriodId)return;
-  const {data,error}=await sb.from('staff_scores').select('*,staff(id,name,unit,code,nickname)').eq('period_id',currentPeriodId);
+  const {data,error}=await sb.from('staff_scores').select('*,period_unit,period_unit_confirmed,staff(id,name,unit,code,nickname)').eq('period_id',currentPeriodId);
   if(error){toast('载入人员资料失败：'+error.message,true);staffScores=[];renderQuery();return;}
   staffScores=(data||[]).map(r=>({
     id:r.id,staff_id:r.staff_id,
-    name:r.staff?.name||'',unit:r.staff?.unit||'',code:r.staff?.code||'',nickname:r.staff?.nickname||'',
+    name:r.staff?.name||'',unit:r.period_unit||'',unit_confirmed:r.period_unit_confirmed===true,code:r.staff?.code||'',nickname:r.staff?.nickname||'',
     shift:r.shift,base:r.base_score,
     perfect:r.perfect,attendance:r.attendance,
     jinsun:r.jinsun,score:r.score,score2:r.score2,
@@ -1668,7 +1668,7 @@ function renderStaffTable(){
     return`<tr>
       <td style="font-weight:500">${d.code||'—'}</td>
       <td><input value="${d.nickname||''}" placeholder="—" style="border:none;background:none;font-size:13px;color:var(--ink3);width:100%;font-family:var(--ff);outline:none;cursor:pointer" onclick="this.style.border='1px solid var(--border)';this.style.background='var(--surface)';this.style.borderRadius='4px';this.style.padding='2px 6px'" onblur="saveNickname(${d.staff_id},this.value,this)" onfocus="this.select()"></td>
-      <td><span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span></td>
+      <td><span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span>${d.unit_confirmed?'':'<small style="display:block">本期岗位待核对</small>'}</td>
       <td><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td>${d.base??80}</td>
       <td style="display:flex;gap:4px">
@@ -2020,20 +2020,22 @@ async function saveStaff(){
   if(baseRaw===''||!Number.isFinite(Number(baseRaw))){toast('请填写有效起始分',true);return}
   const base_score=Number(baseRaw);
 
+  if(!UNIT_VALS.includes(unit)){toast('请选择有效岗位',true);return;}
+  if(editId && !confirm('确认这是所选考核期间的实际岗位？只更新本期岗位，不改变其他期间。'))return;
   if(editId){
     const d=staffScores.find(x=>x.id===parseInt(editId));
     if(d){
       const mc=getMonthConfig();
       const monthTotal=mc.keys.reduce((s,k)=>s+(d[k]||0),0);
       const {score,score2}=calcScore({...d,base:base_score});
-      const {error:serr}=await sb.from('staff').update({name,unit}).eq('id',d.staff_id);
-      const {error:scerr}=await sb.from('staff_scores').update({shift,base_score,score,score2,updated_at:new Date().toISOString()}).eq('id',parseInt(editId));
+      const {error:serr}=await sb.from('staff').update({name}).eq('id',d.staff_id);
+      const {error:scerr}=await sb.from('staff_scores').update({period_unit:unit,period_unit_confirmed:true,shift,base_score,score,score2,updated_at:new Date().toISOString()}).eq('id',parseInt(editId));
       if(serr||scerr){toast('保存失败',true);return}
     }
   } else {
     const {data:staffData,error:se}=await sb.from('staff').insert({name,unit}).select().single();
     if(se){toast('新增失败',true);return}
-    const {error:sce}=await sb.from('staff_scores').insert({period_id:currentPeriodId,staff_id:staffData.id,shift,base_score,score:base_score,score2:base_score,mgr_bonus:0,mgr_note:'',perfect:0,attendance:0,jinsun:0});
+    const {error:sce}=await sb.from('staff_scores').insert({period_id:currentPeriodId,staff_id:staffData.id,period_unit:unit,period_unit_confirmed:true,shift,base_score,score:base_score,score2:base_score,mgr_bonus:0,mgr_note:'',perfect:0,attendance:0,jinsun:0});
     if(sce){toast('新增失败',true);return}
   }
   closeModal('staff-modal');
@@ -2056,14 +2058,14 @@ async function copyFromLastPeriod(){
   const {data:lastScores}=await sb.from('staff_scores').select('*').eq('period_id',lastPeriod.id);
   if(!lastScores?.length){toast('上期没有人员资料',true);return}
   const inserts=lastScores.map(s=>({
-    period_id:currentPeriodId,staff_id:s.staff_id,shift:s.shift,
+    period_id:currentPeriodId,staff_id:s.staff_id,period_unit:s.period_unit,period_unit_confirmed:false,shift:s.shift,
     base_score:s.base_score,perfect:0,attendance:0,jinsun:0,
     score:0,score2:0,rank:'',rank2:'',mgr_bonus:0,comment:''
   }));
-  const {error}=await sb.from('staff_scores').upsert(inserts,{onConflict:'period_id,staff_id'});
+  const {error}=await sb.from('staff_scores').upsert(inserts,{onConflict:'period_id,staff_id',ignoreDuplicates:true});
   if(error){toast('沿用失败：'+error.message,true);return}
   await loadStaffScores();renderQuery();
-  toast(`已从「${lastPeriod.name}」沿用 ${inserts.length} 名人员（分数已清零）`);
+  toast(`已从「${lastPeriod.name}」沿用 ${inserts.length} 名人员（新增人员分数清零，已有人员保留；新一期岗位待核对）`);
 }
 
 async function importExcel(input){
@@ -2091,7 +2093,7 @@ async function importExcel(input){
         if(!finalUnit){fail.push(`${name}：单位「${unit}」无效`);continue}
         const {data:staffData,error:se}=await sb.from('staff').insert({name,unit:finalUnit}).select().single();
         if(se){fail.push(`${name}：${se.message}`);continue}
-        const {error:sce}=await sb.from('staff_scores').insert({period_id:currentPeriodId,staff_id:staffData.id,shift,base_score,score:0,score2:0,mgr_bonus:0,perfect:0,attendance:0,jinsun:0,comment:''});
+        const {error:sce}=await sb.from('staff_scores').insert({period_id:currentPeriodId,staff_id:staffData.id,period_unit:finalUnit,period_unit_confirmed:true,shift,base_score,score:0,score2:0,mgr_bonus:0,perfect:0,attendance:0,jinsun:0,comment:''});
         if(sce){fail.push(`${name}：${sce.message}`);continue}
         ok++;
       }
@@ -3642,7 +3644,7 @@ switchPage=function(id,el){
   if(upAdminPages.includes(id)&&!upAdmin()){toast('此功能仅开放老师端',true);id='query';el=null;}
   if(id==='up-manage'){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-up-manage').classList.add('active');document.querySelector('.period-bar').style.display='';upRenderManage();}
   else upOldSwitch(id,el);
-  const managed=['settings','periods','staff','users','logs','up-manage','up-teachers','up-annual-config'];
+  const managed=['settings','periods','staff','users','logs','up-manage','up-teachers','up-annual-config','up-person-annual'];
   document.getElementById('up-back').hidden=!managed.includes(id)||id==='up-manage';
   document.querySelectorAll('.topnav-tab').forEach(b=>b.classList.remove('active'));
   const target=managed.includes(id)?document.getElementById('up-manage-tab'):document.querySelector(`.topnav-tab[data-up-page="${id}"]`);
@@ -3830,7 +3832,7 @@ function upOpenAnnual(config=false){
   if(!upAdmin()){toast('年度跨期分级目前仅开放老师端',true);return}
   switchPage('up-annual-config');
   const year=periods.find(p=>p.id===currentPeriodId)?.year||new Date().getFullYear();
-  document.getElementById('up-annual-content').innerHTML=`<div class="page-hd"><h1>${config?'全年级别比例':'全年级别总览'}</h1><p>上下半年各占50% · 同岗位合并班次 · 分界同分归较高级</p></div><div class="preview-card"><div class="up-fields"><label>年度<select id="up-year" onchange="upAnnualPeriods()">${[...new Set(periods.map(p=>p.year))].sort((a,b)=>b-a).map(y=>`<option ${y===year?'selected':''}>${y}</option>`).join('')}</select></label><label>岗位<select id="up-unit" onchange="upLoadAnnualConfig()">${upUnitOptions()}</select></label><label>上半年<select id="up-first"></select></label><label>下半年<select id="up-second"></select></label></div><div class="up-fields">${['A','B','C','D'].map(g=>`<label>${g}级 %<input id="up-pct-${g}" type="number" min="0" max="100" step="0.01" oninput="upPctTotal()"></label>`).join('')}</div><p id="up-pct-total" class="up-help">请填写比例，合计须为100%</p><div class="up-actions"><button class="btn-primary" onclick="upSaveAnnual(this)">保存设置</button><button class="btn-cancel" onclick="upAnnualResults()">计算全年结果</button><button class="btn-cancel" onclick="upExportAnnual()">汇出全年结果</button></div><p class="up-help">缺少一期或分数缺值者列为资料不足，不计入分配。岗位按当前学生名单；调岗请先确认归属。多人同分可能使某级无人。人数余数相同时按A、B、C、D顺序分配名额。</p><p id="up-annual-message" role="status"></p></div><div id="up-annual-results"></div>`;
+  document.getElementById('up-annual-content').innerHTML=`<div class="page-hd"><h1>${config?'全年级别比例':'全年级别总览'}</h1><p>上下半年各占50% · 同岗位合并班次 · 分界同分归较高级</p></div><div class="preview-card"><div class="up-fields"><label>年度<select id="up-year" onchange="upAnnualPeriods()">${[...new Set(periods.map(p=>p.year))].sort((a,b)=>b-a).map(y=>`<option ${y===year?'selected':''}>${y}</option>`).join('')}</select></label><label>岗位<select id="up-unit" onchange="upLoadAnnualConfig()">${upUnitOptions()}</select></label><label>上半年<select id="up-first"></select></label><label>下半年<select id="up-second"></select></label></div><div class="up-fields">${['A','B','C','D'].map(g=>`<label>${g}级 %<input id="up-pct-${g}" type="number" min="0" max="100" step="0.01" oninput="upPctTotal()"></label>`).join('')}</div><p id="up-pct-total" class="up-help">请填写比例，合计须为100%</p><div class="up-actions"><button class="btn-primary" onclick="upSaveAnnual(this)">保存设置</button><button class="btn-cancel" onclick="upAnnualResults()">计算全年结果</button><button class="btn-cancel" onclick="upExportAnnual()">汇出全年结果</button></div><p class="up-help">缺少一期或分数缺值者列为资料不足，不计入分配。岗位按各期独立记录；历史岗位未核对不参加全年自动分级，调岗由老师判定。多人同分可能使某级无人。人数余数相同时按A、B、C、D顺序分配名额。</p><p id="up-annual-message" role="status"></p></div><div id="up-annual-results"></div>`;
   upAnnualPeriods();
 }
 function upAnnualPeriods(){const y=Number(document.getElementById('up-year').value);for(const [id,half] of [['up-first','上半年'],['up-second','下半年']]){const list=periods.filter(p=>p.year===y&&p.half===half);document.getElementById(id).innerHTML='<option value="">请选择期间</option>'+list.map(p=>`<option value="${p.id}">${upEsc(p.name)}</option>`).join('');if(list.length===1)document.getElementById(id).value=list[0].id}upLoadAnnualConfig()}
@@ -3854,7 +3856,7 @@ async function upAnnualResults(){
     const config=upAnnualInput();if(!upAdmin())throw new Error('仅老师端可跨期计算');
     document.getElementById('up-annual-message').textContent='计算中…';
     const ids=[config.first_period,config.second_period];
-    const [scores,cfgs]=await Promise.all([sb.from('staff_scores').select('*,staff(id,unit,code,name,nickname)').in('period_id',ids),sb.from('period_base_config').select('*').in('period_id',ids)]);
+    const [scores,cfgs]=await Promise.all([sb.from('staff_scores').select('*,period_unit,period_unit_confirmed,staff(id,unit,code,name,nickname)').in('period_id',ids),sb.from('period_base_config').select('*').in('period_id',ids)]);
     if(scores.error||cfgs.error)throw scores.error||cfgs.error;
     if(!upAdmin()||seq!==upAnnualSeq||!document.getElementById('up-annual-results'))return;
   const by={};for(const row of scores.data||[]){if(row.staff?.unit!==config.unit)continue;const person=by[row.staff_id]??={staff_id:row.staff_id,code:row.staff.code||row.staff.name,nickname:row.staff.nickname||''};if(person[row.period_id])throw new Error('同一学生在同一期出现重复成绩，请先整理名单');person[row.period_id]=row;}
@@ -3884,7 +3886,7 @@ renderGradeView=function(){if(UP.options.simplified){document.getElementById('gr
   document.querySelectorAll('.topnav-tab').forEach(b=>{const id=(b.getAttribute('onclick')||'').match(/switchPage\('([^']+)'/)?.[1];b.dataset.upPage=id;if(labels[id])b.textContent=labels[id];else b.classList.add('up-legacy-nav')});
   const menu=document.createElement('button');menu.id='up-manage-tab';menu.className='topnav-tab admin-only hidden';menu.textContent='管理设置';menu.onclick=()=>switchPage('up-manage');document.querySelector('.topnav-tabs').append(menu);
   const account=document.createElement('button');account.className='btn-sm';account.textContent='我的帐号';account.onclick=()=>switchPage('account',account);document.querySelector('.nav-right').append(account);
-  const version=document.createElement('span');version.id='up-build-version';version.textContent='v0930-24';version.title='页面版本 2026.09.30-24';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
+  const version=document.createElement('span');version.id='up-build-version';version.textContent='v1001-26';version.title='页面版本 2026.10.01-26';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
   const nav=document.querySelector('.topnav-tabs');const edit=document.querySelector('[data-up-page="edit"]');nav.insertBefore(edit,document.querySelector('[data-up-page="ai"]'));
   const wrap=document.getElementById('app-wrap');const back=document.createElement('div');back.id='up-back';back.hidden=true;back.innerHTML='<button class="btn-cancel" onclick="switchPage(\'up-manage\')">← 管理设置</button>';document.querySelector('.period-bar').after(back);
   for(const id of ['manage','teachers','annual-config']){const page=document.createElement('div');page.id='page-up-'+id;page.className='page';page.innerHTML=`<div id="up-${id==='annual-config'?'annual':id}-content"></div>`;wrap.append(page)}
@@ -4129,7 +4131,7 @@ loadStaffScores=async function(){
   if(seq!==upStudentLoadSeq||pid!==currentPeriodId||uid!==currentProfile?.id||upAdmin())return;
   if(error){staffScores=[];renderQuery();toast('学生资料载入失败，请确认已执行17号权限修补：'+error.message,true);return;}
   staffScores=(Array.isArray(data)?data:[]).map(r=>({...r,
-    name:r.staff?.name||'',unit:r.staff?.unit||'',code:r.staff?.code||'',nickname:r.staff?.nickname||'',
+    name:r.staff?.name||'',unit:r.period_unit||'',unit_confirmed:r.period_unit_confirmed===true,code:r.staff?.code||'',nickname:r.staff?.nickname||'',
     base:r.base_score,month_detail:r.month_detail||{},ai_score:r.ai_score??null
   }));
   const groups={};staffScores.forEach(d=>(groups[d.shift+'|'+d.unit]??=[]).push(d));
@@ -4160,6 +4162,106 @@ upSyncRoleControls=function(){
 };
 upSyncRoleControls();
 
+/* 個人跨崗位全年比較：按 staff_id 配對，比例獨立保存。 */
+const UPA={seq:0,rows:[],excluded:[],config:null,loading:false,saving:false,dirty:false,year:null};
+function upPersonMessage(text){const el=document.getElementById('upa-message');if(el)el.textContent=text;}
+function upPersonInvalidate(){UPA.seq++;UPA.rows=[];UPA.excluded=[];UPA.config=null;UPA.dirty=true;const el=document.getElementById('upa-results');if(el)el.innerHTML='';upPersonMessage('设置已变更，请重新计算；比例与期间需另按保存。');}
+function upPersonOpen(){
+ if(!upRequireAdmin())return;
+ switchPage('up-person-annual');
+ UPA.seq++;UPA.rows=[];UPA.excluded=[];UPA.config=null;UPA.dirty=false;
+ const years=[...new Set(periods.map(p=>Number(p.year)))].sort((a,b)=>b-a);
+ const year=Number(periods.find(p=>p.id===currentPeriodId)?.year)||years[0];
+ document.getElementById('upa-content').innerHTML=`<div class="page-hd"><h1>个人全年比较与级别</h1><p>按同一学生配对 · 上下半年各占50% · 全体参评学生一起分配ABCD</p></div>
+ <div class="preview-card"><fieldset id="upa-fields" style="border:0;padding:0"><div class="up-fields">
+ <label>年度<select id="upa-year" onchange="upPersonYear()">${years.map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('')}</select></label>
+ <label>上半年<select id="upa-first" onchange="upPersonInvalidate()"></select></label><label>下半年<select id="upa-second" onchange="upPersonInvalidate()"></select></label></div>
+ <div class="up-fields">${['a','b','c','d'].map(g=>`<label>${g.toUpperCase()}级 %<input id="upa-${g}" type="number" min="0" max="100" step="0.01" oninput="upPersonInvalidate();upPersonPct()"></label>`).join('')}</div>
+ <p id="upa-total" class="up-help"></p><div class="up-actions"><button class="btn-primary" onclick="upPersonSave()">保存个人全年设置</button><button class="btn-cancel" onclick="upPersonCalculate()">计算个人全年结果</button><button class="btn-cancel" onclick="upPersonExport()">汇出个人全年结果</button></div></fieldset>
+ <p class="up-help">本页不按岗位分组。以同一学生资料ID配对，不以姓名或昵称猜测身份。缺少一期或分数者不参与ABCD；0分正常参与。全年平均取两位小数，同分归较高级。不同岗位／制度的分数差值仅供参考。</p>
+ <p class="up-help">岗位仅能显示目前名单归属，现有资料无法还原每期岗位。重新新增过的人員可能有不同ID，须先核对名单。退学人员若两期都有成绩仍会参与；缺一期列资料不足。</p><p id="upa-message" role="status"></p></div><div id="upa-results"></div>`;
+ upPersonYear();
+}
+function upPersonPct(){const values=['a','b','c','d'].map(g=>document.getElementById('upa-'+g).value);const total=values.reduce((s,v)=>s+Number(v),0);document.getElementById('upa-total').textContent=values.some(v=>v==='')?'请填写独立的ABCD比例，合计须100%':`合计 ${Math.round(total*100)/100}%（须100%）`;}
+async function upPersonYear(){
+ if(!upRequireAdmin())return;
+ const yearEl=document.getElementById('upa-year');if(!yearEl)return;
+ if(UPA.dirty&&UPA.year!==Number(yearEl.value)&&!confirm('个人全年设置尚未保存，仍切换年度？')){yearEl.value=UPA.year;return;}
+ const year=Number(yearEl.value),seq=++UPA.seq;UPA.year=year;UPA.loading=true;UPA.dirty=false;UPA.rows=[];UPA.config=null;
+ document.getElementById('upa-results').innerHTML='';
+ for(const [id,half] of [['upa-first','上半年'],['upa-second','下半年']]){const list=periods.filter(p=>Number(p.year)===year&&p.half===half);document.getElementById(id).innerHTML='<option value="">请选择期间</option>'+list.map(p=>`<option value="${p.id}">${upEsc(p.name)}</option>`).join('');if(list.length===1)document.getElementById(id).value=list[0].id;}
+ for(const g of ['a','b','c','d'])document.getElementById('upa-'+g).value='';
+ document.getElementById('upa-fields').disabled=true;upPersonMessage('正在载入个人全年设置…');
+ try{
+  const {data,error}=await sb.from('assessment_person_annual_config').select('*').eq('year',year).maybeSingle();
+  if(seq!==UPA.seq||!upAdmin())return;
+  if(error)throw error;
+  if(data){for(const g of ['a','b','c','d'])document.getElementById('upa-'+g).value=data[g];document.getElementById('upa-first').value=data.first_period;document.getElementById('upa-second').value=data.second_period;}
+  upPersonMessage(data?'已载入个人全年设置；与岗位比例分别保存。':'本年度尚未设置，请填写比例。');
+ }catch(e){if(seq===UPA.seq&&upAdmin())upPersonMessage('载入失败：'+e.message+'。如提示找不到资料表，请先执行25号SQL。');}
+ finally{if(seq===UPA.seq&&upAdmin()){UPA.loading=false;document.getElementById('upa-fields').disabled=false;upPersonPct();}}
+}
+function upPersonInput(){
+ const year=Number(document.getElementById('upa-year').value),first=Number(document.getElementById('upa-first').value),second=Number(document.getElementById('upa-second').value);
+ if(!periods.some(p=>Number(p.id)===first&&Number(p.year)===year&&p.half==='上半年')||!periods.some(p=>Number(p.id)===second&&Number(p.year)===year&&p.half==='下半年'))throw new Error('请选择同年度的上下半年期间');
+ const inputs=['a','b','c','d'].map(g=>document.getElementById('upa-'+g));const pct=inputs.map(i=>Number(i.value));
+ if(inputs.some(i=>i.value===''||!i.checkValidity())||pct.some(v=>!Number.isFinite(v)||v<0||v>100||Math.abs(v*100-Math.round(v*100))>1e-7)||Math.abs(pct.reduce((s,v)=>s+v,0)-100)>1e-7)throw new Error('比例须为0～100，最多两位小数，合计100%');
+ return{year,first_period:first,second_period:second,a:pct[0],b:pct[1],c:pct[2],d:pct[3]};
+}
+async function upPersonSave(){
+ if(!upRequireAdmin()||UPA.loading||UPA.saving)return;
+ const fields=document.getElementById('upa-fields');
+ try{const config=upPersonInput();UPA.saving=true;fields.disabled=true;const {data,error}=await sb.from('assessment_person_annual_config').upsert(config,{onConflict:'year'}).select('year');if(!upAdmin())return;if(error)throw error;if(data?.length!==1)throw new Error('保存返回数量不符，请重新载入确认');UPA.dirty=false;upPersonMessage('个人全年设置已保存。原岗位设置保持不变。');toast('个人全年设置已保存');}
+ catch(e){if(upAdmin()){upPersonMessage('保存失败：'+e.message);toast(e.message,true);}}
+ finally{UPA.saving=false;if(upAdmin())fields.disabled=false;}
+}
+function upPersonBuild(scores,cfgs,config){
+ const ids=[config.first_period,config.second_period],by=new Map();
+ for(const r of scores){if(!ids.includes(Number(r.period_id)))continue;const key=String(r.staff_id);let person=by.get(key);if(!person){person={staff_id:r.staff_id,code:r.staff?.code||r.staff?.name||String(r.staff_id),nickname:r.staff?.nickname||'',unit:r.period_unit||'',halves:{}};by.set(key,person);}if(person.halves[r.period_id])throw new Error('同一学生在同一期有重复成绩：'+person.code);person.halves[r.period_id]=r;}
+ const eligible=[],excluded=[];
+ for(const person of by.values()){
+  const h=ids.map(id=>person.halves[id]);
+  const reason=h.map((r,i)=>!r?(i===0?'缺上半年':'缺下半年'):r.score==null||r.score2==null?(i===0?'上半年分数缺值':'下半年分数缺值'):'').filter(Boolean).join('、');
+  const totals=h.map((r,i)=>{if(!r||r.score==null||r.score2==null)return null;const cfg=cfgs.find(c=>Number(c.period_id)===ids[i]);if(!cfg)throw new Error('期间缺少基本计分设置');const v=upTotals(r,cfg,i===0?['jan','feb','mar','apr','may','jun']:['jul','aug','sep','oct','nov','dec']).score2;if(!Number.isFinite(v))throw new Error('学生分数无效：'+person.code);return v;});
+  const row={staff_id:person.staff_id,code:person.code,nickname:person.nickname,unit:person.unit,firstUnit:h[0]?.period_unit||'',secondUnit:h[1]?.period_unit||'',first:totals[0],second:totals[1]};
+  const positionReason=h.some(r=>r&&(!r.period_unit||r.period_unit_confirmed!==true))?'历史岗位待核对':h[0]&&h[1]&&h[0].period_unit!==h[1].period_unit?'调岗，请至全年岗位总览由老师判定':'';
+  if(positionReason){excluded.push({...row,reason:reason||positionReason});continue;}
+  if(reason){excluded.push({...row,reason});continue;}
+  eligible.push({...row,change:Math.round((totals[1]-totals[0])*100)/100,total:Math.round((totals[0]+totals[1])*50)/100});
+ }
+ return{...upAllocate(eligible,[config.a,config.b,config.c,config.d]),excluded};
+}
+async function upPersonCalculate(){
+ if(!upRequireAdmin()||UPA.loading||UPA.saving)return;
+ const seq=++UPA.seq;UPA.rows=[];UPA.excluded=[];UPA.config=null;document.getElementById('upa-results').innerHTML='';
+ try{
+  const config=upPersonInput(),ids=[config.first_period,config.second_period];upPersonMessage('正在配对上下半年成绩…');
+  const {data:cfgs,error:ce}=await sb.from('period_base_config').select('*').in('period_id',ids);if(ce)throw ce;
+  const scores=[];for(let offset=0;;offset+=500){if(seq!==UPA.seq||!upAdmin())return;const {data,error}=await sb.from('staff_scores').select('*,period_unit,period_unit_confirmed,staff(id,unit,code,name,nickname)').in('period_id',ids).order('id').range(offset,offset+499);if(error)throw error;scores.push(...data);if(data.length<500)break;}
+  if(seq!==UPA.seq||!upAdmin())return;
+  const result=upPersonBuild(scores,cfgs,config);UPA.rows=result.rows;UPA.excluded=result.excluded;UPA.config=config;
+  upPersonMessage(`参评 ${result.rows.length} 人 · 资料不足 ${result.excluded.length} 人 · 按当前输入比例计算${UPA.dirty?'（设置尚未保存）':''}`);
+  const headers=['排名','代号','昵称','目前岗位','上半年分数','下半年分数','变化','全年平均','ABCD'];
+  document.getElementById('upa-results').innerHTML=`<div class="grade-grid">${['A','B','C','D'].map((g,i)=>`<div class="preview-card"><h3>${g}级</h3><p>目标 ${config[g.toLowerCase()]}% · 实际 ${result.rows.filter(r=>r.grade===g).length} 人</p><p class="up-help">原始名额 ${result.quota[i]} 人；同分可改变实际人数</p></div>`).join('')}</div><div class="tbl-wrap" style="overflow:auto"><table class="users-table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${result.rows.map(r=>`<tr><td>${r.rank}</td><td>${upEsc(r.code)}</td><td>${upEsc(r.nickname)}</td><td>${upEsc(unitLabel(r.unit)||r.unit)}</td><td>${r.first.toFixed(2)}</td><td>${r.second.toFixed(2)}</td><td>${r.change>0?'+':''}${r.change.toFixed(2)}</td><td>${r.total.toFixed(2)}</td><td>${r.grade}</td></tr>`).join('')||'<tr><td colspan="9">没有两期资料完整的学生</td></tr>'}</tbody></table></div>${result.excluded.length?`<div class="preview-card"><h3>资料不足（不分ABCD）</h3>${result.excluded.map(r=>`<p class="up-help">${upEsc(r.code)} ${upEsc(r.nickname)}：${upEsc(r.reason)} · 上半年 ${r.first==null?'缺资料':r.first.toFixed(2)}／下半年 ${r.second==null?'缺资料':r.second.toFixed(2)}</p>`).join('')}</div>`:''}`;
+ }catch(e){if(seq===UPA.seq&&upAdmin()){upPersonMessage('计算未完成：'+e.message);toast(e.message,true);}}
+}
+function upPersonExport(){
+ if(!upRequireAdmin())return;if(!UPA.config){toast('请先计算个人全年结果',true);return;}
+ const wb=XLSX.utils.book_new();const data=UPA.rows.map(r=>({'排名':r.rank,'固定代号':r.code,'昵称':r.nickname,'目前岗位':unitLabel(r.unit)||r.unit,'上半年分数':r.first,'下半年分数':r.second,'分数变化':r.change,'全年平均':r.total,'全年级别':r.grade}));
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data.length?data:[{'状态':'无完整两期资料'}]),'个人全年结果');
+ if(UPA.excluded.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(UPA.excluded.map(r=>({'固定代号':r.code,'昵称':r.nickname,'上半年分数':r.first,'下半年分数':r.second,'状态':r.reason}))),'资料不足');
+ const c=UPA.config;XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet([{'年度':c.year,'上半年期间':periods.find(p=>Number(p.id)===c.first_period)?.name,'下半年期间':periods.find(p=>Number(p.id)===c.second_period)?.name,'A级比例':c.a,'B级比例':c.b,'C级比例':c.c,'D级比例':c.d,'说明':'全体参评学生一起分配；上下半年各50%；同分归较高级；岗位为目前名单归属'}]),'计算设置');
+ XLSX.writeFile(wb,`${c.year}_个人全年比较与级别.xlsx`);
+}
+const upPersonPage=document.createElement('div');upPersonPage.id='page-up-person-annual';upPersonPage.className='page';upPersonPage.innerHTML='<div id="upa-content"></div>';document.getElementById('page-up-annual-config').after(upPersonPage);
+upAdminPages.push('up-person-annual');
+const upPersonRoleSync=upSyncRoleControls;
+upSyncRoleControls=function(){upPersonRoleSync();if(!upAdmin()){UPA.seq++;UPA.rows=[];UPA.excluded=[];UPA.config=null;UPA.loading=false;UPA.dirty=false;document.getElementById('upa-content').innerHTML='';}};
+const upPersonManage=upRenderManage;
+upRenderManage=function(){upPersonManage();if(upAdmin()){const btn=document.createElement('button');btn.textContent='个人全年比较与ABCD';btn.onclick=upPersonOpen;document.querySelector('#up-manage-content .up-menu-grid section').append(btn);}};
+const upPersonGradeBtn=document.createElement('button');upPersonGradeBtn.className='filter-btn admin-only hidden';upPersonGradeBtn.textContent='个人全年比较';upPersonGradeBtn.onclick=upPersonOpen;document.querySelector('#page-grade-view .sec-hd').append(upPersonGradeBtn);
+
+upSyncRoleControls();
 const _savedLocal=sessionStorage.getItem('localProfile');
 if(_savedLocal){
   currentProfile=JSON.parse(_savedLocal);
@@ -4169,6 +4271,155 @@ if(_savedLocal){
 }else{
   sb.auth.getSession().then(({data:{session}})=>{if(session?.user)checkAalAndProceed(session.user)});
 }
+
+</script>
+<script>
+/* Period position snapshots and annual transfer review. */
+function periodUnit(row){return row?.period_unit||'';}
+function periodConfirmed(row){return !!periodUnit(row)&&row.period_unit_confirmed===true;}
+const periodOriginalGradeBadge=gradeBadgeHtml;
+gradeBadgeHtml=function(d){
+ if(!d.unit_confirmed)return '<span style="font-size:11px;color:var(--ink3)">岗位待核对</span>';
+ return periodOriginalGradeBadge(d);
+};
+function annualGrade(row,total,configs){
+ if(!row||total==null)return '资料不足';
+ if(!periodConfirmed(row))return '岗位待核对';
+ if(row.grade_override&&['A','B','C','D'].includes(row.grade))return row.grade;
+ const own=configs.filter(c=>Number(c.period_id)===Number(row.period_id)&&c.unit===row.period_unit);
+ const common=configs.filter(c=>Number(c.period_id)===Number(row.period_id)&&c.unit==='all');
+ const list=(own.length?own:common).sort((a,b)=>Number(b.min_score)-Number(a.min_score));
+ return list.length?(list.find(c=>total>=Number(c.min_score))?.grade||'D'):'未设半年级别';
+}
+function periodAnnualBuild(scores,cfgs,grades,config,decisions){
+ const ids=[config.first_period,config.second_period],by=new Map();
+ for(const r of scores){
+  if(!ids.includes(Number(r.period_id)))continue;
+  const id=String(r.staff_id);let p=by.get(id);
+  if(!p){p={staff_id:r.staff_id,code:r.staff?.code||r.staff?.name||id,nickname:r.staff?.nickname||'',halves:{}};by.set(id,p);}
+  if(p.halves[r.period_id])throw new Error('同一期重复人员：'+p.code);
+  p.halves[r.period_id]=r;
+ }
+ const automatic=[],other=[];
+ for(const p of by.values()){
+  const halves=ids.map(id=>p.halves[id]);
+  // Include either-period matches, so a transfer remains visible in both groups.
+  if(!halves.some(r=>periodUnit(r)===config.unit))continue;
+  const totals=halves.map((r,i)=>{
+   if(!r||r.score==null||r.score2==null)return null;
+   const cfg=cfgs.find(c=>Number(c.period_id)===ids[i]);
+   if(!cfg)throw new Error('缺少期间计分设置');
+   const n=upTotals(r,cfg,i===0?['jan','feb','mar','apr','may','jun']:['jul','aug','sep','oct','nov','dec']).score2;
+   if(!Number.isFinite(n))throw new Error('分数无效：'+p.code);
+   return n;
+  });
+  const row={staff_id:p.staff_id,code:p.code,nickname:p.nickname,firstUnit:periodUnit(halves[0]),secondUnit:periodUnit(halves[1]),first:totals[0],second:totals[1],firstGrade:annualGrade(halves[0],totals[0],grades),secondGrade:annualGrade(halves[1],totals[1],grades),total:totals.includes(null)?null:Math.round((totals[0]+totals[1])*50)/100,rank:null,grade:'',status:''};
+  if(totals.includes(null)){row.status='资料不足';other.push(row);continue;}
+  if(halves.some(r=>!periodConfirmed(r))){row.status='历史岗位待核对';other.push(row);continue;}
+  if(row.firstUnit!==row.secondUnit){
+   row.status='调岗待判定';
+   const saved=decisions.find(d=>String(d.staff_id)===String(p.staff_id));
+   if(saved&&saved.first_unit===row.firstUnit&&saved.second_unit===row.secondUnit&&Number(saved.first_score)===row.first&&Number(saved.second_score)===row.second){
+    Object.assign(row,{grade:saved.grade,status:'调岗已判定',teacher:saved.teacher,reason:saved.reason,decided_at:saved.decided_at});
+   }else if(saved)row.status='调岗须重新判定';
+   other.push(row);continue;
+  }
+  row.status='自动';automatic.push(row);
+ }
+ const result=upAllocate(automatic,[config.a,config.b,config.c,config.d]);
+ return {rows:[...result.rows,...other],quota:result.quota,automatic:automatic.length};
+}
+const PERIOD_ANNUAL={seq:0,config:null,rows:[],busy:false};
+async function periodPagedScores(ids){
+ const all=[];
+ for(let offset=0;;offset+=500){
+  const {data,error}=await sb.from('staff_scores').select('*,staff(id,unit,code,name,nickname)').in('period_id',ids).order('id').range(offset,offset+499);
+  if(error)throw error;all.push(...data);if(data.length<500)return all;
+ }
+}
+upAnnualResults=async function(){
+ if(!upRequireAdmin()||PERIOD_ANNUAL.busy)return;
+ const seq=++PERIOD_ANNUAL.seq;PERIOD_ANNUAL.rows=[];PERIOD_ANNUAL.config=null;
+ try{
+  const config=upAnnualInput(),ids=[config.first_period,config.second_period];
+  const a=periods.find(p=>Number(p.id)===ids[0]),b=periods.find(p=>Number(p.id)===ids[1]);
+  if(!a||!b||Number(a.year)!==config.year||Number(b.year)!==config.year||a.half!=='上半年'||b.half!=='下半年')throw new Error('请选择同年度上下半年');
+  document.getElementById('up-annual-message').textContent='按各期岗位配对计算…';
+  const [scores,cfgs,grades,decisions]=await Promise.all([
+   periodPagedScores(ids),
+   sb.from('period_base_config').select('*').in('period_id',ids),
+   sb.from('grade_config').select('*').in('period_id',ids),
+   sb.from('assessment_transfer_decisions').select('*').eq('first_period',ids[0]).eq('second_period',ids[1])
+  ]);
+  if(cfgs.error||grades.error||decisions.error)throw cfgs.error||grades.error||decisions.error;
+  if(!upAdmin()||seq!==PERIOD_ANNUAL.seq||!document.getElementById('up-annual-results'))return;
+  const result=periodAnnualBuild(scores,cfgs.data,grades.data,config,decisions.data);
+  PERIOD_ANNUAL.rows=result.rows;PERIOD_ANNUAL.config=config;
+  document.getElementById('up-annual-message').textContent=`自动参评 ${result.automatic} 人 · 调岗 ${result.rows.filter(r=>r.status.startsWith('调岗')).length} 人 · 资料不足或岗位待核对 ${result.rows.filter(r=>r.status==='资料不足'||r.status==='历史岗位待核对').length} 人`;
+  periodAnnualRender();
+ }catch(e){toast(e.message,true);const el=document.getElementById('up-annual-message');if(el)el.textContent='计算未完成：'+e.message;}
+};
+function periodAnnualRender(){
+ if(!upAdmin())return;
+ const target=document.getElementById('up-annual-results');if(!target)return;
+ const score=v=>v==null?'缺资料':v.toFixed(2),pos=v=>v?(unitLabel(v)||v):'缺岗位';
+ const headers=['代号／昵称','上半年岗位','最终分数','半年级别','下半年岗位','最终分数','半年级别','全年平均','全年级别','状态','组内排名','老师判定'];
+ target.innerHTML=`<div class="tbl-wrap" style="overflow:auto"><table class="users-table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${PERIOD_ANNUAL.rows.map((r,i)=>`<tr><td>${upEsc(r.code)}<br><small>${upEsc(r.nickname)}</small></td><td>${upEsc(pos(r.firstUnit))}</td><td>${score(r.first)}</td><td>${upEsc(r.firstGrade)}</td><td>${upEsc(pos(r.secondUnit))}</td><td>${score(r.second)}</td><td>${upEsc(r.secondGrade)}</td><td>${score(r.total)}</td><td>${r.grade||'—'}</td><td>${upEsc(r.status)}</td><td>${r.rank||'—'}</td><td>${r.status.startsWith('调岗')?`<button onclick="periodTransferEdit(${i})">${r.grade?'修改判定':'判定ABCD'}</button>${r.teacher?`<p class="up-help">${upEsc(r.teacher)} · ${upEsc(r.reason)}<br>${upEsc(r.decided_at)}</p>`:''}`:''}</td></tr>`).join('')||'<tr><td colspan="12">没有符合岗位的学生</td></tr>'}</tbody></table></div>`;
+}
+function periodTransferEdit(index){
+ if(!upRequireAdmin()||PERIOD_ANNUAL.busy)return;
+ const r=PERIOD_ANNUAL.rows[index];if(!r?.status.startsWith('调岗'))return;
+ const old=document.getElementById('period-transfer-dialog');if(old)old.remove();
+ const dialog=document.createElement('dialog');dialog.id='period-transfer-dialog';
+ dialog.style.cssText='width:min(540px,95vw);padding:24px;border:1px solid #ccc;border-radius:8px';
+ dialog.innerHTML=`<h3>${upEsc(r.code)} ${upEsc(r.nickname)} · 全年判定</h3><p>${upEsc(unitLabel(r.firstUnit))} → ${upEsc(unitLabel(r.secondUnit))} · 两期最终分数 ${r.first}／${r.second}</p><div class="up-fields"><label>全年级别<select id="pt-grade"><option value="">请选择</option>${['A','B','C','D'].map(g=>`<option ${r.grade===g?'selected':''}>${g}</option>`).join('')}</select></label><label>判定老师<input id="pt-teacher" value="${upEsc(r.teacher||'')}"></label></div><label>判定理由<textarea id="pt-reason" style="display:block;width:100%;min-height:90px">${upEsc(r.reason||'')}</textarea></label><p id="pt-error" role="alert"></p><button id="pt-save" onclick="periodTransferSave(${index})">保存判定</button> <button onclick="document.getElementById('period-transfer-dialog').close()">取消</button>`;
+ document.body.append(dialog);dialog.showModal();
+}
+async function periodTransferSave(index){
+ if(!upRequireAdmin()||PERIOD_ANNUAL.busy)return;
+ const row=PERIOD_ANNUAL.rows[index],cfg=PERIOD_ANNUAL.config;
+ const grade=document.getElementById('pt-grade').value,teacher=document.getElementById('pt-teacher').value.trim(),reason=document.getElementById('pt-reason').value.trim();
+ const message=document.getElementById('pt-error');
+ if(!row||!cfg||!['A','B','C','D'].includes(grade)||!teacher||!reason){message.textContent='请填写级别、老师与判定理由';return;}
+ PERIOD_ANNUAL.busy=true;document.getElementById('pt-save').disabled=true;
+ try{
+  const fresh=await periodPagedScores([cfg.first_period,cfg.second_period]);
+  const a=fresh.find(r=>String(r.staff_id)===String(row.staff_id)&&Number(r.period_id)===cfg.first_period),b=fresh.find(r=>String(r.staff_id)===String(row.staff_id)&&Number(r.period_id)===cfg.second_period);
+  const {data:settings,error:se}=await sb.from('period_base_config').select('*').in('period_id',[cfg.first_period,cfg.second_period]);if(se)throw se;
+  const matches=(r,id,unit,score,keys)=>periodConfirmed(r)&&r.period_unit===unit&&r.score!=null&&r.score2!=null&&upTotals(r,settings.find(c=>Number(c.period_id)===id),keys).score2===score;
+  if(!matches(a,cfg.first_period,row.firstUnit,row.first,['jan','feb','mar','apr','may','jun'])||!matches(b,cfg.second_period,row.secondUnit,row.second,['jul','aug','sep','oct','nov','dec']))throw new Error('资料已变化，请关闭判定并重新计算');
+  const payload={first_period:cfg.first_period,second_period:cfg.second_period,staff_id:row.staff_id,first_unit:row.firstUnit,second_unit:row.secondUnit,first_score:row.first,second_score:row.second,grade,teacher,reason};
+  const {data,error}=await sb.from('assessment_transfer_decisions').upsert(payload,{onConflict:'first_period,second_period,staff_id'}).select('*');
+  if(error)throw error;if(data?.length!==1)throw new Error('保存结果数量不符');
+  if(!upAdmin())return;
+  Object.assign(row,{grade,teacher,reason,status:'调岗已判定',decided_at:data[0].decided_at});
+  document.getElementById('period-transfer-dialog').close();periodAnnualRender();toast('调岗全年判定已保存');
+ }catch(e){if(upAdmin())message.textContent='保存失败：'+e.message;}
+ finally{PERIOD_ANNUAL.busy=false;const btn=document.getElementById('pt-save');if(btn)btn.disabled=false;}
+}
+upExportAnnual=function(){
+ if(!upRequireAdmin())return;
+ if(!PERIOD_ANNUAL.config){toast('请先计算全年结果',true);return;}
+ const wb=XLSX.utils.book_new();
+ const data=PERIOD_ANNUAL.rows.map(r=>({'代号':r.code,'昵称':r.nickname,'上半年岗位':unitLabel(r.firstUnit)||r.firstUnit,'上半年最终分':r.first,'上半年级别':r.firstGrade,'下半年岗位':unitLabel(r.secondUnit)||r.secondUnit,'下半年最终分':r.second,'下半年级别':r.secondGrade,'全年平均':r.total,'全年级别':r.grade,'状态':r.status,'组内排名':r.rank,'判定老师':r.teacher||'','判定理由':r.reason||'','判定时间':r.decided_at||''}));
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data.length?data:[{'状态':'无符合人员'}]),'全年岗位结果');
+ XLSX.writeFile(wb,`${PERIOD_ANNUAL.config.year}_${PERIOD_ANNUAL.config.unit}_全年岗位结果.xlsx`);
+};
+document.addEventListener('change',e=>{
+ if(['up-year','up-unit','up-first','up-second','up-pct-A','up-pct-B','up-pct-C','up-pct-D'].includes(e.target.id)){
+  PERIOD_ANNUAL.seq++;PERIOD_ANNUAL.rows=[];PERIOD_ANNUAL.config=null;
+  const el=document.getElementById('up-annual-results');if(el)el.innerHTML='';
+  document.getElementById('period-transfer-dialog')?.close();
+ }
+});
+const periodOriginalStaffRender=renderStaffTable;
+renderStaffTable=function(...args){
+ const result=periodOriginalStaffRender.apply(this,args);
+ const pane=document.getElementById('staff-tbody')?.closest('table')?.parentElement||document.getElementById('staff-period-label')?.parentElement;
+ if(pane&&!document.getElementById('period-position-note')){
+  const note=document.createElement('p');note.id='period-position-note';note.className='up-help';note.textContent='岗位仅修改当前考核期间。历史岗位迁移值须逐期核对；编辑保存时确认本期实际岗位。';pane.before(note);
+ }
+};
 
 </script>
 </body>
