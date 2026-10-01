@@ -3680,7 +3680,7 @@ function upRenderManage(){
     <button onclick="upOpenRule('preview')">规则预览 <small>查看启用项目与计分示例</small></button>
     <button onclick="upOpenAnnual(true)">全年级别比例 <small>按年度、岗位分别设置</small></button>
     <button onclick="halfRatioOpen()">半年ABCD比例</button>
-    <p class="up-help">半年级别按本期岗位比例计算；全年使用独立比例设置。</p></section>
+    </section>
     <section><h3>名单与权限</h3><button onclick="switchPage('staff')">学生名单</button><button onclick="upOpenTeachers()">应评老师 <small>本期 ${UP.teachers.length} 位</small></button><button onclick="switchPage('users')">帐号与权限</button></section>
     <section><h3>期间与记录</h3><button onclick="switchPage('periods')">期间与成绩公布</button><button onclick="switchPage('logs')">操作记录</button><button onclick="switchPage('account')">我的帐号与安全</button></section></div>`;
 }
@@ -3889,7 +3889,7 @@ renderGradeView=function(){if(UP.options.simplified){document.getElementById('gr
   document.querySelectorAll('.topnav-tab').forEach(b=>{const id=(b.getAttribute('onclick')||'').match(/switchPage\('([^']+)'/)?.[1];b.dataset.upPage=id;if(labels[id])b.textContent=labels[id];else b.classList.add('up-legacy-nav')});
   const menu=document.createElement('button');menu.id='up-manage-tab';menu.className='topnav-tab admin-only hidden';menu.textContent='管理设置';menu.onclick=()=>switchPage('up-manage');document.querySelector('.topnav-tabs').append(menu);
   const account=document.createElement('button');account.className='btn-sm';account.textContent='我的帐号';account.onclick=()=>switchPage('account',account);document.querySelector('.nav-right').append(account);
-  const version=document.createElement('span');version.id='up-build-version';version.textContent='v1001-32';version.title='页面版本 2026.10.01-32';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
+  const version=document.createElement('span');version.id='up-build-version';version.textContent='v1001-34';version.title='页面版本 2026.10.01-34';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
   const nav=document.querySelector('.topnav-tabs');const edit=document.querySelector('[data-up-page="edit"]');nav.insertBefore(edit,document.querySelector('[data-up-page="ai"]'));
   const wrap=document.getElementById('app-wrap');const back=document.createElement('div');back.id='up-back';back.hidden=true;back.innerHTML='<button class="btn-cancel" onclick="switchPage(\'up-manage\')">← 管理设置</button>';document.querySelector('.period-bar').after(back);
   for(const id of ['manage','teachers','annual-config']){const page=document.createElement('div');page.id='page-up-'+id;page.className='page';page.innerHTML=`<div id="up-${id==='annual-config'?'annual':id}-content"></div>`;wrap.append(page)}
@@ -4175,14 +4175,14 @@ function upPersonOpen(){
  UPA.seq++;UPA.rows=[];UPA.excluded=[];UPA.config=null;UPA.dirty=false;
  const years=[...new Set(periods.map(p=>Number(p.year)))].sort((a,b)=>b-a);
  const year=Number(periods.find(p=>p.id===currentPeriodId)?.year)||years[0];
- document.getElementById('upa-content').innerHTML=`<div class="page-hd"><h1>个人全年比较与级别</h1><p>按同一学生配对 · 上下半年各占50% · 全体参评学生一起分配ABCD</p></div>
+ document.getElementById('upa-content').innerHTML=`<div class="page-hd"><h1>个人全年比较</h1><p>按同一学生配对 · 上下半年各占50% · 全体参评学生一起分配ABCD</p></div>
  <div class="preview-card"><fieldset id="upa-fields" style="border:0;padding:0"><div class="up-fields">
  <label>年度<select id="upa-year" onchange="upPersonYear()">${years.map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('')}</select></label>
  <label>上半年<select id="upa-first" onchange="upPersonInvalidate()"></select></label><label>下半年<select id="upa-second" onchange="upPersonInvalidate()"></select></label></div>
  <div class="up-fields">${['a','b','c','d'].map(g=>`<label>${g.toUpperCase()}级 %<input id="upa-${g}" type="number" min="0" max="100" step="0.01" oninput="upPersonInvalidate();upPersonPct()"></label>`).join('')}</div>
- <p id="upa-total" class="up-help"></p><div class="up-actions"><button class="btn-primary" onclick="upPersonSave()">保存个人全年设置</button><button class="btn-cancel" onclick="upPersonCalculate()">计算个人全年结果</button><button class="btn-cancel" onclick="upPersonExport()">汇出个人全年结果</button></div></fieldset>
+ <p id="upa-total" class="up-help"></p><div class="up-actions"><button class="btn-primary" onclick="upPersonSave()">保存设置</button><button class="btn-cancel" onclick="upPersonCalculate()">更新结果</button><button class="btn-cancel" onclick="upPersonExport()">导出结果</button></div></fieldset>
  <p class="up-help">本页不按岗位分组。以同一学生资料ID配对，不以姓名或昵称猜测身份。缺少一期或分数者不参与ABCD；0分正常参与。全年平均取两位小数，同分归较高级。不同岗位／制度的分数差值仅供参考。</p>
- <p class="up-help">岗位仅能显示目前名单归属，现有资料无法还原每期岗位。重新新增过的人員可能有不同ID，须先核对名单。退学人员若两期都有成绩仍会参与；缺一期列资料不足。</p><p id="upa-message" role="status"></p></div><div id="upa-results"></div>`;
+ <p class="up-help">岗位按两期独立记录显示。调岗者请至全年岗位结果判定；缺一期列资料不足。</p><p id="upa-message" role="status"></p></div><div id="upa-results"></div>`;
  upPersonYear();
 }
 function upPersonPct(){const values=['a','b','c','d'].map(g=>document.getElementById('upa-'+g).value);const total=values.reduce((s,v)=>s+Number(v),0);document.getElementById('upa-total').textContent=values.some(v=>v==='')?'请填写独立的ABCD比例，合计须100%':`合计 ${Math.round(total*100)/100}%（须100%）`;}
@@ -4244,17 +4244,17 @@ async function upPersonCalculate(){
   if(seq!==UPA.seq||!upAdmin())return;
   const result=upPersonBuild(scores,cfgs,config);UPA.rows=result.rows;UPA.excluded=result.excluded;UPA.config=config;
   upPersonMessage(`参评 ${result.rows.length} 人 · 资料不足 ${result.excluded.length} 人 · 按当前输入比例计算${UPA.dirty?'（设置尚未保存）':''}`);
-  const headers=['排名','代号','昵称','目前岗位','上半年分数','下半年分数','变化','全年平均','ABCD'];
-  document.getElementById('upa-results').innerHTML=`<div class="grade-grid">${['A','B','C','D'].map((g,i)=>`<div class="preview-card"><h3>${g}级</h3><p>目标 ${config[g.toLowerCase()]}% · 实际 ${result.rows.filter(r=>r.grade===g).length} 人</p><p class="up-help">原始名额 ${result.quota[i]} 人；同分可改变实际人数</p></div>`).join('')}</div><div class="tbl-wrap" style="overflow:auto"><table class="users-table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${result.rows.map(r=>`<tr><td>${r.rank}</td><td>${upEsc(r.code)}</td><td>${upEsc(r.nickname)}</td><td>${upEsc(unitLabel(r.unit)||r.unit)}</td><td>${r.first.toFixed(2)}</td><td>${r.second.toFixed(2)}</td><td>${r.change>0?'+':''}${r.change.toFixed(2)}</td><td>${r.total.toFixed(2)}</td><td>${r.grade}</td></tr>`).join('')||'<tr><td colspan="9">没有两期资料完整的学生</td></tr>'}</tbody></table></div>${result.excluded.length?`<div class="preview-card"><h3>资料不足（不分ABCD）</h3>${result.excluded.map(r=>`<p class="up-help">${upEsc(r.code)} ${upEsc(r.nickname)}：${upEsc(r.reason)} · 上半年 ${r.first==null?'缺资料':r.first.toFixed(2)}／下半年 ${r.second==null?'缺资料':r.second.toFixed(2)}</p>`).join('')}</div>`:''}`;
+  const headers=['排名','代号','昵称','上半年岗位','下半年岗位','上半年分数','下半年分数','变化','全年平均','ABCD'];
+  document.getElementById('upa-results').innerHTML=`<div class="grade-grid">${['A','B','C','D'].map((g,i)=>`<div class="preview-card"><h3>${g}级</h3><p>目标 ${config[g.toLowerCase()]}% · 实际 ${result.rows.filter(r=>r.grade===g).length} 人</p><p class="up-help">原始名额 ${result.quota[i]} 人；同分可改变实际人数</p></div>`).join('')}</div><div class="tbl-wrap" style="overflow:auto"><table class="users-table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${result.rows.map(r=>`<tr><td>${r.rank}</td><td>${upEsc(r.code)}</td><td>${upEsc(r.nickname)}</td><td>${upEsc(unitLabel(r.firstUnit)||r.firstUnit)}</td><td>${upEsc(unitLabel(r.secondUnit)||r.secondUnit)}</td><td>${r.first.toFixed(2)}</td><td>${r.second.toFixed(2)}</td><td>${r.change>0?'+':''}${r.change.toFixed(2)}</td><td>${r.total.toFixed(2)}</td><td>${r.grade}</td></tr>`).join('')||'<tr><td colspan="9">没有两期资料完整的学生</td></tr>'}</tbody></table></div>${result.excluded.length?`<div class="preview-card"><h3>资料不足（不分ABCD）</h3>${result.excluded.map(r=>`<p class="up-help">${upEsc(r.code)} ${upEsc(r.nickname)}：${upEsc(r.reason)} · 上半年 ${r.first==null?'缺资料':r.first.toFixed(2)}／下半年 ${r.second==null?'缺资料':r.second.toFixed(2)}</p>`).join('')}</div>`:''}`;
  }catch(e){if(seq===UPA.seq&&upAdmin()){upPersonMessage('计算未完成：'+e.message);toast(e.message,true);}}
 }
 function upPersonExport(){
- if(!upRequireAdmin())return;if(!UPA.config){toast('请先计算个人全年结果',true);return;}
- const wb=XLSX.utils.book_new();const data=UPA.rows.map(r=>({'排名':r.rank,'固定代号':r.code,'昵称':r.nickname,'目前岗位':unitLabel(r.unit)||r.unit,'上半年分数':r.first,'下半年分数':r.second,'分数变化':r.change,'全年平均':r.total,'全年级别':r.grade}));
+ if(!upRequireAdmin())return;if(!UPA.config){toast('请先更新结果',true);return;}
+ const wb=XLSX.utils.book_new();const data=UPA.rows.map(r=>({'排名':r.rank,'固定代号':r.code,'昵称':r.nickname,'上半年岗位':unitLabel(r.firstUnit)||r.firstUnit,'下半年岗位':unitLabel(r.secondUnit)||r.secondUnit,'上半年分数':r.first,'下半年分数':r.second,'分数变化':r.change,'全年平均':r.total,'全年级别':r.grade}));
  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data.length?data:[{'状态':'无完整两期资料'}]),'个人全年结果');
  if(UPA.excluded.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(UPA.excluded.map(r=>({'固定代号':r.code,'昵称':r.nickname,'上半年分数':r.first,'下半年分数':r.second,'状态':r.reason}))),'资料不足');
  const c=UPA.config;XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet([{'年度':c.year,'上半年期间':periods.find(p=>Number(p.id)===c.first_period)?.name,'下半年期间':periods.find(p=>Number(p.id)===c.second_period)?.name,'A级比例':c.a,'B级比例':c.b,'C级比例':c.c,'D级比例':c.d,'说明':'全体参评学生一起分配；上下半年各50%；同分归较高级；岗位为目前名单归属'}]),'计算设置');
- XLSX.writeFile(wb,`${c.year}_个人全年比较与级别.xlsx`);
+ XLSX.writeFile(wb,`${c.year}_个人全年比较.xlsx`);
 }
 const upPersonPage=document.createElement('div');upPersonPage.id='page-up-person-annual';upPersonPage.className='page';upPersonPage.innerHTML='<div id="upa-content"></div>';document.getElementById('page-up-annual-config').after(upPersonPage);
 upAdminPages.push('up-person-annual');
@@ -4522,6 +4522,124 @@ renderStaffTable=function(...args){
   const note=document.createElement('p');note.id='period-position-note';note.className='up-help';note.textContent='岗位仅修改当前考核期间。各期名单与岗位独立保存。现有资料直接使用；仅需修改实际调岗人员对应期间的岗位。';pane.before(note);
  }
 };
+
+/* Direct position navigation with automatic result refresh and stale-request guards. */
+const ANNUAL_NAV={seq:0,dirty:false,pending:null};
+function annualUnitButtons(){
+ const unit=document.getElementById('up-unit')?.value;
+ for(const button of document.querySelectorAll('#annual-unit-buttons button')){
+  const selected=button.dataset.unit===unit;button.classList.toggle('active',selected);button.setAttribute('aria-pressed',String(selected));
+ }
+}
+function annualResetResults(){
+ PERIOD_ANNUAL.seq++;PERIOD_ANNUAL.rows=[];PERIOD_ANNUAL.config=null;
+ const results=document.getElementById('up-annual-results');if(results)results.innerHTML='';
+ document.getElementById('period-transfer-dialog')?.close();
+}
+const annualNavOldOpen=upOpenAnnual;
+upOpenAnnual=function(...args){
+ ANNUAL_NAV.seq++;ANNUAL_NAV.dirty=false;ANNUAL_NAV.pending=null;
+ annualNavOldOpen.apply(this,args);
+ const select=document.getElementById('up-unit');if(!select)return;
+ select.closest('label').hidden=true;
+ const nav=document.createElement('div');nav.id='annual-unit-buttons';nav.className='up-actions';nav.setAttribute('aria-label','查看岗位');nav.style.cssText='margin:6px 0 18px;gap:8px;flex-wrap:wrap';
+ nav.innerHTML=['BB','四方','财务','总管','TB钱包','AI小队'].map(unit=>`<button type="button" class="filter-btn" data-unit="${upEsc(unit)}" onclick="annualSelectUnit('${unit}')">${upEsc(unitLabel(unit))}</button>`).join('');
+ select.closest('.up-fields').after(nav);annualUnitButtons();
+ const style=document.createElement('style');style.textContent='#annual-unit-buttons button{padding:9px 18px;border-radius:5px}#annual-unit-buttons button.active{background:var(--ink);color:white;border-color:var(--ink)}';nav.append(style);
+};
+async function annualSelectUnit(unit,discard=false){
+ if(!upRequireAdmin()||PERIOD_ANNUAL.busy)return;
+ const select=document.getElementById('up-unit');if(!select||select.value===unit)return;
+ if(ANNUAL_NAV.dirty&&!discard){
+  ANNUAL_NAV.pending=unit;
+  const message=document.getElementById('up-annual-message');
+  message.innerHTML='当前岗位的比例尚未保存。请先保存，或 <button class="btn-cancel" onclick="annualDiscardSwitch()">放弃修改并切换</button>';
+  return;
+ }
+ ANNUAL_NAV.dirty=false;ANNUAL_NAV.pending=null;select.value=unit;annualUnitButtons();
+ await upLoadAnnualConfig();
+}
+function annualDiscardSwitch(){const unit=ANNUAL_NAV.pending;if(unit)annualSelectUnit(unit,true);}
+upLoadAnnualConfig=async function(){
+ if(!upRequireAdmin())return;
+ const select=document.getElementById('up-unit');if(!select)return;
+ const seq=++ANNUAL_NAV.seq,year=Number(document.getElementById('up-year').value),unit=select.value;
+ annualResetResults();annualUnitButtons();ANNUAL_NAV.dirty=false;
+ const message=document.getElementById('up-annual-message');message.textContent=`正在载入 ${unitLabel(unit)}…`;
+ for(const g of ['A','B','C','D'])document.getElementById('up-pct-'+g).value='';
+ try{
+  const {data,error}=await sb.from('assessment_annual_config').select('*').eq('year',year).eq('unit',unit).maybeSingle();
+  if(seq!==ANNUAL_NAV.seq||!upAdmin()||document.getElementById('up-unit')?.value!==unit)return;
+  if(error)throw error;
+  if(!data){upPctTotal();message.textContent=`${unitLabel(unit)} 尚未设置全年比例，请填写并保存后查看结果。`;return;}
+  document.getElementById('up-first').value=data.first_period;document.getElementById('up-second').value=data.second_period;
+  for(const g of ['A','B','C','D'])document.getElementById('up-pct-'+g).value=data[g.toLowerCase()];
+  upPctTotal();await upAnnualResults();
+ }catch(e){if(seq===ANNUAL_NAV.seq&&upAdmin())message.textContent='载入失败：'+e.message;}
+};
+upSaveAnnual=async function(button){
+ if(!upRequireAdmin()||button.disabled)return;
+ try{
+  const config=upAnnualInput();button.disabled=true;
+  const {data,error}=await sb.from('assessment_annual_config').upsert(config,{onConflict:'year,unit'}).select('year,unit');
+  if(error)throw error;if(data?.length!==1)throw new Error('保存数量不符');
+  if(!upAdmin()||Number(document.getElementById('up-year')?.value)!==config.year||document.getElementById('up-unit')?.value!==config.unit)return;
+  ANNUAL_NAV.dirty=false;const next=ANNUAL_NAV.pending;ANNUAL_NAV.pending=null;
+  if(next)await annualSelectUnit(next);else await upAnnualResults();
+  toast('全年比例已保存');
+ }catch(e){toast(e.message,true);const message=document.getElementById('up-annual-message');if(message)message.textContent='保存失败：'+e.message;}
+ finally{button.disabled=false;}
+};
+document.addEventListener('input',e=>{if(['up-pct-A','up-pct-B','up-pct-C','up-pct-D'].includes(e.target.id)){ANNUAL_NAV.dirty=true;annualResetResults();}});
+document.addEventListener('change',e=>{if(['up-first','up-second'].includes(e.target.id)&&!ANNUAL_NAV.dirty&&document.getElementById('up-unit'))upAnnualResults();});
+
+/* Shared presentation for half-year, annual and personal grading screens. */
+function gradeScreenNavigation(target,active){
+ if(!target||target.querySelector('.grade-screen-navigation'))return;
+ const nav=document.createElement('div');nav.className='grade-screen-navigation up-actions';nav.setAttribute('aria-label','级别设置');
+ nav.innerHTML=[['half','半年级别比例','halfRatioOpen()'],['annual','全年级别比例','upOpenAnnual(true)'],['person','个人全年比较','upPersonOpen()']].map(([key,label,action])=>`<button class="${key===active?'btn-primary':'btn-cancel'}" type="button" aria-current="${key===active?'page':'false'}" onclick="${action}">${label}</button>`).join('');
+ target.prepend(nav);
+}
+const consistentHalfSettings=halfRatioSettings;
+halfRatioSettings=async function(...args){await consistentHalfSettings.apply(this,args);if(upAdmin())gradeScreenNavigation(document.getElementById('pane-grade-config'),'half');};
+const consistentAnnualOpen=upOpenAnnual;
+upOpenAnnual=function(...args){const result=consistentAnnualOpen.apply(this,args);if(upAdmin())gradeScreenNavigation(document.getElementById('up-annual-content'),'annual');return result;};
+const consistentPersonOpen=upPersonOpen;
+upPersonOpen=function(...args){const result=consistentPersonOpen.apply(this,args);if(upAdmin())gradeScreenNavigation(document.getElementById('upa-content'),'person');return result;};
+const consistentManage=upRenderManage;
+upRenderManage=function(...args){const result=consistentManage.apply(this,args);
+ for(const button of document.querySelectorAll('#app-wrap button')){
+  const text=button.textContent.trim();
+  if(text==='半年ABCD比例'){button.innerHTML='半年级别比例 <small>按考核期间、岗位设置 ABCD 百分比</small>';}
+  if(text==='个人全年比较与ABCD'){button.innerHTML='个人全年比较 <small>配对两期成绩，查看全年平均与个人级别</small>';}
+ }
+ return result;
+};
+async function personAutoPreview(){
+ if(!upAdmin()||UPA.loading||UPA.saving||!document.getElementById('upa-year'))return;
+ try{upPersonInput();}catch{return;}
+ await upPersonCalculate();
+}
+const consistentPersonYear=upPersonYear;
+upPersonYear=async function(...args){await consistentPersonYear.apply(this,args);if(!UPA.dirty)await personAutoPreview();};
+const consistentPersonSave=upPersonSave;
+upPersonSave=async function(...args){await consistentPersonSave.apply(this,args);if(!UPA.dirty)await personAutoPreview();};
+document.addEventListener('change',e=>{if(['upa-first','upa-second'].includes(e.target.id))personAutoPreview();});
+const gradeConsistencyStyle=document.createElement('style');
+gradeConsistencyStyle.textContent=`
+ .grade-screen-navigation{margin:0 0 20px;gap:8px;flex-wrap:wrap}
+ #upa-content .preview-card,#up-annual-content .preview-card,#pane-grade-config .preview-card{padding:20px 22px;border-radius:6px}
+ #upa-content .up-fields,#up-annual-content .up-fields,#pane-grade-config .up-fields{gap:16px;margin:14px 0}
+ #upa-content .up-fields input,#up-annual-content .up-fields input{width:100px;padding:9px 10px}
+ #upa-content .up-fields select,#up-annual-content .up-fields select{padding:9px 10px;min-width:100px}
+ #upa-results .users-table,#up-annual-results .users-table{min-width:1050px}
+ #upa-results .users-table td,#up-annual-results .users-table td{padding:13px 14px}
+ #upa-results .users-table th,#up-annual-results .users-table th{padding:11px 14px}
+ #up-annual-results button{padding:7px 12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--ink);font:12px var(--ff);cursor:pointer}
+ #upa-message,#up-annual-message,#half-ratio-message{line-height:1.8;margin-top:14px;font-size:12px}
+ @media(max-width:700px){.grade-screen-navigation button{flex:1;padding:9px 10px}.grade-screen-navigation{gap:6px}#upa-content .preview-card,#up-annual-content .preview-card,#pane-grade-config .preview-card{padding:16px}}
+`;
+document.head.append(gradeConsistencyStyle);
 
 </script>
 </body>
