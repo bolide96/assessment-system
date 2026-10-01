@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>期末成绩</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -664,7 +664,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);font-size:14px;
     <div class="modal-head"><h3 id="staff-modal-title">新增人员</h3><button onclick="closeModal('staff-modal')">×</button></div>
     <div class="modal-body">
       <input type="hidden" id="sm-edit-id">
-      <input type="hidden" id="sm-name">
+      <div class="form-row" id="sm-name-row"><label for="sm-name">固定代号／姓名</label><input id="sm-name" type="text" autocomplete="off" placeholder="请输入固定代号或姓名"></div>
       <div class="form-grid">
         <div class="form-row" style="margin:0"><label>单位</label>
           <select id="sm-unit"><option value="BB">BB</option><option value="四方">四四</option><option value="财务">金银财宝</option><option value="总管">管家</option><option value="TB钱包">TB</option><option value="AI小队">AI小队</option></select>
@@ -1377,7 +1377,7 @@ function renderEditPage(){
     const at=d.attendance>0?`<span style="color:var(--green);font-size:15px">✓</span>`:`<span style="color:var(--border);font-size:15px">○</span>`;
     const shortName=personCode(d);
     return`<tr>
-      <td style="font-weight:500"><div style="display:flex;flex-direction:column;gap:1px"><span>${shortName}<span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span></span>${d.nickname?`<span style="font-size:10px;color:var(--ink3);font-weight:400">${d.nickname}</span>`:''}</div></td>
+      <td style="font-weight:500"><div style="display:flex;flex-direction:column;gap:1px"><span>${upEsc(shortName)}<span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span></span>${d.nickname?`<span style="font-size:10px;color:var(--ink3);font-weight:400">${upEsc(d.nickname)}</span>`:''}</div></td>
       <td><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td><span class="score-num ${cls}">${d.score||0}</span></td>
       ${monthCells}
@@ -1390,7 +1390,7 @@ function renderEditPage(){
         `</td>`;})()}
       ${showPerfect?`<td class="c" style="cursor:pointer" title="点击切换无失误奖励" onclick="togglePerfect(${d.id},${d.perfect||0});setTimeout(renderEditPage,300)">${pf}</td>`:''}
       <td class="c" style="cursor:pointer" title="点击切换出勤奖励" onclick="toggleAttend(${d.id},${d.attendance||0});setTimeout(renderEditPage,300)">${at}</td>
-      <td class="c" style="cursor:pointer;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:${d.comment?'var(--ink2)':'var(--ink3)'}" onclick="openCommentModal(${d.id})" title="${d.comment||'点击填写评语'}">${d.comment?'✎ '+d.comment.slice(0,6)+(d.comment.length>6?'…':''):'✎ 填写'}</td>
+      <td class="c" style="cursor:pointer;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:${d.comment?'var(--ink2)':'var(--ink3)'}" onclick="openCommentModal(${d.id})" title="${upEsc(d.comment||'点击填写评语')}">${d.comment?'✎ '+upEsc(d.comment.slice(0,6))+(d.comment.length>6?'…':''):'✎ 填写'}</td>
       <td class="c" style="cursor:pointer;font-size:12px;font-weight:500;color:${(d.mgr_bonus||0)>0?'var(--green)':(d.mgr_bonus||0)<0?'var(--red)':'var(--ink3)'}" onclick="openMgrModal(${d.id})" title="${d.mgr_note||'点击编辑老师加减分'}">${ (()=>{ const total=(d.mgr_bonus||0)+(d.analysis_total||0); return total>0?'+'+total:total<0?total:'✎ —'; })() }</td>
       ${(()=>{const t=Number(d.ai_score)||0;
         const hv=`onmouseenter="showAiPop(event,${d.staff_id})" onmouseleave="hideAiPop()"`;
@@ -1545,10 +1545,10 @@ function renderQuery(){
     const shortName=personCode(d);
     const uTag=`<span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span>`;
     const js=d.jinsun>0?`<span style="color:var(--red)">¥${d.jinsun.toLocaleString()}</span>`:`<span style="color:var(--ink3)">—</span>`;
-    const dEncoded=encodeURIComponent(JSON.stringify(upQueryDetailData(d)));
+    const dEncoded=encodeURIComponent(JSON.stringify(upQueryDetailData(d))).replace(/'/g,'%27');
     if(!scoreVisible){
       return`<tr onclick="toggleDetail(${i},'${dEncoded}')" id="qrow-${i}">
-        <td><div style="display:flex;flex-direction:column;gap:1px"><span style="font-weight:500">${shortName}${uTag}</span>${d.nickname?`<span style="font-size:11px;color:var(--ink3)">${d.nickname}</span>`:''}</div></td>
+        <td><div style="display:flex;flex-direction:column;gap:1px"><span style="font-weight:500">${upEsc(shortName)}${uTag}</span>${d.nickname?`<span style="font-size:11px;color:var(--ink3)">${upEsc(d.nickname)}</span>`:''}</div></td>
         <td class="c"><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
         <td><span style="color:var(--ink3);font-size:13px">未结算</span></td>
         <td class="c"><span style="color:var(--ink3)">—</span></td>
@@ -1562,7 +1562,7 @@ function renderQuery(){
     const cls=scoreClass(d.score||0);const bc=barColor(d.score||0);
     const pct=Math.round(((upAdmin()?d.score2:d.score)||0)/maxS*100);
     return`<tr onclick="toggleDetail(${i},'${dEncoded}')" id="qrow-${i}">
-      <td><div style="display:flex;flex-direction:column;gap:1px"><span style="font-weight:500">${shortName}${uTag}</span>${d.nickname?`<span style="font-size:11px;color:var(--ink3)">${d.nickname}</span>`:''}</div></td>
+      <td><div style="display:flex;flex-direction:column;gap:1px"><span style="font-weight:500">${upEsc(shortName)}${uTag}</span>${d.nickname?`<span style="font-size:11px;color:var(--ink3)">${upEsc(d.nickname)}</span>`:''}</div></td>
       <td class="c"><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td class="c">${gradeBadgeHtml(d)}</td>
       <td><div style="display:flex;align-items:center;gap:8px"><span class="score-num ${cls}">${d.score||0}</span><div style="flex:1"><div class="score-bar-bg"><div class="score-bar-fill" style="width:${pct}%;background:${bc}"></div></div></div></div></td>
@@ -1599,9 +1599,9 @@ function toggleDetail(i,enc){
             const isF=n.indexOf('失误')>=0,isA=n.indexOf('分析')>=0;
             const fg=isF?'var(--red)':isA?'var(--green)':'var(--ink3)';
             const bg=isF?'var(--red-bg)':isA?'var(--green-bg)':'var(--surface2)';
-            return`<div style="font-size:10px;color:var(--ink3);line-height:1.6"><span style="display:inline-block;padding:0 4px;border-radius:2px;background:${bg};color:${fg}">记</span> ${e.item}${e.note?`<span>・${e.note}</span>`:''}</div>`;
+            return`<div style="font-size:10px;color:var(--ink3);line-height:1.6"><span style="display:inline-block;padding:0 4px;border-radius:2px;background:${bg};color:${fg}">记</span> ${upEsc(e.item)}${e.note?`<span>・${upEsc(e.note)}</span>`:''}</div>`;
           }
-          return`<div style="font-size:10px;color:${e.pts>0?'var(--green)':'var(--red)'};line-height:1.5"><span style="font-weight:600">${e.pts>0?'+':''}${e.pts}</span> ${e.item}${e.note?`<span style="color:var(--ink3)">・${e.note}</span>`:''}</div>`;
+          return`<div style="font-size:10px;color:${e.pts>0?'var(--green)':'var(--red)'};line-height:1.5"><span style="font-weight:600">${e.pts>0?'+':''}${e.pts}</span> ${upEsc(e.item)}${e.note?`<span style="color:var(--ink3)">・${upEsc(e.note)}</span>`:''}</div>`;
         }).join('')}</div>`
       :'';
     return`<div class="month-block" style="height:auto;align-items:flex-start;padding:8px 10px"><div class="ml">${m}</div><div class="mv ${v>0?'pos':v<0?'neg':'zero'}">${v>0?'+'+v:v===0?'—':v}</div>${itemsHtml}</div>`;
@@ -1667,7 +1667,7 @@ function renderStaffTable(){
   tb.innerHTML=list.map(d=>{
     return`<tr>
       <td style="font-weight:500">${d.code||'—'}</td>
-      <td><input value="${d.nickname||''}" placeholder="—" style="border:none;background:none;font-size:13px;color:var(--ink3);width:100%;font-family:var(--ff);outline:none;cursor:pointer" onclick="this.style.border='1px solid var(--border)';this.style.background='var(--surface)';this.style.borderRadius='4px';this.style.padding='2px 6px'" onblur="saveNickname(${d.staff_id},this.value,this)" onfocus="this.select()"></td>
+      <td><input value="${upEsc(d.nickname||'')}" placeholder="—" style="border:none;background:none;font-size:13px;color:var(--ink3);width:100%;font-family:var(--ff);outline:none;cursor:pointer" onclick="this.style.border='1px solid var(--border)';this.style.background='var(--surface)';this.style.borderRadius='4px';this.style.padding='2px 6px'" onblur="saveNickname(${d.staff_id},this.value,this)" onfocus="this.select()"></td>
       <td><span class="unit-tag tag-${d.unit}">${unitLabel(d.unit)}</span></td>
       <td><span class="shift-dot dot-${d.shift}"></span>${d.shift}</td>
       <td>${d.base??80}</td>
@@ -1750,12 +1750,12 @@ function openMonthModal(staffScoreId,monthKey,monthLabel){
   document.getElementById('mm-deduct-section').innerHTML=dRules.length?`
     <div style="font-size:11px;color:var(--ink3);letter-spacing:.5px;margin:12px 0 6px">扣分项目 · 点击套用</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px">
-      ${dRules.map(r=>`<button class="filter-btn" style="border-color:var(--red-bd);color:var(--red)" onclick="applyRuleToMonth(${r.pts},'${r.name}',${r.id})">${r.name}&nbsp;${r.pts}分</button>`).join('')}
+      ${dRules.map(r=>`<button class="filter-btn" style="border-color:var(--red-bd);color:var(--red)" onclick="applyRuleToMonth(${r.pts},${upJsArg(r.name)},${r.id})">${r.name}&nbsp;${r.pts}分</button>`).join('')}
     </div>`:'';
   document.getElementById('mm-bonus-section').innerHTML=bRules.length?`
     <div style="font-size:11px;color:var(--ink3);letter-spacing:.5px;margin:12px 0 6px">加分项目 · 点击套用</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px">
-      ${bRules.map(r=>`<button class="filter-btn" style="border-color:var(--green-bd);color:var(--green)" onclick="applyRuleToMonth(${r.pts},'${r.name}',${r.id})">+${r.pts} ${r.name}</button>`).join('')}
+      ${bRules.map(r=>`<button class="filter-btn" style="border-color:var(--green-bd);color:var(--green)" onclick="applyRuleToMonth(${r.pts},${upJsArg(r.name)},${r.id})">+${r.pts} ${r.name}</button>`).join('')}
     </div>`:'';
   document.getElementById('month-modal').classList.add('open');
   document.querySelectorAll('.mm-entry-note').forEach(el=>{el.style.height='auto';el.style.height=el.scrollHeight+'px';});
@@ -1992,7 +1992,7 @@ async function saveComment(){
 }
 
 function openAddStaffModal(){
-  document.getElementById('staff-modal-title').textContent='新增人员';
+  document.getElementById('staff-modal-title').textContent='新增人员';document.getElementById('sm-name-row').hidden=false;document.getElementById('staff-save-error')?.remove();
   document.getElementById('sm-edit-id').value='';
   ['sm-name'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('sm-base').value=baseConfig.base_score??80;
@@ -2001,7 +2001,7 @@ function openAddStaffModal(){
 
 function editStaff(id){
   const d=staffScores.find(x=>x.id===id);if(!d)return;
-  document.getElementById('staff-modal-title').textContent='编辑人员';
+  document.getElementById('staff-modal-title').textContent='编辑人员';document.getElementById('sm-name-row').hidden=true;document.getElementById('staff-save-error')?.remove();
   document.getElementById('sm-edit-id').value=id;
   document.getElementById('sm-name').value=d.name;
   document.getElementById('sm-unit').value=d.unit;
@@ -2587,8 +2587,8 @@ async function loadUsers(){
       </select>`;
     }
     return`<tr>
-      <td style="font-family:monospace;font-size:12px">${u.email}</td>
-      <td>${u.name||'—'}</td>
+      <td style="font-family:monospace;font-size:12px">${upEsc(u.email)}</td>
+      <td>${upEsc(u.name||'—')}</td>
       <td><span class="role-tag ${u.role==='admin'?'role-admin':'role-viewer'}">${u.role==='admin'?'编辑':'检视'}</span></td>
       <td>${scopeSel}</td>
       <td style="text-align:center">
@@ -2601,7 +2601,7 @@ async function loadUsers(){
       <td style="display:flex;gap:4px">
         <button class="btn-icon" onclick="toggleUserActive('${u.id}',${u.is_active})" title="${u.is_active?'停用':'启用'}">${u.is_active?'⏸':'▶'}</button>
         <button class="btn-icon" onclick="changeUserRole('${u.id}','${u.role}')" title="切换权限">🔑</button>
-        <button class="btn-icon" onclick="sendPasswordReset('${u.email}')" title="发送密码重置信">✉</button>
+        <button class="btn-icon" onclick="sendPasswordReset(${upJsArg(u.email)})" title="发送密码重置信">✉</button>
       </td>
     </tr>`;
   }).join('');
@@ -2703,7 +2703,7 @@ async function loadSiteIps(){
   const el=document.getElementById('site-ip-list');
   if(!el)return;
   el.innerHTML=(data||[]).length
-    ?(data||[]).map(i=>`<div class="ip-item"><div><span class="ip-addr">${i.ip}</span><span style="color:var(--ink3);font-size:12px;margin-left:8px">${i.label||''}</span></div><button class="btn-icon del" onclick="deleteSiteIp(${i.id})">🗑</button></div>`).join('')
+    ?(data||[]).map(i=>`<div class="ip-item"><div><span class="ip-addr">${upEsc(i.ip)}</span><span style="color:var(--ink3);font-size:12px;margin-left:8px">${upEsc(i.label||'')}</span></div><button class="btn-icon del" onclick="deleteSiteIp(${i.id})">🗑</button></div>`).join('')
     :'<div style="color:var(--ink3);font-size:13px;padding:6px 0">尚无 IP 限制（允许所有来源登入）</div>';
 }
 async function addSiteIp(){
@@ -2908,7 +2908,7 @@ async function loadAuditLogs(){
     count.textContent=`本次会话共 ${rows.length} 笔`;
     el.innerHTML=rows.length
       ?`<table class="users-table"><thead><tr><th>时间</th><th>操作人</th><th>人员</th><th>项目</th><th>改前</th><th>改后</th><th>期间</th></tr></thead><tbody>${
-        rows.map(r=>`<tr><td style="font-size:11px">${r.ts}</td><td>${r.operator}</td><td>${getLogDisplayName(r.staffName)}</td><td>${r.fieldName}</td><td style="color:var(--red)">${r.oldVal}</td><td style="color:var(--green)">${r.newVal}</td><td>${r.periodName}</td></tr>`).join('')
+        rows.map(r=>`<tr><td style="font-size:11px">${r.ts}</td><td>${upEsc(r.operator)}</td><td>${upEsc(getLogDisplayName(r.staffName))}</td><td>${upEsc(r.fieldName)}</td><td style="color:var(--red)">${upEsc(r.oldVal)}</td><td style="color:var(--green)">${upEsc(r.newVal)}</td><td>${upEsc(r.periodName)}</td></tr>`).join('')
       }</tbody></table>`
       :'<div style="color:var(--ink3);padding:20px;text-align:center">本次会话暂无操作记录</div>';
     return;
@@ -2916,7 +2916,7 @@ async function loadAuditLogs(){
   count.textContent=`共 ${data.length} 笔`;
   el.innerHTML=data.length
     ?`<table class="users-table"><thead><tr><th>时间</th><th>操作人</th><th>人员</th><th>项目</th><th>改前</th><th>改后</th><th>期间</th></tr></thead><tbody>${
-      data.map(r=>`<tr><td style="font-size:11px">${new Date(r.created_at).toLocaleString('zh-TW')}</td><td>${r.operator||''}</td><td>${getLogDisplayName(r.staff_name)}</td><td>${r.field_name||''}</td><td style="color:var(--red)">${r.old_val||''}</td><td style="color:var(--green)">${r.new_val||''}</td><td>${r.period_name||''}</td></tr>`).join('')
+      data.map(r=>`<tr><td style="font-size:11px">${new Date(r.created_at).toLocaleString('zh-TW')}</td><td>${upEsc(r.operator||'')}</td><td>${upEsc(getLogDisplayName(r.staff_name))}</td><td>${upEsc(r.field_name||'')}</td><td style="color:var(--red)">${upEsc(r.old_val||'')}</td><td style="color:var(--green)">${upEsc(r.new_val||'')}</td><td>${upEsc(r.period_name||'')}</td></tr>`).join('')
     }</tbody></table>`
     :'<div style="color:var(--ink3);padding:20px;text-align:center">尚无操作记录</div>';
 }
@@ -3191,7 +3191,7 @@ function renderAiWorks(){
   document.getElementById('ai-summary').innerHTML=
     `共 ${aiWorks.length} 件作品`+
     (names.length?`　·　个人累计（上限 ${AI_PERSON_CAP}）：`+names.slice(0,8).map(k=>
-      `<span style="color:var(--ink2)">${aiStaffName(Number(k))} <b style="font-family:var(--ffs)">${totals[k]}</b></span>`).join('、')
+      `<span style="color:var(--ink2)">${upEsc(aiStaffName(Number(k)))} <b style="font-family:var(--ffs)">${totals[k]}</b></span>`).join('、')
       +(names.length>8?` 等 ${names.length} 人`:''):'');
 
   if(!list.length){box.innerHTML='<div class="loading-state">尚无作品</div>';return}
@@ -3204,7 +3204,7 @@ function renderAiWorks(){
     const ss=aiScores.filter(x=>x.work_id===w.id);
 
     const makerHtml=persons.map(pr=>
-      `<span style="display:inline-block;background:var(--surface2);border-radius:4px;padding:2px 9px;margin:2px 4px 2px 0;font-size:12px">${aiStaffName(pr.staff_id)} <span style="color:var(--ink3)">${pr.pct}%</span>${teacher&&pr.score!=null?` <b style="font-family:var(--ffs);color:var(--green)">${pr.score}</b>`:''}</span>`).join('');
+      `<span style="display:inline-block;background:var(--surface2);border-radius:4px;padding:2px 9px;margin:2px 4px 2px 0;font-size:12px">${upEsc(aiStaffName(pr.staff_id))} <span style="color:var(--ink3)">${pr.pct}%</span>${teacher&&pr.score!=null?` <b style="font-family:var(--ffs);color:var(--green)">${pr.score}</b>`:''}</span>`).join('');
 
     const statusTag=w.status==='scored'
       ? '<span style="font-size:10px;padding:2px 8px;border-radius:3px;background:var(--green-bg);border:1px solid var(--green-bd);color:var(--green)">已评</span>'
@@ -3216,7 +3216,7 @@ function renderAiWorks(){
         ? `<span style="color:var(--ink3)">${calc.note}</span>`
         : `作品总分 <b style="font-family:var(--ffs);font-size:16px;color:${calc.score>0?'var(--green)':'var(--red)'}">${calc.score}</b> <span style="color:var(--ink3);font-size:11px">· ${calc.note}</span>`;
       const rows=ss.map(x=>
-        `<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="width:80px;flex-shrink:0;color:var(--ink2)">${x.teacher_name}</span><span style="width:44px;flex-shrink:0;font-family:var(--ffs);font-weight:600;color:${x.abstain?'var(--ink3)':(Number(x.score)>0?'var(--green)':'var(--red)')}">${x.abstain?'弃权':x.score}</span><span style="flex:1;color:var(--ink3)">${(x.comment||'').replace(/</g,'&lt;')}</span>${aiScoreTime(x)}</div>`).join('');
+        `<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="width:80px;flex-shrink:0;color:var(--ink2)">${upEsc(x.teacher_name)}</span><span style="width:44px;flex-shrink:0;font-family:var(--ffs);font-weight:600;color:${x.abstain?'var(--ink3)':(Number(x.score)>0?'var(--green)':'var(--red)')}">${x.abstain?'弃权':x.score}</span><span style="flex:1;color:var(--ink3)">${(x.comment||'').replace(/</g,'&lt;')}</span>${aiScoreTime(x)}</div>`).join('');
       // 评分明细预设收起来——一件作品十几位老师，展开会把整个画面吃掉
       const open=aiOpenScores.has(w.id);
       const zeroN=ss.filter(x=>!x.abstain&&Number(x.score)===0).length;
@@ -3234,7 +3234,7 @@ function renderAiWorks(){
     }
 
     const isReport=t.kind==='report';
-    return `<div style="background:${isReport?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);${isReport?'border-left:3px solid var(--amber-bd);':''}border-radius:var(--r);padding:14px 16px;margin-bottom:10px"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span style="font-weight:500;font-size:14px">${(w.title||'').replace(/</g,'&lt;')}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:${isReport?'var(--amber-bg)':'var(--surface2)'};color:${isReport?'var(--amber)':'var(--ink3)'};border:1px solid ${isReport?'var(--amber-bd)':'var(--border)'}">${isReport?'回报・建议':'AI 作品'}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue)">${t.label}${teacher?` · 上限${t.cap}`:''}</span>${statusTag}</div>${upAiUploadedAt(w.created_at)}${w.description?`<div style="font-size:12px;color:var(--ink3);margin-bottom:6px;line-height:1.6">${w.description.replace(/</g,'&lt;')}</div>`:''}<div>${makerHtml}</div>${upWorkLink(link)}${(()=>{const ns=aiMakers.filter(m=>m.work_id===w.id&&m.note);return ns.length?`<div style="margin-top:6px;font-size:11px;color:var(--ink3);line-height:1.7">${ns.map(m=>`<div>${aiStaffName(m.staff_id)}：${(m.note||'').replace(/</g,'&lt;')}</div>`).join('')}</div>`:'';})()}${teacherBlock}</div>`;
+    return `<div style="background:${isReport?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);${isReport?'border-left:3px solid var(--amber-bd);':''}border-radius:var(--r);padding:14px 16px;margin-bottom:10px"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span style="font-weight:500;font-size:14px">${(w.title||'').replace(/</g,'&lt;')}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:${isReport?'var(--amber-bg)':'var(--surface2)'};color:${isReport?'var(--amber)':'var(--ink3)'};border:1px solid ${isReport?'var(--amber-bd)':'var(--border)'}">${isReport?'回报・建议':'AI 作品'}</span><span style="font-size:10px;padding:2px 8px;border-radius:3px;background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue)">${upEsc(t.label)}${teacher?` · 上限${t.cap}`:''}</span>${statusTag}</div>${upAiUploadedAt(w.created_at)}${w.description?`<div style="font-size:12px;color:var(--ink3);margin-bottom:6px;line-height:1.6">${w.description.replace(/</g,'&lt;')}</div>`:''}<div>${makerHtml}</div>${upWorkLink(link)}${(()=>{const ns=aiMakers.filter(m=>m.work_id===w.id&&m.note);return ns.length?`<div style="margin-top:6px;font-size:11px;color:var(--ink3);line-height:1.7">${ns.map(m=>`<div>${upEsc(aiStaffName(m.staff_id))}：${(m.note||'').replace(/</g,'&lt;')}</div>`).join('')}</div>`:'';})()}${teacherBlock}</div>`;
   }).join('');
 }
 
@@ -3256,7 +3256,7 @@ function openAiUpload(workId){
     .map(([k,v])=>`<option value="${k}">${v.label}${showCap?`（上限${v.cap}）`:''}</option>`).join('');
   const opts=[...staffScores].sort((a,b)=>(a.code||'').localeCompare(b.code||''));
   document.getElementById('aiu-pick').innerHTML='<option value="">＋ 选择制作人…</option>'+
-    opts.map(d=>`<option value="${d.staff_id}">${personCode(d)}${d.nickname?' '+d.nickname:''}</option>`).join('');
+    opts.map(d=>`<option value="${d.staff_id}">${upEsc(personCode(d))}${d.nickname?' '+upEsc(d.nickname):''}</option>`).join('');
   if(w)document.getElementById('aiu-type').value=w.work_type;
   aiuMakers=w
     ? aiMakers.filter(m=>m.work_id===w.id).map(m=>({staff_id:m.staff_id,name:aiStaffName(m.staff_id),pct:Number(m.contrib_pct),note:m.note||''}))
@@ -3301,7 +3301,7 @@ function aiuRemoveMaker(i){
 function aiuRenderMakers(){
   const box=document.getElementById('aiu-makers');
   box.innerHTML=aiuMakers.length?aiuMakers.map((m,i)=>
-    `<div style="padding:7px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="flex:1">${m.name}</span><input type="number" value="${m.pct}" min="0" max="100" step="0.5" oninput="aiuMakers[${i}].pct=parseFloat(this.value)||0;aiuRenderTotal()" style="width:70px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:12px;text-align:right;font-family:var(--ff);outline:none"><span style="color:var(--ink3);font-size:12px">%</span><button onclick="aiuRemoveMaker(${i})" style="color:var(--red);background:none;border:none;cursor:pointer;font-size:16px;line-height:1;padding:2px 4px">×</button></div><input value="${(m.note||'').replace(/"/g,'&quot;')}" placeholder="我做了哪些部分…（给老师判断比例用）" oninput="aiuMakers[${i}].note=this.value" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:12px;color:var(--ink2);font-family:var(--ff);outline:none;background:var(--surface2)"></div>`).join(''):'<div style="font-size:12px;color:var(--ink3);padding:6px 0">尚未选择制作人</div>';
+    `<div style="padding:7px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="flex:1">${upEsc(m.name)}</span><input type="number" value="${m.pct}" min="0" max="100" step="0.5" oninput="aiuMakers[${i}].pct=parseFloat(this.value)||0;aiuRenderTotal()" style="width:70px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:12px;text-align:right;font-family:var(--ff);outline:none"><span style="color:var(--ink3);font-size:12px">%</span><button onclick="aiuRemoveMaker(${i})" style="color:var(--red);background:none;border:none;cursor:pointer;font-size:16px;line-height:1;padding:2px 4px">×</button></div><input value="${upEsc(m.note||'')}" placeholder="我做了哪些部分…（给老师判断比例用）" oninput="aiuMakers[${i}].note=this.value" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:12px;color:var(--ink2);font-family:var(--ff);outline:none;background:var(--surface2)"></div>`).join(''):'<div style="font-size:12px;color:var(--ink3);padding:6px 0">尚未选择制作人</div>';
   aiuRenderTotal();
 }
 function aiuRenderTotal(){
@@ -3385,7 +3385,7 @@ function openAiScore(workId){
   document.getElementById('ais-score-label').textContent=`分数（0 ~ ${t.cap}）`;
   document.getElementById('ais-score').max=t.cap;
   document.getElementById('ais-info').innerHTML=
-    `类型：${t.label}　上限 ${t.cap} 分<br>${t.hint}<br>目前：${calc.score==null?calc.note:'作品总分 '+calc.score+'（'+calc.note+'）'}`;
+    `类型：${upEsc(t.label)}　上限 ${t.cap} 分<br>${t.hint}<br>目前：${calc.score==null?calc.note:'作品总分 '+calc.score+'（'+calc.note+'）'}`;
 
   aisRenderExisting();
 
@@ -3400,7 +3400,7 @@ function openAiScore(workId){
   const mks=aiMakers.filter(m=>m.work_id===workId);
   const base=(mine&&mine.contrib_override)||null;
   document.getElementById('ais-pct').innerHTML=mks.map(m=>
-    `<div style="padding:5px 0;font-size:13px"><div style="display:flex;align-items:center;gap:8px"><span style="flex:1">${aiStaffName(m.staff_id)}</span><span style="font-size:11px;color:var(--ink3)">学生填 ${m.contrib_pct}%</span><input type="number" class="ais-pct-in" data-staff="${m.staff_id}" data-base="${m.contrib_pct}" value="${base?(base[m.staff_id]!==undefined?base[m.staff_id]:m.contrib_pct):m.contrib_pct}" min="0" max="100" step="0.5" oninput="aisRenderPctTotal()" style="width:70px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:12px;text-align:right;font-family:var(--ff);outline:none"><span style="color:var(--ink3);font-size:12px">%</span></div>${m.note?`<div style="font-size:11px;color:var(--ink3);margin-top:2px;line-height:1.6">${(m.note||'').replace(/</g,'&lt;')}</div>`:`<div style="font-size:11px;color:var(--ink3);margin-top:2px;opacity:.55">（这位没写分工说明）</div>`}</div>`).join('');
+    `<div style="padding:5px 0;font-size:13px"><div style="display:flex;align-items:center;gap:8px"><span style="flex:1">${upEsc(aiStaffName(m.staff_id))}</span><span style="font-size:11px;color:var(--ink3)">学生填 ${m.contrib_pct}%</span><input type="number" class="ais-pct-in" data-staff="${m.staff_id}" data-base="${m.contrib_pct}" value="${base?(base[m.staff_id]!==undefined?base[m.staff_id]:m.contrib_pct):m.contrib_pct}" min="0" max="100" step="0.5" oninput="aisRenderPctTotal()" style="width:70px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:12px;text-align:right;font-family:var(--ff);outline:none"><span style="color:var(--ink3);font-size:12px">%</span></div>${m.note?`<div style="font-size:11px;color:var(--ink3);margin-top:2px;line-height:1.6">${(m.note||'').replace(/</g,'&lt;')}</div>`:`<div style="font-size:11px;color:var(--ink3);margin-top:2px;opacity:.55">（这位没写分工说明）</div>`}</div>`).join('');
   aisRenderPctTotal();aisToggleAbstain();aisNameHint();
   document.getElementById('ai-score-modal').classList.add('open');
 }
@@ -3725,7 +3725,7 @@ function upQueryRows(){const q=(document.getElementById('search')?.value||'').tr
 exportToExcel=function(){
   if(!upAdmin()&&!isScorePublished()){toast('成绩尚未公布，不能汇出',true);return}
   const list=upQueryRows(),finalRanks={};const groups={};staffScores.forEach(d=>(groups[d.shift+'|'+d.unit]??=[]).push(d));Object.values(groups).forEach(g=>Object.assign(finalRanks,calcGroupRank(g,'score2')));
-  const rows=list.map(d=>({'固定代号':personCode(d),'绰号':d.nickname||'','单位':unitLabel(d.unit),'班次':d.shift,'公开分数':d.score,'起始分':d.base??baseConfig.base_score,...(Number(baseConfig.perfect_bonus)>0?{'无失误奖励':d.perfect||0}:{}),'出勤奖励':d.attendance||0,...(upAdmin()?{'最终考核分':d.score2,'最终组内排名':finalRanks[d.id]}:{}),'公开分排名':d.rank2,'是否达标':d.score>=upNum(baseConfig.pass_score)?'达标':'未达标','AI作品分':d.ai_score||0,'金损金额':d.jinsun||0,...(upAdmin()?{'老师加减分':d.mgr_bonus||0,'分析加减分':d.analysis_total||0,'备注':d.comment||''}:{})}));
+  const rows=list.map(d=>({'固定代号':personCode(d),'绰号':d.nickname||'','单位':unitLabel(d.unit),'班次':d.shift,'公开分数':d.score,'半年级别':getEffectiveGrade(d).grade,'起始分':d.base??baseConfig.base_score,...(Number(baseConfig.perfect_bonus)>0?{'无失误奖励':d.perfect||0}:{}),'出勤奖励':d.attendance||0,...(upAdmin()?{'最终考核分':d.score2,'最终组内排名':finalRanks[d.id]}:{}),'公开分排名':d.rank2,'是否达标':d.score>=upNum(baseConfig.pass_score)?'达标':'未达标','AI作品分':d.ai_score||0,'金损金额':d.jinsun||0,...(upAdmin()?{'老师加减分':d.mgr_bonus||0,'分析加减分':d.analysis_total||0,'备注':d.comment||''}:{})}));
   if(!rows.length){toast('当前筛选没有资料',true);return}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'成绩');XLSX.writeFile(wb,`${periods.find(p=>p.id===currentPeriodId)?.name||'考核'}_筛选成绩.xlsx`);
 };
 isScorePublished=function(){const p=periods.find(x=>x.id===currentPeriodId);const now=new Date();const today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');return !!(p?.publish_from&&p?.publish_to&&today>=p.publish_from&&today<=p.publish_to)};
@@ -3889,7 +3889,7 @@ renderGradeView=function(){if(UP.options.simplified){document.getElementById('gr
   document.querySelectorAll('.topnav-tab').forEach(b=>{const id=(b.getAttribute('onclick')||'').match(/switchPage\('([^']+)'/)?.[1];b.dataset.upPage=id;if(labels[id])b.textContent=labels[id];else b.classList.add('up-legacy-nav')});
   const menu=document.createElement('button');menu.id='up-manage-tab';menu.className='topnav-tab admin-only hidden';menu.textContent='管理设置';menu.onclick=()=>switchPage('up-manage');document.querySelector('.topnav-tabs').append(menu);
   const account=document.createElement('button');account.className='btn-sm';account.textContent='我的帐号';account.onclick=()=>switchPage('account',account);document.querySelector('.nav-right').append(account);
-  const version=document.createElement('span');version.id='up-build-version';version.textContent='v1001-36';version.title='页面版本 2026.10.01-36';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
+  const version=document.createElement('span');version.id='up-build-version';version.textContent='v1001-39';version.title='页面版本 2026.10.01-39';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
   const nav=document.querySelector('.topnav-tabs');const edit=document.querySelector('[data-up-page="edit"]');nav.insertBefore(edit,document.querySelector('[data-up-page="ai"]'));
   const wrap=document.getElementById('app-wrap');const back=document.createElement('div');back.id='up-back';back.hidden=true;back.innerHTML='<button class="btn-cancel" onclick="switchPage(\'up-manage\')">← 管理设置</button>';document.querySelector('.period-bar').after(back);
   for(const id of ['manage','teachers','annual-config']){const page=document.createElement('div');page.id='page-up-'+id;page.className='page';page.innerHTML=`<div id="up-${id==='annual-config'?'annual':id}-content"></div>`;wrap.append(page)}
@@ -4168,11 +4168,11 @@ upSyncRoleControls();
 /* 個人跨崗位全年比較：按 staff_id 配對，比例獨立保存。 */
 const UPA={seq:0,rows:[],excluded:[],config:null,loading:false,saving:false,dirty:false,year:null};
 function upPersonMessage(text){const el=document.getElementById('upa-message');if(el)el.textContent=text;}
-function upPersonInvalidate(){UPA.seq++;UPA.rows=[];UPA.excluded=[];UPA.config=null;UPA.dirty=true;const el=document.getElementById('upa-results');if(el)el.innerHTML='';upPersonMessage('设置已变更，请重新计算；比例与期间需另按保存。');}
+function upPersonInvalidate(){UPA.seq++;UPA.rows=[];UPA.excluded=[];UPA.transfers=[];UPA.config=null;UPA.dirty=true;const el=document.getElementById('upa-results');if(el)el.innerHTML='';upPersonMessage('设置已变更，请重新计算；比例与期间需另按保存。');}
 function upPersonOpen(){
  if(!upRequireAdmin())return;
  switchPage('up-person-annual');
- UPA.seq++;UPA.rows=[];UPA.excluded=[];UPA.config=null;UPA.dirty=false;
+ UPA.seq++;UPA.rows=[];UPA.excluded=[];UPA.transfers=[];UPA.config=null;UPA.dirty=false;
  const years=[...new Set(periods.map(p=>Number(p.year)))].sort((a,b)=>b-a);
  const year=Number(periods.find(p=>p.id===currentPeriodId)?.year)||years[0];
  document.getElementById('upa-content').innerHTML=`<div class="page-hd"><h1>个人全年比较</h1><p>按同一学生配对 · 上下半年各占50% · 全体参评学生一起分配ABCD</p></div>
@@ -4236,7 +4236,7 @@ function upPersonBuild(scores,cfgs,config){
 }
 async function upPersonCalculate(){
  if(!upRequireAdmin()||UPA.loading||UPA.saving)return;
- const seq=++UPA.seq;UPA.rows=[];UPA.excluded=[];UPA.config=null;document.getElementById('upa-results').innerHTML='';
+ const seq=++UPA.seq;UPA.rows=[];UPA.excluded=[];UPA.transfers=[];UPA.config=null;document.getElementById('upa-results').innerHTML='';
  try{
   const config=upPersonInput(),ids=[config.first_period,config.second_period];upPersonMessage('正在配对上下半年成绩…');
   const {data:cfgs,error:ce}=await sb.from('period_base_config').select('*').in('period_id',ids);if(ce)throw ce;
@@ -4245,7 +4245,7 @@ async function upPersonCalculate(){
   const result=upPersonBuild(scores,cfgs,config);UPA.rows=result.rows;UPA.excluded=result.excluded;UPA.transfers=result.transfers||[];UPA.config=config;
   upPersonMessage(`参评 ${result.rows.length} 人 · 资料不足 ${result.excluded.length} 人 · 按当前输入比例计算${UPA.dirty?'（设置尚未保存）':''}`);
   const headers=['排名','代号','昵称','上半年岗位','下半年岗位','上半年分数','下半年分数','变化','全年平均','ABCD'];
-  document.getElementById('upa-results').innerHTML=`<div class="grade-grid">${['A','B','C','D'].map((g,i)=>`<div class="preview-card"><h3>${g}级</h3><p>目标 ${config[g.toLowerCase()]}% · 实际 ${result.rows.filter(r=>r.grade===g).length} 人</p><p class="up-help">原始名额 ${result.quota[i]} 人；同分可改变实际人数</p></div>`).join('')}</div><div class="tbl-wrap" style="overflow:auto"><table class="users-table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${result.rows.map(r=>`<tr><td>${r.rank}</td><td>${upEsc(r.code)}</td><td>${upEsc(r.nickname)}</td><td>${upEsc(unitLabel(r.firstUnit)||r.firstUnit)}</td><td>${upEsc(unitLabel(r.secondUnit)||r.secondUnit)}</td><td>${r.first.toFixed(2)}</td><td>${r.second.toFixed(2)}</td><td>${r.change>0?'+':''}${r.change.toFixed(2)}</td><td>${r.total.toFixed(2)}</td><td>${r.grade}</td></tr>`).join('')||'<tr><td colspan="9">没有两期资料完整的学生</td></tr>'}</tbody></table></div>${result.excluded.length?`<div class="preview-card"><h3>资料不足（不分ABCD）</h3>${result.excluded.map(r=>`<p class="up-help">${upEsc(r.code)} ${upEsc(r.nickname)}：${upEsc(r.reason)} · 上半年 ${r.first==null?'缺资料':r.first.toFixed(2)}／下半年 ${r.second==null?'缺资料':r.second.toFixed(2)}</p>`).join('')}</div>`:''}`;
+  document.getElementById('upa-results').innerHTML=`<div class="grade-grid">${['A','B','C','D'].map((g,i)=>`<div class="preview-card"><h3>${g}级</h3><p>目标 ${config[g.toLowerCase()]}% · 实际 ${result.rows.filter(r=>r.grade===g).length} 人</p><p class="up-help">原始名额 ${result.quota[i]} 人；同分可改变实际人数</p></div>`).join('')}</div><div class="tbl-wrap" style="overflow:auto"><table class="users-table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${result.rows.map(r=>`<tr><td>${r.rank}</td><td>${upEsc(r.code)}</td><td>${upEsc(r.nickname)}</td><td>${upEsc(unitLabel(r.firstUnit)||r.firstUnit)}</td><td>${upEsc(unitLabel(r.secondUnit)||r.secondUnit)}</td><td>${r.first.toFixed(2)}</td><td>${r.second.toFixed(2)}</td><td>${r.change>0?'+':''}${r.change.toFixed(2)}</td><td>${r.total.toFixed(2)}</td><td>${r.grade}</td></tr>`).join('')||'<tr data-personal-empty><td colspan="10">没有两期资料完整的学生</td></tr>'}</tbody></table></div>${result.excluded.length?`<div class="preview-card"><h3>资料不足（不分ABCD）</h3>${result.excluded.map(r=>`<p class="up-help">${upEsc(r.code)} ${upEsc(r.nickname)}：${upEsc(r.reason)} · 上半年 ${r.first==null?'缺资料':r.first.toFixed(2)}／下半年 ${r.second==null?'缺资料':r.second.toFixed(2)}</p>`).join('')}</div>`:''}`;
  }catch(e){if(seq===UPA.seq&&upAdmin()){upPersonMessage('计算未完成：'+e.message);toast(e.message,true);}}
 }
 function upPersonExport(){
@@ -4259,7 +4259,7 @@ function upPersonExport(){
 const upPersonPage=document.createElement('div');upPersonPage.id='page-up-person-annual';upPersonPage.className='page';upPersonPage.innerHTML='<div id="upa-content"></div>';document.getElementById('page-up-annual-config').after(upPersonPage);
 upAdminPages.push('up-person-annual');
 const upPersonRoleSync=upSyncRoleControls;
-upSyncRoleControls=function(){upPersonRoleSync();if(!upAdmin()){UPA.seq++;UPA.rows=[];UPA.excluded=[];UPA.config=null;UPA.loading=false;UPA.dirty=false;document.getElementById('upa-content').innerHTML='';}};
+upSyncRoleControls=function(){upPersonRoleSync();if(!upAdmin()){UPA.seq++;UPA.rows=[];UPA.excluded=[];UPA.transfers=[];UPA.config=null;UPA.loading=false;UPA.dirty=false;document.getElementById('upa-content').innerHTML='';}};
 const upPersonManage=upRenderManage;
 upRenderManage=function(){upPersonManage();if(upAdmin()){const btn=document.createElement('button');btn.textContent='个人全年比较与ABCD';btn.onclick=upPersonOpen;document.querySelector('#up-manage-content .up-menu-grid section').append(btn);}};
 const upPersonGradeBtn=document.createElement('button');upPersonGradeBtn.className='filter-btn admin-only hidden';upPersonGradeBtn.textContent='个人全年比较';upPersonGradeBtn.onclick=upPersonOpen;document.querySelector('#page-grade-view .sec-hd').append(upPersonGradeBtn);
@@ -4277,6 +4277,7 @@ if(_savedLocal){
 
 </script>
 <script>
+function upJsArg(value){return upEsc(JSON.stringify(String(value??'')));}
 /* One percentage model for both half-year queries and annual half-year columns. */
 function halfRatioBuild(rows,configs){
  const result=new Map(),groups=new Map();
@@ -4300,6 +4301,8 @@ loadStaffScores=async function(){
  if(seq!==HALF_RATIO.seq||pid!==currentPeriodId||!upAdmin())return;
  if(error)HALF_RATIO.error=error.message;else{HALF_RATIO.period=pid;HALF_RATIO.configs=data||[];}
  await halfRatioOldLoader();
+ if(seq!==HALF_RATIO.seq||pid!==currentPeriodId||!upAdmin())return;
+ if(document.getElementById('page-grade-view')?.classList.contains('active'))renderGradeView();
 };
 getEffectiveGrade=function(d){
  if(!upAdmin())return {grade:d.public_grade||'未开放',override:false};
@@ -4358,7 +4361,13 @@ async function halfRatioSave(pid){
 }
 const halfRatioOldManage=upRenderManage;
 const halfRatioOldQuery=renderQuery;
-renderQuery=function(...args){const result=halfRatioOldQuery.apply(this,args);const header=document.querySelector('#page-query table thead th:nth-child(3)');if(header)header.textContent='级别';return result;};
+renderQuery=function(...args){
+ const result=halfRatioOldQuery.apply(this,args);
+ const header=document.querySelector('#page-query table thead th:nth-child(3)');if(header)header.textContent='级别';
+ const sub=document.getElementById('query-sub');
+ if(sub)sub.textContent=upAdmin()?'半年级别按本期岗位比例与最终分数计算':'成绩依本期公布设置显示';
+ return result;
+};
 toggleDetail=function(i,enc){upOldDetail(i,enc);const drawer=document.getElementById('qdetail-'+i);drawer?.querySelector('[id^="grade-override-sel-"]')?.parentElement.remove();};
 upRenderManage=function(...args){const result=halfRatioOldManage.apply(this,args);
  for(const b of document.querySelectorAll('#app-wrap button'))if(b.textContent.trim()==='历史半年度级别'){b.textContent='半年ABCD比例';b.onclick=halfRatioOpen;}
@@ -4367,8 +4376,19 @@ upRenderManage=function(...args){const result=halfRatioOldManage.apply(this,args
 renderGradeView=function(){
  if(!upCanViewGrade())return;const target=document.getElementById('grade-view-content');
  const rows=staffScores.map(d=>({...d,halfGrade:getEffectiveGrade(d).grade}));
- target.innerHTML=`<p class="up-help">本期按岗位合并班次，以最终分数和ABCD比例分级。同分同级。</p>${['BB','四方','财务','总管','TB钱包','AI小队'].map(unit=>{const list=rows.filter(r=>r.unit===unit);if(!list.length)return '';return `<section class="preview-card"><h3>${upEsc(unitLabel(unit))} · ${list.length}人</h3><div class="grade-grid">${['A','B','C','D'].map(g=>`<div><h3>${g}级</h3>${list.filter(r=>r.halfGrade===g).map(r=>`<p>${upEsc(personCode(r))} ${upEsc(r.nickname||'')} · ${upEsc(upGradeScoreText(r))}</p>`).join('')||'—'}</div>`).join('')}</div>${list.some(r=>!['A','B','C','D'].includes(r.halfGrade))?`<p class="up-help">${list.filter(r=>!['A','B','C','D'].includes(r.halfGrade)).map(r=>upEsc(personCode(r)+'：'+r.halfGrade)).join('、')}</p>`:''}</section>`;}).join('')}`;
+ const groups=halfGradeDisplayGroups(rows,gradeViewMode);
+ target.innerHTML=`<p class="up-help">目前显示：${gradeViewMode==='split'?'分班次':'合并班次'}。显示切换不改变级别；ABCD始终按同岗位合并班次计算。</p>${groups.map(({unit,shift,list})=>`<section class="preview-card"><h3>${shift?upEsc(shift==='总管'?'管家班':shift+'班')+' · ':''}${upEsc(unitLabel(unit))} · ${list.length}人</h3><div class="grade-grid">${['A','B','C','D'].map(g=>`<div><h3>${g}级</h3>${list.filter(r=>r.halfGrade===g).map(r=>`<p>${upEsc(personCode(r))} ${upEsc(r.nickname||'')} · ${upEsc(upGradeScoreText(r))}</p>`).join('')||'—'}</div>`).join('')}</div>${list.some(r=>!['A','B','C','D'].includes(r.halfGrade))?`<p class="up-help">${list.filter(r=>!['A','B','C','D'].includes(r.halfGrade)).map(r=>upEsc(personCode(r)+'：'+r.halfGrade)).join('、')}</p>`:''}</section>`).join('')||'<p class="up-help">本期暂无人员资料</p>'}`;
 };
+function halfGradeDisplayGroups(rows,mode){
+ const groups=[];
+ for(const unit of ['BB','四方','财务','总管','TB钱包','AI小队']){
+  const own=rows.filter(r=>r.unit===unit);if(!own.length)continue;
+  if(mode!=='split'){groups.push({unit,shift:'',list:own});continue;}
+  const shifts=[...new Set(['早','中','晚','总管',...own.map(r=>r.shift||'未设班次')])];
+  for(const shift of shifts){const list=own.filter(r=>(r.shift||'未设班次')===shift);if(list.length)groups.push({unit,shift,list});}
+ }
+ return groups;
+}
 
 function halfRatioTotal(i){
  const inputs=['a','b','c','d'].map(g=>document.getElementById(`half-pct-${i}-${g}`)),el=document.getElementById(`half-total-${i}`);
@@ -4441,7 +4461,7 @@ async function periodPagedScores(ids){
 }
 upAnnualResults=async function(){
  if(!upRequireAdmin()||PERIOD_ANNUAL.busy)return;
- const seq=++PERIOD_ANNUAL.seq;PERIOD_ANNUAL.rows=[];PERIOD_ANNUAL.config=null;
+ const seq=++PERIOD_ANNUAL.seq;PERIOD_ANNUAL.personalContext=false;PERIOD_ANNUAL.rows=[];PERIOD_ANNUAL.config=null;
  try{
   const config=upAnnualInput(),ids=[config.first_period,config.second_period];
   const a=periods.find(p=>Number(p.id)===ids[0]),b=periods.find(p=>Number(p.id)===ids[1]);
@@ -4532,7 +4552,7 @@ function annualUnitButtons(){
  }
 }
 function annualResetResults(){
- PERIOD_ANNUAL.seq++;PERIOD_ANNUAL.rows=[];PERIOD_ANNUAL.config=null;
+ PERIOD_ANNUAL.seq++;PERIOD_ANNUAL.rows=[];PERIOD_ANNUAL.config=null;PERIOD_ANNUAL.personalContext=false;
  const results=document.getElementById('up-annual-results');if(results)results.innerHTML='';
  document.getElementById('period-transfer-dialog')?.close();
 }
@@ -4661,6 +4681,7 @@ function personalTransferRows(){
  // Append to the main results table, retaining all original auto ranks and quotas.
  const tbody=target.querySelector('table tbody');
  if(!tbody)return;
+ if(transfers.length)tbody.querySelector('[data-personal-empty]')?.remove();
  tbody.querySelectorAll('[data-personal-transfer]').forEach(r=>r.remove());
  for(const [i,r] of transfers.entries()){
   const tr=document.createElement('tr');tr.dataset.personalTransfer='true';tr.style.background='var(--surface2)';
@@ -4705,10 +4726,12 @@ upPersonExport=function(){
  const data=[...UPA.rows.map(r=>({...r,status:'自动'})),...(UPA.transfers||[])].map(r=>({'排名':r.rank,'代号':r.code,'昵称':r.nickname,'上半年岗位':unitLabel(r.firstUnit)||r.firstUnit,'下半年岗位':unitLabel(r.secondUnit)||r.secondUnit,'上半年分数':r.first,'下半年分数':r.second,'分数变化':r.change,'全年平均':r.total,'全年级别':r.grade,'状态':r.status,'判定老师':r.teacher||'','判定理由':r.reason||''}));
  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data.length?data:[{'状态':'无完整两期资料'}]),'个人全年比较');
  if(UPA.excluded.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(UPA.excluded.map(r=>({'代号':r.code,'昵称':r.nickname,'上半年分数':r.first,'下半年分数':r.second,'状态':r.reason}))),'资料不足');
- XLSX.writeFile(wb,`${UPA.config.year}_个人全年比较.xlsx`);
+ const c=UPA.config;
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet([{'年度':c.year,'上半年期间':periods.find(p=>Number(p.id)===c.first_period)?.name,'下半年期间':periods.find(p=>Number(p.id)===c.second_period)?.name,'A级比例':c.a,'B级比例':c.b,'C级比例':c.c,'D级比例':c.d,'说明':'上下半年各50%；同岗位学生自动分配；调岗学生由老师判定；岗位按各期独立记录'}]),'计算设置');
+ XLSX.writeFile(wb,`${c.year}_个人全年比较.xlsx`);
 };
 
 </script>
-<style>body{padding-bottom:48px}#site-version-footer{position:fixed;bottom:0;left:0;right:0;z-index:100;background:#f6f5f0;border-top:1px solid #ddd;padding:10px 16px;text-align:center;font:12px system-ui,sans-serif;color:#555;line-height:1.5}</style><footer id="site-version-footer" aria-label="网站版本">网站版本 <strong>v1001-36</strong> · 更新日期：2026-10-01</footer>
+<style>body{padding-bottom:48px}#site-version-footer{position:fixed;bottom:0;left:0;right:0;z-index:100;background:#f6f5f0;border-top:1px solid #ddd;padding:10px 16px;text-align:center;font:12px system-ui,sans-serif;color:#555;line-height:1.5}</style><footer id="site-version-footer" aria-label="网站版本">网站版本 <strong>v1001-39</strong> · 更新日期：2026-10-01</footer>
 </body>
 </html>
