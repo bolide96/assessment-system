@@ -3889,7 +3889,7 @@ renderGradeView=function(){if(UP.options.simplified){document.getElementById('gr
   document.querySelectorAll('.topnav-tab').forEach(b=>{const id=(b.getAttribute('onclick')||'').match(/switchPage\('([^']+)'/)?.[1];b.dataset.upPage=id;if(labels[id])b.textContent=labels[id];else b.classList.add('up-legacy-nav')});
   const menu=document.createElement('button');menu.id='up-manage-tab';menu.className='topnav-tab admin-only hidden';menu.textContent='管理设置';menu.onclick=()=>switchPage('up-manage');document.querySelector('.topnav-tabs').append(menu);
   const account=document.createElement('button');account.className='btn-sm';account.textContent='我的帐号';account.onclick=()=>switchPage('account',account);document.querySelector('.nav-right').append(account);
-  const version=document.createElement('span');version.id='up-build-version';version.textContent='v1001-40';version.title='页面版本 2026.10.01-40';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
+  const version=document.createElement('span');version.id='up-build-version';version.textContent='v1001-41';version.title='页面版本 2026.10.01-41';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
   const nav=document.querySelector('.topnav-tabs');const edit=document.querySelector('[data-up-page="edit"]');nav.insertBefore(edit,document.querySelector('[data-up-page="ai"]'));
   const wrap=document.getElementById('app-wrap');const back=document.createElement('div');back.id='up-back';back.hidden=true;back.innerHTML='<button class="btn-cancel" onclick="switchPage(\'up-manage\')">← 管理设置</button>';document.querySelector('.period-bar').after(back);
   for(const id of ['manage','teachers','annual-config']){const page=document.createElement('div');page.id='page-up-'+id;page.className='page';page.innerHTML=`<div id="up-${id==='annual-config'?'annual':id}-content"></div>`;wrap.append(page)}
@@ -4630,8 +4630,9 @@ const consistentManage=upRenderManage;
 upRenderManage=function(...args){const result=consistentManage.apply(this,args);
  for(const button of document.querySelectorAll('#app-wrap button')){
   const text=button.textContent.trim();
-  if(text==='半年ABCD比例'){button.innerHTML='半年级别比例 <small>按考核期间、岗位设置 ABCD 百分比</small>';}
-  if(text==='个人全年比较与ABCD'){button.innerHTML='个人全年比较 <small>配对两期成绩，查看全年平均与个人级别</small>';}
+  if(text.startsWith('全年级别比例')){button.innerHTML='全年级别比例 <small>上下半年最终分各占50%；同岗位合班按全年比例分ABCD，调岗由老师评估。</small>';}
+  if(text==='半年ABCD比例'){button.innerHTML='半年级别比例 <small>按本期最终分排序、依岗位比例分ABCD；目前同岗位合班计算，同分同级。</small>';}
+  if(text==='个人全年比较与ABCD'){button.innerHTML='个人全年比较 <small>同一学生两期最终分各占50%；未调岗者不分岗位、按个人比例分ABCD，调岗由老师评估。</small>';}
  }
  return result;
 };
@@ -4795,6 +4796,6 @@ const uxQuerySort=document.querySelector('#page-query .sort-btn');if(uxQuerySort
 const uxStyle=document.createElement('style');uxStyle.textContent=`.ux-filters{display:flex;flex-wrap:wrap;gap:14px;align-items:end;padding:16px 18px;margin:16px 0;background:var(--surface);border:1px solid var(--border);border-radius:6px}.ux-filters label{display:flex;flex-direction:column;gap:7px;font-size:12px}.ux-filters input,.ux-filters select{padding:9px 10px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--ink);font:inherit;min-width:140px}.ux-count{font-size:12px;align-self:center}.ux-context{font-size:12px;line-height:1.8;padding:10px 0}.ux-transfer td:first-child{border-left:3px solid #c67c28}.users-table thead th{position:sticky;top:0}.ux-filters [hidden]{display:none!important}@media(max-width:600px){.ux-filters label{flex:1;min-width:120px}.ux-filters input,.ux-filters select{width:100%;box-sizing:border-box}}`;document.head.append(uxStyle);
 
 </script>
-<style>body{padding-bottom:48px}#site-version-footer{position:fixed;bottom:0;left:0;right:0;z-index:100;background:#f6f5f0;border-top:1px solid #ddd;padding:10px 16px;text-align:center;font:12px system-ui,sans-serif;color:#555;line-height:1.5}</style><footer id="site-version-footer" aria-label="网站版本">网站版本 <strong>v1001-40</strong> · 更新日期：2026-10-01</footer>
+<style>body{padding-bottom:48px}#site-version-footer{position:fixed;bottom:0;left:0;right:0;z-index:100;background:#f6f5f0;border-top:1px solid #ddd;padding:10px 16px;text-align:center;font:12px system-ui,sans-serif;color:#555;line-height:1.5}</style><footer id="site-version-footer" aria-label="网站版本">网站版本 <strong>v1001-41</strong> · 更新日期：2026-10-01</footer>
 </body>
 </html>
