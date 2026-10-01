@@ -2020,7 +2020,7 @@ async function saveStaff(){
   if(baseRaw===''||!Number.isFinite(Number(baseRaw))){toast('请填写有效起始分',true);return}
   const base_score=Number(baseRaw);
 
-  if(!UNIT_VALS.includes(unit)){toast('请选择有效岗位',true);return;}
+  if(!['BB','四方','财务','总管','TB钱包','AI小队'].includes(unit)){toast('请选择有效岗位',true);return;}
   if(editId && !confirm('确认这是所选考核期间的实际岗位？只更新本期岗位，不改变其他期间。'))return;
   if(editId){
     const d=staffScores.find(x=>x.id===parseInt(editId));
@@ -3886,7 +3886,7 @@ renderGradeView=function(){if(UP.options.simplified){document.getElementById('gr
   document.querySelectorAll('.topnav-tab').forEach(b=>{const id=(b.getAttribute('onclick')||'').match(/switchPage\('([^']+)'/)?.[1];b.dataset.upPage=id;if(labels[id])b.textContent=labels[id];else b.classList.add('up-legacy-nav')});
   const menu=document.createElement('button');menu.id='up-manage-tab';menu.className='topnav-tab admin-only hidden';menu.textContent='管理设置';menu.onclick=()=>switchPage('up-manage');document.querySelector('.topnav-tabs').append(menu);
   const account=document.createElement('button');account.className='btn-sm';account.textContent='我的帐号';account.onclick=()=>switchPage('account',account);document.querySelector('.nav-right').append(account);
-  const version=document.createElement('span');version.id='up-build-version';version.textContent='v1001-26';version.title='页面版本 2026.10.01-26';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
+  const version=document.createElement('span');version.id='up-build-version';version.textContent='v1001-27';version.title='页面版本 2026.10.01-27';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
   const nav=document.querySelector('.topnav-tabs');const edit=document.querySelector('[data-up-page="edit"]');nav.insertBefore(edit,document.querySelector('[data-up-page="ai"]'));
   const wrap=document.getElementById('app-wrap');const back=document.createElement('div');back.id='up-back';back.hidden=true;back.innerHTML='<button class="btn-cancel" onclick="switchPage(\'up-manage\')">← 管理设置</button>';document.querySelector('.period-bar').after(back);
   for(const id of ['manage','teachers','annual-config']){const page=document.createElement('div');page.id='page-up-'+id;page.className='page';page.innerHTML=`<div id="up-${id==='annual-config'?'annual':id}-content"></div>`;wrap.append(page)}
