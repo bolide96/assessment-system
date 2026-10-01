@@ -3889,7 +3889,7 @@ renderGradeView=function(){if(UP.options.simplified){document.getElementById('gr
   document.querySelectorAll('.topnav-tab').forEach(b=>{const id=(b.getAttribute('onclick')||'').match(/switchPage\('([^']+)'/)?.[1];b.dataset.upPage=id;if(labels[id])b.textContent=labels[id];else b.classList.add('up-legacy-nav')});
   const menu=document.createElement('button');menu.id='up-manage-tab';menu.className='topnav-tab admin-only hidden';menu.textContent='管理设置';menu.onclick=()=>switchPage('up-manage');document.querySelector('.topnav-tabs').append(menu);
   const account=document.createElement('button');account.className='btn-sm';account.textContent='我的帐号';account.onclick=()=>switchPage('account',account);document.querySelector('.nav-right').append(account);
-  const version=document.createElement('span');version.id='up-build-version';version.textContent='v1001-31';version.title='页面版本 2026.10.01-31';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
+  const version=document.createElement('span');version.id='up-build-version';version.textContent='v1001-32';version.title='页面版本 2026.10.01-32';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
   const nav=document.querySelector('.topnav-tabs');const edit=document.querySelector('[data-up-page="edit"]');nav.insertBefore(edit,document.querySelector('[data-up-page="ai"]'));
   const wrap=document.getElementById('app-wrap');const back=document.createElement('div');back.id='up-back';back.hidden=true;back.innerHTML='<button class="btn-cancel" onclick="switchPage(\'up-manage\')">← 管理设置</button>';document.querySelector('.period-bar').after(back);
   for(const id of ['manage','teachers','annual-config']){const page=document.createElement('div');page.id='page-up-'+id;page.className='page';page.innerHTML=`<div id="up-${id==='annual-config'?'annual':id}-content"></div>`;wrap.append(page)}
@@ -4322,7 +4322,18 @@ async function halfRatioSettings(){
  if(pid!==currentPeriodId||!upAdmin())return;
  if(error){target.innerHTML=`<p class="up-help">载入失败：${upEsc(error.message)}。请确认已执行28号SQL。</p>`;return;}
  const units=['BB','四方','财务','总管','TB钱包','AI小队'];
- target.innerHTML=`<h3>${upEsc(periods.find(p=>p.id===pid)?.name||'本期')} · 半年ABCD比例</h3><p class="up-help">每个岗位合并班次，按最终分数排序。同分同级，分界同分归较高级；每行须合计100%。空白表示未设置，不自动套用范例。</p><fieldset id="half-ratio-fields" style="border:0;padding:0"><table class="users-table"><thead><tr><th>岗位</th>${['A','B','C','D'].map(g=>`<th>${g}级 %</th>`).join('')}</tr></thead><tbody>${units.map((unit,i)=>{const c=data.find(c=>c.unit===unit);return `<tr><td>${upEsc(unitLabel(unit))}</td>${['a','b','c','d'].map(g=>`<td><input id="half-pct-${i}-${g}" type="number" min="0" max="100" step="0.01" value="${c?Number(c[g]):''}" placeholder="未设置" style="width:85px"></td>`).join('')}</tr>`;}).join('')}</tbody></table><button onclick="halfRatioSave(${pid})">保存本期各岗位比例</button></fieldset><p id="half-ratio-message" role="status"></p>`;
+ target.innerHTML=`<style>
+ .half-ratio-table{width:100%;min-width:650px;border-collapse:collapse}
+ .half-ratio-table th{padding:10px 14px;background:var(--ink);color:rgba(255,255,255,.8);font-size:11px;font-weight:500;text-align:left}
+ .half-ratio-table td{padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface)}
+ .half-ratio-table tr:last-child td{border-bottom:0}
+ .half-ratio-table input{width:90px;max-width:100%;border:1px solid var(--border);border-radius:4px;padding:8px;font:13px var(--ff);color:var(--ink);background:var(--surface);text-align:center;outline:none}
+ .half-ratio-table input:focus{border-color:var(--ink);box-shadow:0 0 0 2px #1a1a2e12}
+ .half-ratio-table input:disabled{opacity:.6}
+ </style><div class="preview-card"><h3>半年ABCD比例</h3><div class="up-fields"><label>考核期间<input readonly value="${upEsc(periods.find(p=>p.id===pid)?.name||'本期')}" style="width:220px"></label></div>
+ <p class="up-help">同岗位合并班次，按最终分数排序。每行比例合计100%；分界同分归较高级。未设置的岗位可暂时留空。</p>
+ <fieldset id="half-ratio-fields" style="border:0;padding:0;margin:0;min-width:0"><div style="overflow-x:auto"><table class="half-ratio-table"><thead><tr><th>岗位</th>${['A','B','C','D'].map(g=>`<th>${g}级 %</th>`).join('')}<th>合计</th></tr></thead><tbody>${units.map((unit,i)=>{const c=data.find(c=>c.unit===unit);return `<tr><td style="white-space:nowrap">${upEsc(unitLabel(unit))}</td>${['a','b','c','d'].map(g=>`<td><input id="half-pct-${i}-${g}" aria-label="${upEsc(unitLabel(unit))} ${g.toUpperCase()}级百分比" type="number" min="0" max="100" step="0.01" value="${c?Number(c[g]):''}" placeholder="未设置" oninput="halfRatioTotal(${i})"></td>`).join('')}<td id="half-total-${i}" style="white-space:nowrap;font-size:12px"></td></tr>`;}).join('')}</tbody></table></div><div class="up-actions" style="margin-top:18px"><button class="btn-primary" onclick="halfRatioSave(${pid})">保存全部岗位</button><button class="btn-cancel" onclick="switchPage('grade-view')">查看半年结果</button></div></fieldset><p id="half-ratio-message" class="up-help" role="status" aria-live="polite"></p></div>`;
+ units.forEach((_,i)=>halfRatioTotal(i));
 }
 renderGradeConfigPane=function(){if(upAdmin())halfRatioSettings();};
 async function halfRatioSave(pid){
@@ -4358,6 +4369,14 @@ renderGradeView=function(){
  const rows=staffScores.map(d=>({...d,halfGrade:getEffectiveGrade(d).grade}));
  target.innerHTML=`<p class="up-help">本期按岗位合并班次，以最终分数和ABCD比例分级。同分同级。</p>${['BB','四方','财务','总管','TB钱包','AI小队'].map(unit=>{const list=rows.filter(r=>r.unit===unit);if(!list.length)return '';return `<section class="preview-card"><h3>${upEsc(unitLabel(unit))} · ${list.length}人</h3><div class="grade-grid">${['A','B','C','D'].map(g=>`<div><h3>${g}级</h3>${list.filter(r=>r.halfGrade===g).map(r=>`<p>${upEsc(personCode(r))} ${upEsc(r.nickname||'')} · ${upEsc(upGradeScoreText(r))}</p>`).join('')||'—'}</div>`).join('')}</div>${list.some(r=>!['A','B','C','D'].includes(r.halfGrade))?`<p class="up-help">${list.filter(r=>!['A','B','C','D'].includes(r.halfGrade)).map(r=>upEsc(personCode(r)+'：'+r.halfGrade)).join('、')}</p>`:''}</section>`;}).join('')}`;
 };
+
+function halfRatioTotal(i){
+ const inputs=['a','b','c','d'].map(g=>document.getElementById(`half-pct-${i}-${g}`)),el=document.getElementById(`half-total-${i}`);
+ const blank=inputs.every(x=>x.value===''),total=inputs.reduce((sum,x)=>sum+Number(x.value),0);
+ const valid=inputs.every(x=>x.value!==''&&x.checkValidity())&&Math.abs(total-100)<1e-7;
+ el.textContent=blank?'未设置':Number.isFinite(total)?`${Math.round(total*100)/100}%${valid?' ✓':' · 须100%'}`:'数字无效';
+ el.style.color=blank?'var(--ink3)':valid?'var(--green)':'var(--red)';
+}
 
 /* Period position snapshots and annual transfer review. */
 function periodUnit(row){return row?.period_unit||'';}
