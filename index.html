@@ -3889,7 +3889,7 @@ renderGradeView=function(){if(UP.options.simplified){document.getElementById('gr
   document.querySelectorAll('.topnav-tab').forEach(b=>{const id=(b.getAttribute('onclick')||'').match(/switchPage\('([^']+)'/)?.[1];b.dataset.upPage=id;if(labels[id])b.textContent=labels[id];else b.classList.add('up-legacy-nav')});
   const menu=document.createElement('button');menu.id='up-manage-tab';menu.className='topnav-tab admin-only hidden';menu.textContent='管理设置';menu.onclick=()=>switchPage('up-manage');document.querySelector('.topnav-tabs').append(menu);
   const account=document.createElement('button');account.className='btn-sm';account.textContent='我的帐号';account.onclick=()=>switchPage('account',account);document.querySelector('.nav-right').append(account);
-  const version=document.createElement('span');version.id='up-build-version';version.textContent='v1001-34';version.title='页面版本 2026.10.01-34';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
+  const version=document.createElement('span');version.id='up-build-version';version.textContent='v1001-35';version.title='页面版本 2026.10.01-35';version.style.cssText='font-size:10px;opacity:.65;white-space:nowrap';document.querySelector('.nav-right').append(version);
   const nav=document.querySelector('.topnav-tabs');const edit=document.querySelector('[data-up-page="edit"]');nav.insertBefore(edit,document.querySelector('[data-up-page="ai"]'));
   const wrap=document.getElementById('app-wrap');const back=document.createElement('div');back.id='up-back';back.hidden=true;back.innerHTML='<button class="btn-cancel" onclick="switchPage(\'up-manage\')">← 管理设置</button>';document.querySelector('.period-bar').after(back);
   for(const id of ['manage','teachers','annual-config']){const page=document.createElement('div');page.id='page-up-'+id;page.className='page';page.innerHTML=`<div id="up-${id==='annual-config'?'annual':id}-content"></div>`;wrap.append(page)}
@@ -4624,6 +4624,11 @@ const consistentPersonYear=upPersonYear;
 upPersonYear=async function(...args){await consistentPersonYear.apply(this,args);if(!UPA.dirty)await personAutoPreview();};
 const consistentPersonSave=upPersonSave;
 upPersonSave=async function(...args){await consistentPersonSave.apply(this,args);if(!UPA.dirty)await personAutoPreview();};
+const consistentPersonMessage=upPersonMessage;
+upPersonMessage=function(text){
+ if(text.includes('assessment_person_annual_config')&&text.includes('schema cache'))text='个人全年设置资料表尚未就绪，请先执行29_补齐个人全年设置.sql。当前结果仅为试算，设置尚未保存。';
+ consistentPersonMessage(text);
+};
 document.addEventListener('change',e=>{if(['upa-first','upa-second'].includes(e.target.id))personAutoPreview();});
 const gradeConsistencyStyle=document.createElement('style');
 gradeConsistencyStyle.textContent=`
@@ -4642,5 +4647,6 @@ gradeConsistencyStyle.textContent=`
 document.head.append(gradeConsistencyStyle);
 
 </script>
+<style>body{padding-bottom:48px}#site-version-footer{position:fixed;bottom:0;left:0;right:0;z-index:100;background:#f6f5f0;border-top:1px solid #ddd;padding:10px 16px;text-align:center;font:12px system-ui,sans-serif;color:#555;line-height:1.5}</style><footer id="site-version-footer" aria-label="网站版本">网站版本 <strong>v1001-35</strong> · 更新日期：2026-10-01</footer>
 </body>
 </html>
